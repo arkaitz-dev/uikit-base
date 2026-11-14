@@ -1,0 +1,5 @@
+{
+  "resources": [
+    {"glob": "dev/arkaitz/uikit_base/public/*"}
+  ]
+}

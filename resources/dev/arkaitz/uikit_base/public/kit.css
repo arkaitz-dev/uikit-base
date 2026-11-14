@@ -1,0 +1,3 @@
+/* uikit-base: the kit's stylesheet. Every rule sits in @layer uikit, so a host's own,
+ * unlayered stylesheet overrides any of them without !important. */
+@layer uikit;
