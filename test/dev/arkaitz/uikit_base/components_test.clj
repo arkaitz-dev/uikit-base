@@ -336,3 +336,9 @@
 (deftest a-card-is-a-surface-around-its-body
   (is (= "<div class=\"ui-card\"><h2>T</h2>body&lt;</div>" (html (ui/card [:h2 "T"] "body<"))))
   (is (= "<div class=\"ui-card mine\" id=\"c\"><p>x</p></div>" (html (ui/card {:class "mine" :id "c"} [:p "x"])))))
+
+(deftest a-plain-field-is-the-hiccup-0-1-0-answered
+  ;; Hosts compare a field's Hiccup, not only its HTML (the template's views_test does):
+  ;; a plain one keeps 0.1.0's data, the wrapper's class in its tag.
+  (is (= [:div.ui-field [:label.ui-field__label {:for "a"} "A"] [:input {:type "text" :value nil :id "a" :name "a" :class "ui-input"}] nil]
+         (ui/field req {:id "a" :label "A"}))))

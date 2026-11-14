@@ -127,10 +127,13 @@
                    "checkbox" [:input (cond-> (merge {:value "on"} own {:type "checkbox"}) value (assoc :checked true))]
                    [:input (merge {:type (or type "text") :value value} own)])
         label    [:label.ui-field__label {:for (:id own)} label]]
-    [:div {:class (cond-> "ui-field" check? (str " ui-field--check") inline? (str " ui-field--inline"))}
-     (if check? control label)
-     (if check? label control)
-     (when error [:span.ui-field__error {:id error-id} (word request error)])]))
+    ;; A plain field is the very data 0.1.0 answered, so a host test that compares the
+    ;; Hiccup, not the HTML, sees no change; a modifier is the wrapper's own class.
+    (conj (cond-> [:div.ui-field]
+            (or check? inline?) (conj {:class (str/join " " (cond-> [] check? (conj "ui-field--check") inline? (conj "ui-field--inline")))}))
+          (if check? control label)
+          (if check? label control)
+          (when error [:span.ui-field__error {:id error-id} (word request error)]))))
 
 (def ^:private notice-roles
   "A refusal is an alert, read out at once; an outcome or a note waits its turn."
