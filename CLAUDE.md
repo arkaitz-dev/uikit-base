@@ -58,5 +58,16 @@ Commands go here only once they have been run and observed to work. Observed:
     clojure -M:test -n <namespace>         # one namespace
     clojure -M:build-test                  # the release guards, against real git
 
+The default colours the kit ships (`resources/…/public/ui-colors.css`, from
+`default-brand.edn`) are regenerated, after a change to the engine or the brand, by
+
+    java -cp "$(clojure -Spath -M:test)" clojure.main -e "(require 'dev.arkaitz.uikit-base.build) (dev.arkaitz.uikit-base.build/write! \"default-brand.edn\" \"resources/dev/arkaitz/uikit_base/public/ui-colors.css\")"
+
+and `build_test` reds until they are.
+
+The goldens (`test/resources/basaku-goldens.edn`, `basaku-audit-pairs.edn`) are basaku's
+own output, printed by a temporary `src/golden_export.zig` in a scratch clone of basaku
+(never in basaku itself): `zig test src/golden_export.zig --test-filter "export …"`.
+
 `structure_test` starts a fresh JVM to see what the runtime namespaces load: a test JVM
 has already loaded whatever the other tests needed, so only a new one can testify.

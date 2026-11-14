@@ -39,7 +39,7 @@
         files (shipped "dev/arkaitz/uikit_base/public")
         hit?  (fn [path] (some #(re-matches (glob->regex %) path) gs))]
     (is (seq gs) (str "the metadata is on the classpath at " metadata-path))
-    (is (= 1 (count files)) (str "witness: the files the kit ships, read from resources/: " files))
+    (is (= 2 (count files)) (str "witness: the files the kit ships, read from resources/: " files))
     (is (= [] (remove hit? files)) "every one of them is matched by a glob")
     (is (not (hit? "dev/arkaitz/uikit_base/public"))
         "and the directory is not: a registered directory is served as a listing of its names")
