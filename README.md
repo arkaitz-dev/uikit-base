@@ -10,7 +10,7 @@ shadows and the focus ring are decided in the kit. Anything else you want differ
 write in your own stylesheet, and it overrides the kit without a fight.
 
 ```clojure
-dev.arkaitz/uikit-base {:mvn/version "0.2.0"}
+dev.arkaitz/uikit-base {:mvn/version "0.3.0"}
 ```
 
 ## In a host
@@ -79,6 +79,7 @@ auth-base's pages wear the brand too.
 | `ui-notice`, `ui-notice--ok` `--info` `--warning` `--error` | what an action answered |
 | `ui-table` | a table |
 | `ui-rows`, `ui-row` | a list of rows that wrap, each addressed by its own attributes |
+| `ui-rows--plain` | a list of rows with no line, padding or border |
 | `ui-pager` | the links to the page before and after |
 | `ui-badge`, `ui-badge--success` `--danger` `--warning` `--info` | a status as a label |
 | `ui-card` | a raised surface |
@@ -97,7 +98,10 @@ Scales you can use in your own CSS: `--ui-space-xxs` … `--ui-space-xl`, `--ui-
 (ui/notice :ok "Saved.")
 (ui/table {:caption "Orders" :head ["Ref" "Total"] :rows rows
           :row-attrs (fn [r] {:id (str "order-" (first r))})})
+(ui/table {:head ["Hour" (when other? "Your time") "Booked by" ""]       ; nil: no column
+           :rows [[h (ui/cell {:class "yours"} t) who form]]})
 (ui/rows (for [l lines] (ui/row {:id (str "line-" (:id l))} [:span (:name l)] …)))
+(ui/rows {:plain? true :ordered? true} (for [e events] (ui/row (:text e))))
 (ui/field request {:id "on-sale" :label "On sale" :type "checkbox" :value on-sale?})
 (ui/field request {:id "qty" :label "Qty" :type "number" :value 2 :inline? true})
 (ui/pager request {:previous p :next n :where "page 2 of 5"})

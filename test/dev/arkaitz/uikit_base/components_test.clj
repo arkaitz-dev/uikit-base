@@ -202,12 +202,13 @@
                             (ui/table {:caption "c" :head ["h"] :rows [["a" "b"]] :row-header? true})
                             (ui/pager req {:previous "/a" :next "/b"})
                             (ui/rows (ui/row "x"))
+                            (ui/rows {:plain? true} (ui/row "x"))
                             (ui/field req {:id "c" :label "C" :type "checkbox" :inline? true})
                             (for [k [:neutral :success :danger :warning :info]] (ui/badge k "x"))
                             (ui/card "x")))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 31 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
-    (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{]")) kit) classes))
+    (is (= 32 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
+    (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{>]")) kit) classes))
         "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
 ;; --- table, pager, badge, card --------------------------------------------------------
@@ -232,6 +233,47 @@
               "</td><td><form method=\"post\"><button>x</button></form></td><td>a<i>b</i></td></tr></tbody></table>")
          (html (ui/table {:rows [[(wb/link "/t/1" "R1") [:form {:method "post"} [:button "x"]] (list "a" [:i "b"])]] :attrs {:class "mine" :id "t"}}))))
   (is (= ["uikit-base: an attribute is named by a keyword or a string" {:attribute 1}] (refusal #(ui/table {:rows [] :attrs {1 2}})))))
+
+(deftest a-cell-carries-its-own-attributes-and-the-header-keeps-its-scope
+  (is (= "<table class=\"ui-table\"><tbody><tr><td class=\"yours\" id=\"c\">x<b>y</b></td><td>z</td></tr></tbody></table>"
+         (html (ui/table {:rows [[(ui/cell {:class "yours" :id "c"} "x" [:b "y"]) "z"]]}))))
+  (is (= (str "<table class=\"ui-table\"><thead><tr><th class=\"num\" id=\"h\" scope=\"col\">A</th><th scope=\"col\">B</th></tr></thead>"
+              "<tbody></tbody></table>")
+         (html (ui/table {:head [(ui/cell {:class "num" :scope "row" :id "h"} "A") "B"] :rows []})))
+      "a head cell keeps scope=col whatever its attrs say")
+  (is (= "<table class=\"ui-table\"><thead><tr><th scope=\"col\">A</th></tr></thead><tbody></tbody></table>"
+         (html (ui/table {:head [(ui/cell {"SCOPE" "row"} "A")] :rows []})))
+      "nor by a string spelling of it")
+  (is (= "<table class=\"ui-table\"><tbody><tr><th class=\"k\" id=\"r\" scope=\"row\">a</th><td scope=\"x\">b</td></tr></tbody></table>"
+         (html (ui/table {:rows [[(ui/cell {:class "k" :scope "col" :id "r"} "a") (ui/cell {:scope "x"} "b")]] :row-header? true})))
+      "a row header keeps scope=row; an ordinary cell has no scope of the kit's to keep")
+  (is (= ["uikit-base: an attribute is named by a keyword or a string" {:attribute 1}]
+         (refusal #(html (ui/table {:rows [[(ui/cell {1 2} "a")]]}))))))
+
+(defn- booking-day [other?]
+  (html (ui/table {:head ["Hour" (when other? "Yours") "Who" ""]
+                   :rows [["09:00" (ui/cell {:class "yours"} "10:00") "ada" [:form "f"]]
+                          ["10:00" (ui/cell {:class "yours"} "11:00") "free" nil]]})))
+
+(deftest a-column-whose-head-is-nil-is-drawn-nowhere
+  (is (= (str "<table class=\"ui-table\"><thead><tr><th scope=\"col\">Hour</th><th scope=\"col\">Who</th><th scope=\"col\"></th></tr></thead>"
+              "<tbody><tr><td>09:00</td><td>ada</td><td><form>f</form></td></tr><tr><td>10:00</td><td>free</td><td></td></tr></tbody></table>")
+         (booking-day false))
+      "the nil column leaves the head and every row; the empty-headed one stays, its nil cell an empty td")
+  (is (= (str "<table class=\"ui-table\"><thead><tr><th scope=\"col\">Hour</th><th scope=\"col\">Yours</th><th scope=\"col\">Who</th><th scope=\"col\"></th></tr></thead>"
+              "<tbody><tr><td>09:00</td><td class=\"yours\">10:00</td><td>ada</td><td><form>f</form></td></tr>"
+              "<tr><td>10:00</td><td class=\"yours\">11:00</td><td>free</td><td></td></tr></tbody></table>")
+         (booking-day true)))
+  (is (not-any? #(str/includes? % "<cell") [(booking-day false) (booking-day true)]) "the cell marker is never drawn"))
+
+(deftest without-a-nil-head-nothing-is-dropped
+  (is (= "<table class=\"ui-table\"><tbody><tr><td>a</td><td></td><td>c</td></tr></tbody></table>"
+         (html (ui/table {:rows [["a" nil "c"]]}))
+         (html (ui/table {:head [] :rows [["a" nil "c"]]})))
+      "without a head a nil cell is an empty td")
+  (is (= "<table class=\"ui-table\"><thead><tr><th scope=\"col\">A</th></tr></thead><tbody><tr><td>a</td><td>b</td></tr></tbody></table>"
+         (html (ui/table {:head ["A"] :rows [["a" "b"]]})))
+      "a cell past the head is still drawn: only a nil head entry drops a column"))
 
 (defn- tr-for
   "A translator as web-base builds it for a host speaking `locales`, with the kit's plugin
@@ -292,6 +334,11 @@
   (is (= "<li class=\"ui-row x\" id=\"i\">b</li>" (html (ui/row {"CLASS" "x" :ID "i"} "b"))) "attributes named as a browser reads them")
   (is (= "<ol class=\"ui-rows h\"><li class=\"ui-row\">first</li></ol>" (html (ui/rows {:ordered? true :class "h"} (ui/row "first"))))
       "rows whose order means something are an ol, the option no attribute of it")
+  (is (= "<ul class=\"ui-rows ui-rows--plain\"><li class=\"ui-row\">x</li></ul>" (html (ui/rows {:plain? true} (ui/row "x")))))
+  (is (= "<ol class=\"ui-rows ui-rows--plain h\" id=\"l\"><li class=\"ui-row\">x</li></ol>"
+         (html (ui/rows {:plain? true :ordered? true :class "h" :id "l"} (ui/row "x"))))
+      "plain rows combine with ordered and the caller's class, neither option an attribute")
+  (is (= "<ul class=\"ui-rows\"><li class=\"ui-row\">x</li></ul>" (html (ui/rows {:plain? false} (ui/row "x")))) "plain only when asked")
   (is (= ["uikit-base: an attribute is named by a keyword or a string" {:attribute 1}] (refusal #(ui/row {1 2} "b")))))
 
 (deftest a-tables-rows-take-their-own-attributes

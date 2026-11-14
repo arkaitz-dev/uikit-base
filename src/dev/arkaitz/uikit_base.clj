@@ -150,27 +150,51 @@
     (into [:p (with-attrs {:class (str "ui-notice ui-notice--" (name kind)) :role (notice-roles kind)} attrs [:role])]
           body)))
 
+(defn cell
+  "`(cell attrs & body)` → a table cell with attributes of its own: in `table`'s `head` a
+  column header, in a row its `<td>` (or the row's header `<th>`), `:class` joined to
+  nothing of the kit's. It means something only inside `table`."
+  [attrs & body]
+  (into [::cell attrs] body))
+
+(defn- cell-of
+  "A cell as `tag`: one made by `cell` with its attributes, anything else its content."
+  [tag own c]
+  (if (and (vector? c) (= ::cell (first c)))
+    (into [tag (with-attrs own (second c) (vec (keys own)))] (nnext c))
+    [tag own c]))
+
 (defn table
   "A table of the kit: `head`, the column names, each a `scope=col` header; `rows`, each a
   sequence of cells; `caption`, when given, says what it lists. With `:row-header? true`
   each row's first cell is that row's header. `attrs` go on the table; `row-attrs`, a
-  function of a row, answers each `<tr>`'s own — an id, or what htmx targets."
+  function of a row, answers each `<tr>`'s own — an id, or what htmx targets. A cell made
+  by `cell` carries its own attributes. A column whose head is nil is not drawn, in the
+  head or in any row, so a column shown only sometimes is `(when shown? \"Label\")` in the
+  head and anything at all in the rows; a column always there with an empty header is
+  `\"\"`. `:row-header?` makes the first drawn cell of each row its header."
   [{:keys [caption head rows row-header? attrs row-attrs]}]
-  [:table (with-attrs {:class "ui-table"} attrs [])
-   (when caption [:caption caption])
-   (when (seq head) [:thead [:tr (for [h head] [:th {:scope "col"} h])]])
-   [:tbody (for [row rows]
-             (into [:tr (with-attrs {} (when row-attrs (row-attrs row)) [])]
-                   (map-indexed (fn [i cell] (if (and row-header? (zero? i)) [:th {:scope "row"} cell] [:td cell])) row)))]])
+  (let [gone (set (keep-indexed (fn [i h] (when (nil? h) i)) head))
+        kept (fn [cells] (->> cells (map-indexed vector) (remove (comp gone first)) (map second)))]
+    [:table (with-attrs {:class "ui-table"} attrs [])
+     (when caption [:caption caption])
+     (when (seq head) [:thead [:tr (for [h (kept head)] (cell-of :th {:scope "col"} h))]])
+     [:tbody (for [row rows]
+               (into [:tr (with-attrs {} (when row-attrs (row-attrs row)) [])]
+                     (map-indexed (fn [i c] (if (and row-header? (zero? i)) (cell-of :th {:scope "row"} c) (cell-of :td {} c)))
+                                  (kept row))))]]))
 
 (defn rows
   "`(rows attrs? & rows)` → a list of rows, each a `row`: what a page lists when a table's
   grid would be wrong — rows that wrap, that carry their own forms, that htmx swaps one
   at a time. `{:ordered? true}` makes it an `<ol>`, for rows whose order means something,
-  such as a history."
+  such as a history; `{:plain? true}` drops the rows' line, padding and border, for a list
+  that is only a list — an activity, a history read top to bottom."
   [& more]
   (let [[attrs body] (split-attrs more)]
-    (into [(if (:ordered? attrs) :ol :ul) (with-attrs {:class "ui-rows"} (dissoc attrs :ordered?) [])] body)))
+    (into [(if (:ordered? attrs) :ol :ul)
+           (with-attrs {:class (cond-> "ui-rows" (:plain? attrs) (str " ui-rows--plain"))} (dissoc attrs :ordered? :plain?) [])]
+          body)))
 
 (defn row
   "`(row attrs? & body)` → one row of `rows`, its parts laid out in a line that wraps.

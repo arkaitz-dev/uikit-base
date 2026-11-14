@@ -103,6 +103,7 @@
     display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ui-space-sm) var(--ui-space-md);
     padding-block: var(--ui-space-sm); border-bottom: 1px solid var(--ui-border);
   }
+  .ui-rows--plain > .ui-row { display: block; padding-block: 0; border-bottom: none; }
   .ui-row form { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ui-space-sm); margin: 0; }
 
   /* Pager. */

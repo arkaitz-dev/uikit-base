@@ -5,6 +5,20 @@ changes what a working host sees. A **minor** adds, and may break: when it does,
 opens with **Breaking** and says what a host must change. Every release is on Clojars as
 `dev.arkaitz/uikit-base` and tagged `vX.Y.Z`.
 
+## 0.3.0 — 2026-11-15
+
+Additive; nothing a 0.2.0 host does changes.
+- `ui/cell`: a table cell with attributes of its own, `(ui/cell {:class "yours"} …)` — a
+  `<td>` in a row, the row's header `<th>` under `:row-header?`, a `scope=col` header in
+  `head` (its `scope` kept whatever the attrs say). It means something only inside
+  `ui/table`.
+- `ui/table`: a column whose `head` entry is nil is not drawn, in the head or in any row,
+  so a column shown only sometimes is `(when shown? "Label")` in the head. A column that
+  is always there with an empty header is `""`. Without a head, a nil cell is an empty
+  `<td>`, as before.
+- `ui/rows` `{:plain? true}` (`ui-rows--plain`): rows with no line, padding or border, for
+  a list that is only a list (shop's U-K10).
+
 ## 0.2.0 — 2026-11-14
 
 From the shop's adoption (its FRICTION.md, U-K2, U-K3, U-K4, U-K6).
