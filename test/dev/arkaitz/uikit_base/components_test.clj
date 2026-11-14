@@ -8,6 +8,7 @@
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [dev.arkaitz.uikit-base :as ui]
+            [dev.arkaitz.uikit-base.web :as web]
             [dev.arkaitz.web-base :as wb]
             [dev.arkaitz.web-base.security :as security]
             [dev.arkaitz.web-base.session :as session]
@@ -199,13 +200,15 @@
                             (ui/field req {:id "a" :label "A" :error :e})
                             (for [k [:ok :info :warning :error]] (ui/notice k "x"))
                             (ui/table {:caption "c" :head ["h"] :rows [["a" "b"]] :row-header? true})
-                            (ui/pager {:previous "/a" :next "/b" :previous-label "p" :next-label "n"})
+                            (ui/pager req {:previous "/a" :next "/b"})
+                            (ui/rows (ui/row "x"))
+                            (ui/field req {:id "c" :label "C" :type "checkbox" :inline? true})
                             (for [k [:neutral :success :danger :warning :info]] (ui/badge k "x"))
                             (ui/card "x")))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 26 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
-    (is (= [] (remove #(re-find (re-pattern (str "\\." % "[\\s,{:\\[]")) kit) classes))
-        "each has a rule in kit.css: a class the kit does not style is a component nobody styled")))
+    (is (= 31 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
+    (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{]")) kit) classes))
+        "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
 ;; --- table, pager, badge, card --------------------------------------------------------
 
@@ -230,22 +233,96 @@
          (html (ui/table {:rows [[(wb/link "/t/1" "R1") [:form {:method "post"} [:button "x"]] (list "a" [:i "b"])]] :attrs {:class "mine" :id "t"}}))))
   (is (= ["uikit-base: an attribute is named by a keyword or a string" {:attribute 1}] (refusal #(ui/table {:rows [] :attrs {1 2}})))))
 
-(deftest a-pager-links-each-side-with-its-rel-around-where-the-reader-is
-  (is (= (str "<nav aria-label=\"Pages\" class=\"ui-pager\">" (L "/l?page=1" "prev" "Prev") "<span>page 2 of 5</span>"
-              (L "/l?page=3&amp;q=a" "next" "Next") "</nav>")
-         (html (ui/pager {:previous "/l?page=1" :next "/l?page=3&q=a" :where "page 2 of 5" :label "Pages" :previous-label "Prev" :next-label "Next"}))))
-  (is (= (str "<nav class=\"ui-pager\">" (L "/l?page=2" "next" "Next") "</nav>") (html (ui/pager {:next "/l?page=2" :next-label "Next"}))))
-  (is (= (str "<nav aria-label=\"Pages\" class=\"ui-pager x\">" (L "/l" "prev" "Prev") "</nav>")
-         (html (ui/pager {:previous "/l" :previous-label "Prev" :label "Pages" :attrs {:class "x"}}))))
+(defn- tr-for
+  "A translator as web-base builds it for a host speaking `locales`, with the kit's plugin
+  merged in: the real merge, never the kit's dictionary read back."
+  [locale]
+  (wb/translator (:i18n (wb/expand {:routes [] :plugins [(web/plugin)] :i18n {:default-locale :en :locales [:en :es]}})) [locale]))
+
+(deftest a-pager-links-each-side-in-the-readers-language-around-where-the-reader-is
+  (let [o {:previous "/l?page=1" :next "/l?page=3&q=a" :where "page 2 of 5"}]
+    (is (= (str "<nav aria-label=\"Pages\" class=\"ui-pager\">" (L "/l?page=1" "prev" "Previous") "<span>page 2 of 5</span>"
+                (L "/l?page=3&amp;q=a" "next" "Next") "</nav>")
+           (html (ui/pager {:wb/tr (tr-for :en)} o))))
+    (is (= (str "<nav aria-label=\"Páginas\" class=\"ui-pager\">" (L "/l?page=1" "prev" "Anterior") "<span>page 2 of 5</span>"
+                (L "/l?page=3&amp;q=a" "next" "Siguiente") "</nav>")
+           (html (ui/pager {:wb/tr (tr-for :es)} o)))
+        "in Spanish")
+    (is (= (str "<nav aria-label=\"Pp\" class=\"ui-pager\">" (L "/l?page=1" "prev" "Back") "<span>page 2 of 5</span>"
+                (L "/l?page=3&amp;q=a" "next" "Fwd") "</nav>")
+           (html (ui/pager {:wb/tr (tr-for :es)} (assoc o :label "Pp" :previous-label "Back" :next-label "Fwd"))))
+        "an explicit label wins over the dictionary"))
+  (is (= (str "<nav aria-label=\"Pages\" class=\"ui-pager\">" (L "/l?page=2" "next" "Next") "</nav>")
+         (html (ui/pager {} {:next "/l?page=2"})))
+      "with no translator at all, the kit's English: a link always has a name")
+  (is (= (str "<nav aria-label=\"Pages\" class=\"ui-pager\">" (L "/l?page=2" "next" "Next") "</nav>")
+         (html (ui/pager {:wb/tr (wb/translator {:default-locale :fr :dict {:fr {:x {:y "Y"}}}} [:fr])} {:next "/l?page=2"})))
+      "and in a language the kit does not speak")
+  (is (= (str "<nav aria-label=\"Mine\" class=\"ui-pager x\" id=\"p\">" (L "/l" "prev" "Anterior") "</nav>")
+         (html (ui/pager {:wb/tr (tr-for :es)} {:previous "/l" :attrs {:class "x" :aria-label "Mine" :id "p"}})))
+      "attrs on the nav, its own aria-label too")
   (is (= ["web-base: link's href must be a path on this origin" #:wb{:link :href}]
-         (refusal #(ui/pager {:previous "https://evil.test/" :previous-label "P"})))
-      "its links are web-base's: an off-origin path is refused there")
-  (is (= ["uikit-base: a pager's link needs its label" {:previous? false :next? true}] (refusal #(ui/pager {:next "/l?page=2"})))
-      "a link with no name is refused"))
+         (refusal #(ui/pager {} {:previous "https://evil.test/"})))
+      "its links are web-base's: an off-origin path is refused there"))
 
 (deftest a-pager-with-no-page-either-side-is-nothing
-  (is (nil? (ui/pager {:where "page 1 of 1" :label "Pages" :previous-label "P" :next-label "N"})))
-  (is (nil? (ui/pager {}))))
+  (is (nil? (ui/pager {:wb/tr (tr-for :es)} {:where "page 1 of 1" :label "Pages"})))
+  (is (nil? (ui/pager {} {}))))
+
+(deftest the-plugin-brings-the-kits-words-and-a-host-may-change-any
+  (let [o    {:previous "/a" :next "/b" :where "page 2 of 5"}
+        app  (fn [i18n] (wb/handler {:routes [["/" {:wb/layouts [shell/page] :get (fn [q] {:status 200 :body (ui/pager q o)})}]]
+                                    :session {:key KEY} :plugins [(web/plugin)] :i18n i18n}))
+        main #(second (re-find #"(<main[^>]*>.*</main>)" (str (:body %))))]
+    (is (= (str "<main class=\"wb-main\" tabindex=\"-1\"><nav aria-label=\"Páginas\" class=\"ui-pager\">" (L "/a" "prev" "Anterior")
+                "<span>page 2 of 5</span>" (L "/b" "next" "Siguiente") "</nav></main>")
+           (main ((app {:default-locale :es}) (mock/request :get "/"))))
+        "a host speaking Spanish: the plugin's words, merged by web-base")
+    (is (str/includes? (str (main ((app {:default-locale :es :dict {:es {:uikit-base {:next "Más"}}}}) (mock/request :get "/"))))
+                       (str (L "/b" "next" "Más") "</nav>"))
+        "a host's own word wins over the kit's")
+    (is (= "web-base: plugins bring dictionaries for [:en :es]; the host chooses the locale with :i18n :default-locale, as in :i18n {:default-locale :en}"
+           (try (app nil) nil (catch ExceptionInfo e (ex-message e))))
+        "a host that brings words through the plugin chooses its locale, or the boot is refused naming the key")))
+
+(deftest rows-are-a-list-of-rows-each-addressed-by-its-attributes
+  (is (= "<ul class=\"ui-rows\"></ul>" (html (ui/rows))))
+  (is (= "<ul class=\"ui-rows mine\" hx-target=\"this\" id=\"list\"><li class=\"ui-row a b\" hx-target=\"#r1\" id=\"r1\"><span>A&lt;</span>t</li><li class=\"ui-row\">plain</li></ul>"
+         (html (ui/rows {:id "list" :class "mine" :hx-target "this"} (ui/row {:id "r1" :hx-target "#r1" :class ["a" :b]} [:span "A<"] "t") (ui/row "plain")))))
+  (is (= "<li class=\"ui-row x\" id=\"i\">b</li>" (html (ui/row {"CLASS" "x" :ID "i"} "b"))) "attributes named as a browser reads them")
+  (is (= ["uikit-base: an attribute is named by a keyword or a string" {:attribute 1}] (refusal #(ui/row {1 2} "b")))))
+
+(deftest a-tables-rows-take-their-own-attributes
+  (is (= "<table class=\"ui-table\" id=\"t\"><tbody><tr class=\"sel\" hx-target=\"this\" id=\"row-a1\"><td>a1</td><td>b1</td></tr><tr><td>a2</td><td>b2</td></tr></tbody></table>"
+         (html (ui/table {:rows [["a1" "b1"] ["a2" "b2"]] :attrs {:id "t"}
+                          :row-attrs (fn [r] (when (= "a1" (first r)) {:id "row-a1" :class "sel" :hx-target "this"}))})))
+      "each row its own, a row without none, the table its own")
+  (is (= "<table class=\"ui-table\"><tbody><tr id=\"a1\"><th scope=\"row\">a1</th><td>b1</td></tr></tbody></table>"
+         (html (ui/table {:rows [["a1" "b1"]] :row-header? true :row-attrs (fn [r] {:id (first r)})}))))
+  (is (= ["uikit-base: an attribute is named by a keyword or a string" {:attribute 1}]
+         (refusal #(html (ui/table {:rows [["a"]] :row-attrs (fn [_] {1 2})}))))))
+
+(deftest a-checkbox-field-is-ticked-by-its-value-and-sends-its-own
+  (let [W "<div class=\"ui-field ui-field--check\">" LB "<label class=\"ui-field__label\" for=\"ok\">Agree</label>"
+        f #(html (ui/field req (merge {:id "ok" :label "Agree" :type "checkbox"} %)))]
+    (is (= (str W "<input class=\"ui-check\" id=\"ok\" name=\"ok\" type=\"checkbox\" value=\"on\" />" LB "</div>") (f {})) "unticked, the box before its label")
+    (is (= (f {}) (f {:value false})) "false is unticked")
+    (is (= (str W "<input checked=\"checked\" class=\"ui-check\" id=\"ok\" name=\"ok\" type=\"checkbox\" value=\"on\" />" LB "</div>") (f {:value true})) "ticked")
+    (is (= (f {:value true}) (f {:value "on"})) "a refused form's \"on\" is ticked")
+    (is (= (str W "<input checked=\"checked\" class=\"ui-check x\" id=\"ok\" name=\"ok\" type=\"checkbox\" value=\"yes\" />" LB "</div>")
+           (f {:value true :attrs {:value "yes" :class "x"}}))
+        "what it sends is the caller's")
+    (is (str/includes? (f {:attrs {:type "text"}}) "type=\"checkbox\"") "and it stays a checkbox")
+    (is (= (str W "<input aria-describedby=\"ok-error\" aria-invalid=\"true\" class=\"ui-check\" id=\"ok\" name=\"ok\" type=\"checkbox\" value=\"on\" />" LB
+                "<span class=\"ui-field__error\" id=\"ok-error\">tr::e:[]</span></div>")
+           (f {:error :e :attrs {:aria-invalid "false" :aria-describedby "o"}}))
+        "a refused box is marked and described like any field")))
+
+(deftest an-inline-field-lays-its-label-and-control-on-one-line
+  (is (= "<div class=\"ui-field ui-field--inline\"><label class=\"ui-field__label\" for=\"q\">Q</label><input class=\"ui-input\" id=\"q\" name=\"q\" type=\"text\" /></div>"
+         (html (ui/field req {:id "q" :label "Q" :inline? true}))))
+  (is (str/starts-with? (html (ui/field req {:id "q" :label "Q" :inline? false})) "<div class=\"ui-field\"><label") "not unless asked")
+  (is (str/starts-with? (html (ui/field req {:id "c" :label "C" :type "checkbox" :inline? true})) "<div class=\"ui-field ui-field--check ui-field--inline\">")))
 
 (deftest a-badge-has-its-kinds-class-and-neutral-has-none-of-its-own
   (is (= "<span class=\"ui-badge\">Open</span>" (html (ui/badge :neutral "Open"))))

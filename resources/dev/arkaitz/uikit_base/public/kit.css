@@ -24,7 +24,7 @@
   @media (prefers-color-scheme: dark) { :root:not(.light) { --ui-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35); } }
 
   /* The focus ring, on everything the kit makes focusable. */
-  .ui-btn:focus-visible, .ui-input:focus-visible, .ui-pager a:focus-visible, .ui-card a:focus-visible {
+  .ui-btn:focus-visible, .ui-input:focus-visible, .ui-check:focus-visible, .ui-pager a:focus-visible, .ui-card a:focus-visible {
     outline: var(--ui-ring) solid var(--ui-focus-ring);
     outline-offset: var(--ui-ring);
     box-shadow: 0 0 0 var(--ui-ring) var(--ui-focus-ring-halo);
@@ -75,6 +75,11 @@
   }
   .ui-input[aria-invalid="true"] { border-color: var(--ui-danger-border); }
   .ui-field__error { color: var(--ui-danger-ink); font-size: var(--ui-font-sm); }
+  .ui-field--inline { grid-auto-flow: column; justify-content: start; align-items: baseline; gap: var(--ui-space-sm); }
+  .ui-field--check { grid-template-columns: auto 1fr; align-items: baseline; gap: var(--ui-space-sm); }
+  .ui-field--check .ui-field__label { font-weight: normal; }
+  .ui-field--check .ui-field__error { grid-column: 1 / -1; }
+  .ui-check { width: 1rem; height: 1rem; margin: 0; accent-color: var(--ui-primary-border); }
 
   /* Notices: what an action answered — status for an outcome, alert for a refusal. */
   .ui-notice {
@@ -91,6 +96,14 @@
   .ui-table caption { text-align: left; padding-bottom: var(--ui-space-sm); color: var(--ui-text-muted); }
   .ui-table th, .ui-table td { padding: var(--ui-space-sm); text-align: left; border-bottom: 1px solid var(--ui-border); }
   .ui-table thead th { border-bottom: 2px solid var(--ui-border-strong); }
+
+  /* Rows: a list whose rows wrap, each a line of its parts. */
+  .ui-rows { list-style: none; padding: 0; margin: 0; }
+  .ui-row {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ui-space-sm) var(--ui-space-md);
+    padding-block: var(--ui-space-sm); border-bottom: 1px solid var(--ui-border);
+  }
+  .ui-row form { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ui-space-sm); margin: 0; }
 
   /* Pager. */
   .ui-pager { display: flex; gap: var(--ui-space-md); align-items: baseline; margin-block: var(--ui-space-md); }

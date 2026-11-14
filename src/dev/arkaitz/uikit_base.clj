@@ -105,14 +105,17 @@
   of the host's dictionary, or a vector of the word and its arguments, as a handler's
   refusal names it; the control is then `aria-invalid` and described by the error, which
   no attribute of the caller's undoes. `type` is an input's, \"text\" unless given, or one
-  of three that are not inputs alike: \"select\" draws `options`, `[[value label] …]`, the
+  of four that are not inputs alike: \"select\" draws `options`, `[[value label] …]`, the
   one whose value is `value` selected — compared as text, since a refused form comes back
-  as strings; \"textarea\" holds `value` as its text; \"file\" takes no value. `attrs` go on
-  the control, `:class` joined to the kit's."
-  [request {:keys [id label type value error attrs options]}]
+  as strings; \"textarea\" holds `value` as its text; \"file\" takes no value; \"checkbox\"
+  is ticked when `value` is truthy, sends its attrs' `:value` (\"on\" unless given) and
+  sits before its label. `:inline? true` lays label and control on one line, for a field
+  inside a row. `attrs` go on the control, `:class` joined to the kit's."
+  [request {:keys [id label type value error attrs options inline?]}]
   (let [attrs    (normalised attrs)
         error-id (str (or (:id attrs) id) "-error")
-        own      (cond-> {:id id :name id :class "ui-input"}
+        check?   (= "checkbox" type)
+        own      (cond-> {:id id :name id :class (if check? "ui-check" "ui-input")}
                    error (assoc :aria-invalid "true" :aria-describedby error-id))
         own      (with-attrs own attrs (if error [:aria-invalid :aria-describedby] []))
         control  (case (or type "text")
@@ -121,10 +124,12 @@
                                       [:option (cond-> {:value v} (= (str v) (str value)) (assoc :selected true)) l]))
                    "textarea" [:textarea own value]
                    "file"     [:input (assoc own :type "file")]
-                   [:input (merge {:type (or type "text") :value value} own)])]
-    [:div.ui-field
-     [:label.ui-field__label {:for (:id own)} label]
-     control
+                   "checkbox" [:input (cond-> (merge {:value "on"} own {:type "checkbox"}) value (assoc :checked true))]
+                   [:input (merge {:type (or type "text") :value value} own)])
+        label    [:label.ui-field__label {:for (:id own)} label]]
+    [:div {:class (cond-> "ui-field" check? (str " ui-field--check") inline? (str " ui-field--inline"))}
+     (if check? control label)
+     (if check? label control)
      (when error [:span.ui-field__error {:id error-id} (word request error)])]))
 
 (def ^:private notice-roles
@@ -145,28 +150,58 @@
 (defn table
   "A table of the kit: `head`, the column names, each a `scope=col` header; `rows`, each a
   sequence of cells; `caption`, when given, says what it lists. With `:row-header? true`
-  each row's first cell is that row's header. `attrs` go on the table."
-  [{:keys [caption head rows row-header? attrs]}]
+  each row's first cell is that row's header. `attrs` go on the table; `row-attrs`, a
+  function of a row, answers each `<tr>`'s own — an id, or what htmx targets."
+  [{:keys [caption head rows row-header? attrs row-attrs]}]
   [:table (with-attrs {:class "ui-table"} attrs [])
    (when caption [:caption caption])
    (when (seq head) [:thead [:tr (for [h head] [:th {:scope "col"} h])]])
    [:tbody (for [row rows]
-             [:tr (map-indexed (fn [i cell] (if (and row-header? (zero? i)) [:th {:scope "row"} cell] [:td cell])) row)])]])
+             (into [:tr (with-attrs {} (when row-attrs (row-attrs row)) [])]
+                   (map-indexed (fn [i cell] (if (and row-header? (zero? i)) [:th {:scope "row"} cell] [:td cell])) row)))]])
+
+(defn rows
+  "`(rows attrs? & rows)` → a list of rows, each a `row`: what a page lists when a table's
+  grid would be wrong — rows that wrap, that carry their own forms, that htmx swaps one
+  at a time."
+  [& more]
+  (let [[attrs body] (split-attrs more)]
+    (into [:ul (with-attrs {:class "ui-rows"} attrs [])] body)))
+
+(defn row
+  "`(row attrs? & body)` → one row of `rows`, its parts laid out in a line that wraps.
+  `attrs` carry what addresses it: an id, `hx-` attributes, a class of the host's."
+  [& more]
+  (let [[attrs body] (split-attrs more)]
+    (into [:li (with-attrs {:class "ui-row"} attrs [])] body)))
+
+(def words
+  "The kit's own words, for the languages the set's hosts speak. The plugin brings them as
+  a dictionary, which a host's own overrides; a language the kit does not speak falls back
+  to the English here, so no word of the kit is ever missing from a page."
+  {:en {:uikit-base {:previous "Previous" :next "Next" :pages "Pages"}}
+   :es {:uikit-base {:previous "Anterior" :next "Siguiente" :pages "Páginas"}}})
+
+(defn- kit-word [request given k]
+  (or given
+      (some-> (:wb/tr request) (apply [k []]))
+      (get-in words [:en :uikit-base (keyword (name k))])))
 
 (defn pager
-  "Links to the page before and after, or nil when there is neither: `previous` and
-  `next` are paths (as web-base's `paging/path` answers them) or nil, each a `wb/link`
-  with its `rel` and its label, `previous-label` or `next-label` — refused when missing,
-  since a link with no name is one a screen reader cannot say. `where` says where the
-  reader is (\"page 2 of 5\"), between them; `label` names the navigation; `attrs` go on it."
-  [{:keys [previous next where label previous-label next-label attrs]}]
-  (when (or (and previous (nil? previous-label)) (and next (nil? next-label)))
-    (throw (ex-info "uikit-base: a pager's link needs its label" {:previous? (some? previous) :next? (some? next)})))
+  "`(pager request opts)` → links to the page before and after, or nil when there is
+  neither. `previous` and `next` are paths (as web-base's `paging/path` answers them) or
+  nil, each a `wb/link` with its `rel`; `where` says where the reader is (\"page 2 of 5\"),
+  between them; `attrs` go on the nav. The links and the nav are named by the kit's own
+  words in the reader's language — `:uikit-base/previous`, `:uikit-base/next`,
+  `:uikit-base/pages`, which the plugin brings and a host's dictionary may override, in
+  English where neither speaks the reader's — unless `previous-label`, `next-label` or
+  `label` say otherwise."
+  [request {:keys [previous next where label previous-label next-label attrs]}]
   (when (or previous next)
-    [:nav (with-attrs (cond-> {:class "ui-pager"} label (assoc :aria-label label)) attrs [])
-     (when previous (wb/link previous {:rel "prev"} previous-label))
+    [:nav (with-attrs {:class "ui-pager" :aria-label (kit-word request label :uikit-base/pages)} attrs [])
+     (when previous (wb/link previous {:rel "prev"} (kit-word request previous-label :uikit-base/previous)))
      (when where [:span where])
-     (when next (wb/link next {:rel "next"} next-label))]))
+     (when next (wb/link next {:rel "next"} (kit-word request next-label :uikit-base/next)))]))
 
 (def ^:private badge-kinds #{:neutral :success :danger :warning :info})
 

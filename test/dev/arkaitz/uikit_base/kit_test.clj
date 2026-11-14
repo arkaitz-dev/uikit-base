@@ -108,9 +108,9 @@
 
 (deftest every-control-edge-is-visible
   (let [edges (for [[sels decls] (leaf-rules) s sels
-                    :when (re-find #"^\.ui-(btn|input|notice)" s)
+                    :when (re-find #"^\.ui-(btn|input|notice|check)" s)
                     :when (not (or (str/includes? s ":disabled") (str/includes? s "aria-disabled")))
-                    [k v] decls :when (re-find #"^(border|outline)" k)
+                    [k v] decls :when (re-find #"^(border|outline|accent-color)" k)
                     :let [t (palette-var v)] :when t
                     bg [:background :surface :surface-alt]]
                 [s bg t])]
@@ -131,7 +131,7 @@
 
 (deftest the-plugin-links-and-serves-the-kit
   (let [app   (wb/handler {:routes [["/" {:get #(response/ok (shell/page {:request % :title "t" :content [:p "x"]}))}]]
-                           :session {:key (byte-array 16 (byte 7))} :plugins [(web/plugin)]
+                           :session {:key (byte-array 16 (byte 7))} :plugins [(web/plugin)] :i18n {:default-locale :en}
                            :stylesheets ["/ui-colors.css" "/app.css"]})
         page  (app (mock/request :get "/"))
         bytes (fn [in] (with-open [i (io/input-stream in)] (.readAllBytes i)))]
