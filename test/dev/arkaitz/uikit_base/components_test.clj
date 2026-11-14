@@ -197,8 +197,65 @@
         markup  (html (list (ui/button "x") (for [v [:primary :secondary :success :danger :warning :info]] (ui/button {:variant v} "x"))
                             (ui/button {:size :sm} "x") (ui/button {:size :lg} "x")
                             (ui/field req {:id "a" :label "A" :error :e})
-                            (for [k [:ok :info :warning :error]] (ui/notice k "x"))))
+                            (for [k [:ok :info :warning :error]] (ui/notice k "x"))
+                            (ui/table {:caption "c" :head ["h"] :rows [["a" "b"]] :row-header? true})
+                            (ui/pager {:previous "/a" :next "/b" :previous-label "p" :next-label "n"})
+                            (for [k [:neutral :success :danger :warning :info]] (ui/badge k "x"))
+                            (ui/card "x")))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 18 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
+    (is (= 26 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
     (is (= [] (remove #(re-find (re-pattern (str "\\." % "[\\s,{:\\[]")) kit) classes))
         "each has a rule in kit.css: a class the kit does not style is a component nobody styled")))
+
+;; --- table, pager, badge, card --------------------------------------------------------
+
+(def ^:private link-attrs "hx-push-url=\"true\" hx-select=\"main\" hx-swap=\"outerHTML show:top showTarget:body\" hx-target=\"main\"")
+(defn- L [href rel body] (str "<a href=\"" href "\" hx-get=\"" href "\" " link-attrs (when rel (str " rel=\"" rel "\"")) ">" body "</a>"))
+
+(deftest a-table-heads-its-columns-and-captions-what-it-lists
+  (is (= (str "<table class=\"ui-table\"><caption>C&lt;</caption><thead><tr><th scope=\"col\">A</th><th scope=\"col\">B&amp;</th></tr></thead>"
+              "<tbody><tr><td>a1</td><td>b1</td></tr><tr><td>a2</td><td><b>x&lt;</b></td></tr></tbody></table>")
+         (html (ui/table {:caption "C<" :head ["A" "B&"] :rows [["a1" "b1"] ["a2" [:b "x<"]]]}))))
+  (is (= "<table class=\"ui-table\"><tbody><tr><td>a</td></tr></tbody></table>" (html (ui/table {:rows [["a"]]})))
+      "no caption or head, none drawn"))
+
+(deftest a-row-header-is-each-rows-first-cell-and-no-other
+  (is (= (str "<table class=\"ui-table\"><thead><tr><th scope=\"col\">A</th><th scope=\"col\">B</th></tr></thead>"
+              "<tbody><tr><th scope=\"row\">a1</th><td>b1</td></tr><tr><th scope=\"row\">a2</th><td>b2</td></tr></tbody></table>")
+         (html (ui/table {:head ["A" "B"] :rows [["a1" "b1"] ["a2" "b2"]] :row-header? true})))))
+
+(deftest a-table-cell-holds-any-markup-and-the-table-keeps-the-callers-attributes
+  (is (= (str "<table class=\"ui-table mine\" id=\"t\"><tbody><tr><td>" (L "/t/1" nil "R1")
+              "</td><td><form method=\"post\"><button>x</button></form></td><td>a<i>b</i></td></tr></tbody></table>")
+         (html (ui/table {:rows [[(wb/link "/t/1" "R1") [:form {:method "post"} [:button "x"]] (list "a" [:i "b"])]] :attrs {:class "mine" :id "t"}}))))
+  (is (= ["uikit-base: an attribute is named by a keyword or a string" {:attribute 1}] (refusal #(ui/table {:rows [] :attrs {1 2}})))))
+
+(deftest a-pager-links-each-side-with-its-rel-around-where-the-reader-is
+  (is (= (str "<nav aria-label=\"Pages\" class=\"ui-pager\">" (L "/l?page=1" "prev" "Prev") "<span>page 2 of 5</span>"
+              (L "/l?page=3&amp;q=a" "next" "Next") "</nav>")
+         (html (ui/pager {:previous "/l?page=1" :next "/l?page=3&q=a" :where "page 2 of 5" :label "Pages" :previous-label "Prev" :next-label "Next"}))))
+  (is (= (str "<nav class=\"ui-pager\">" (L "/l?page=2" "next" "Next") "</nav>") (html (ui/pager {:next "/l?page=2" :next-label "Next"}))))
+  (is (= (str "<nav aria-label=\"Pages\" class=\"ui-pager x\">" (L "/l" "prev" "Prev") "</nav>")
+         (html (ui/pager {:previous "/l" :previous-label "Prev" :label "Pages" :attrs {:class "x"}}))))
+  (is (= ["web-base: link's href must be a path on this origin" #:wb{:link :href}]
+         (refusal #(ui/pager {:previous "https://evil.test/" :previous-label "P"})))
+      "its links are web-base's: an off-origin path is refused there")
+  (is (= ["uikit-base: a pager's link needs its label" {:previous? false :next? true}] (refusal #(ui/pager {:next "/l?page=2"})))
+      "a link with no name is refused"))
+
+(deftest a-pager-with-no-page-either-side-is-nothing
+  (is (nil? (ui/pager {:where "page 1 of 1" :label "Pages" :previous-label "P" :next-label "N"})))
+  (is (nil? (ui/pager {}))))
+
+(deftest a-badge-has-its-kinds-class-and-neutral-has-none-of-its-own
+  (is (= "<span class=\"ui-badge\">Open</span>" (html (ui/badge :neutral "Open"))))
+  (doseq [k [:success :danger :warning :info]]
+    (is (= (str "<span class=\"ui-badge ui-badge--" (name k) "\">Open</span>") (html (ui/badge k "Open"))) (name k)))
+  (is (= "<span class=\"ui-badge ui-badge--success mine\" id=\"b\" title=\"t\">Paid<b>!&lt;</b></span>"
+         (html (ui/badge :success {:class "mine" :id "b" :title "t"} "Paid" [:b "!<"]))))
+  (doseq [k [:bad nil "success" :ok :primary]]
+    (is (= ["uikit-base: a badge is :neutral, :success, :danger, :warning or :info" {:kind k}] (refusal #(ui/badge k "x"))) (pr-str k))))
+
+(deftest a-card-is-a-surface-around-its-body
+  (is (= "<div class=\"ui-card\"><h2>T</h2>body&lt;</div>" (html (ui/card [:h2 "T"] "body<"))))
+  (is (= "<div class=\"ui-card mine\" id=\"c\"><p>x</p></div>" (html (ui/card {:class "mine" :id "c"} [:p "x"])))))

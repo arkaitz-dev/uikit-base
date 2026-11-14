@@ -8,6 +8,7 @@
   This namespace never loads the colour engine (`color`, `brand`, `audit`, `emit`,
   `build`): a host's colours are generated once, committed, and served as a file."
   (:require [clojure.string :as str]
+            [dev.arkaitz.web-base :as wb]
             [dev.arkaitz.web-base.security :as security]))
 
 (defn- class-str [c]
@@ -140,3 +141,48 @@
   (let [[attrs body] (split-attrs more)]
     (into [:p (with-attrs {:class (str "ui-notice ui-notice--" (name kind)) :role (notice-roles kind)} attrs [:role])]
           body)))
+
+(defn table
+  "A table of the kit: `head`, the column names, each a `scope=col` header; `rows`, each a
+  sequence of cells; `caption`, when given, says what it lists. With `:row-header? true`
+  each row's first cell is that row's header. `attrs` go on the table."
+  [{:keys [caption head rows row-header? attrs]}]
+  [:table (with-attrs {:class "ui-table"} attrs [])
+   (when caption [:caption caption])
+   (when (seq head) [:thead [:tr (for [h head] [:th {:scope "col"} h])]])
+   [:tbody (for [row rows]
+             [:tr (map-indexed (fn [i cell] (if (and row-header? (zero? i)) [:th {:scope "row"} cell] [:td cell])) row)])]])
+
+(defn pager
+  "Links to the page before and after, or nil when there is neither: `previous` and
+  `next` are paths (as web-base's `paging/path` answers them) or nil, each a `wb/link`
+  with its `rel` and its label, `previous-label` or `next-label` — refused when missing,
+  since a link with no name is one a screen reader cannot say. `where` says where the
+  reader is (\"page 2 of 5\"), between them; `label` names the navigation; `attrs` go on it."
+  [{:keys [previous next where label previous-label next-label attrs]}]
+  (when (or (and previous (nil? previous-label)) (and next (nil? next-label)))
+    (throw (ex-info "uikit-base: a pager's link needs its label" {:previous? (some? previous) :next? (some? next)})))
+  (when (or previous next)
+    [:nav (with-attrs (cond-> {:class "ui-pager"} label (assoc :aria-label label)) attrs [])
+     (when previous (wb/link previous {:rel "prev"} previous-label))
+     (when where [:span where])
+     (when next (wb/link next {:rel "next"} next-label))]))
+
+(def ^:private badge-kinds #{:neutral :success :danger :warning :info})
+
+(defn badge
+  "`(badge kind attrs? & body)` → a status as a small filled label: `kind` is `:neutral`,
+  `:success`, `:danger`, `:warning` or `:info`. The colour is the kind's, never the only
+  sign: the body names it."
+  [kind & more]
+  (when-not (badge-kinds kind)
+    (throw (ex-info "uikit-base: a badge is :neutral, :success, :danger, :warning or :info" {:kind kind})))
+  (let [[attrs body] (split-attrs more)]
+    (into [:span (with-attrs {:class (str "ui-badge" (when (not= :neutral kind) (str " ui-badge--" (name kind))))} attrs [])]
+          body)))
+
+(defn card
+  "`(card attrs? & body)` → a raised surface holding its body."
+  [& more]
+  (let [[attrs body] (split-attrs more)]
+    (into [:div (with-attrs {:class "ui-card"} attrs [])] body)))
