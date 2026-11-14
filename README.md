@@ -10,7 +10,7 @@ shadows and the focus ring are decided in the kit. Anything else you want differ
 write in your own stylesheet, and it overrides the kit without a fight.
 
 ```clojure
-dev.arkaitz/uikit-base {:mvn/version "0.1.0"}
+dev.arkaitz/uikit-base {:mvn/version "0.2.0"}
 ```
 
 ## In a host
@@ -24,7 +24,9 @@ dev.arkaitz/uikit-base {:mvn/version "0.1.0"}
    ```
 
    It serves `/ui/` and links, after `wb.css`, the kit's default colours and the kit;
-   your colours and your stylesheet come after, in your `:stylesheets`.
+   your colours and your stylesheet come after, in your `:stylesheets`. It brings the
+   kit's own words (English, Spanish) as a dictionary, so your `:i18n` names a
+   `:default-locale`; a word of yours under `:uikit-base/…` replaces the kit's.
 
 2. **Your brand**, in `brand.edn` at the project's root: `{:primary "#2563eb"}`.
 
@@ -73,8 +75,10 @@ auth-base's pages wear the brand too.
 | `ui-btn`, `ui-btn--primary` `--secondary` `--success` `--danger` `--warning` `--info`, `ui-btn--sm` `--lg` | buttons |
 | `ui-form` | a form's stacked layout |
 | `ui-field`, `ui-field__label`, `ui-input`, `ui-field__error` | a field, its label, control and error |
+| `ui-field--inline`, `ui-field--check`, `ui-check` | a field on one line; a checkbox field and its box |
 | `ui-notice`, `ui-notice--ok` `--info` `--warning` `--error` | what an action answered |
 | `ui-table` | a table |
+| `ui-rows`, `ui-row` | a list of rows that wrap, each addressed by its own attributes |
 | `ui-pager` | the links to the page before and after |
 | `ui-badge`, `ui-badge--success` `--danger` `--warning` `--info` | a status as a label |
 | `ui-card` | a raised surface |
@@ -91,9 +95,12 @@ Scales you can use in your own CSS: `--ui-space-xxs` … `--ui-space-xl`, `--ui-
   (ui/field request {:id "name" :label "Name" :value v :error (:name errors)})
   (ui/button {:variant :primary} "Save"))
 (ui/notice :ok "Saved.")
-(ui/table {:caption "Orders" :head ["Ref" "Total"] :rows rows})
-(ui/pager {:previous p :next n :where "page 2 of 5" :label "Pages"
-           :previous-label "Previous" :next-label "Next"})
+(ui/table {:caption "Orders" :head ["Ref" "Total"] :rows rows
+          :row-attrs (fn [r] {:id (str "order-" (first r))})})
+(ui/rows (for [l lines] (ui/row {:id (str "line-" (:id l))} [:span (:name l)] …)))
+(ui/field request {:id "on-sale" :label "On sale" :type "checkbox" :value on-sale?})
+(ui/field request {:id "qty" :label "Qty" :type "number" :value 2 :inline? true})
+(ui/pager request {:previous p :next n :where "page 2 of 5"})
 (ui/badge :success "Paid")
 (ui/card [:h2 "Totals"] …)
 ```
@@ -107,7 +114,8 @@ else wins, except what correctness needs, which no attribute changes:
 - `field` marks a refused control `aria-invalid` and describes it by its error, which is
   a word of your dictionary (`:error/taken` or `[:error/long 80]`).
 - `notice` speaks an error as an alert, and everything else as a status.
-- `pager` refuses a link without its label.
+- `pager` names its links and itself in the reader's language (the kit's words, or yours,
+  or English), so a link never goes unnamed; a label you give wins.
 
 ## Fine-tuning by hand
 

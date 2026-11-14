@@ -5,6 +5,21 @@ changes what a working host sees. A **minor** adds, and may break: when it does,
 opens with **Breaking** and says what a host must change. Every release is on Clojars as
 `dev.arkaitz/uikit-base` and tagged `vX.Y.Z`.
 
+## 0.2.0 — 2026-11-14
+
+From the shop's adoption (its FRICTION.md, U-K2, U-K3, U-K4, U-K6).
+- **Breaking:** `ui/pager` takes the request, `(ui/pager request opts)`. Its words are the
+  kit's, in the reader's language — `:uikit-base/previous`, `/next`, `/pages`, which the
+  plugin brings (English, Spanish) and your dictionary overrides — in English where neither
+  speaks it; a label you give still wins, and a link is never unnamed.
+- **Breaking:** the plugin brings a dictionary, so a host using it names its locale,
+  `:i18n {:default-locale …}`; web-base refuses the boot otherwise, naming the key.
+- `ui/rows` and `ui/row`: a list of rows that wrap, each addressed by its own attributes
+  (an id, what htmx targets). `ui/table` takes `:row-attrs`, a function of each row.
+- `ui/field` `:type "checkbox"` (ticked by `value`, sending its attrs' `:value`, the box
+  before its label) and `:inline? true` (label and control on one line).
+- kit.css: `.ui-rows`, `.ui-row`, `.ui-field--inline`, `.ui-field--check`, `.ui-check`.
+
 ## 0.1.0 — 2026-11-14
 
 The first release.
