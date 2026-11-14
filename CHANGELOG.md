@@ -15,7 +15,7 @@ From the shop's adoption (its FRICTION.md, U-K2, U-K3, U-K4, U-K6).
 - **Breaking:** the plugin brings a dictionary, so a host using it names its locale,
   `:i18n {:default-locale …}`; web-base refuses the boot otherwise, naming the key.
 - `ui/rows` and `ui/row`: a list of rows that wrap, each addressed by its own attributes
-  (an id, what htmx targets). `ui/table` takes `:row-attrs`, a function of each row.
+  (an id, what htmx targets); `{:ordered? true}` for an `<ol>`. `ui/table` takes `:row-attrs`, a function of each row.
 - `ui/field` `:type "checkbox"` (ticked by `value`, sending its attrs' `:value`, the box
   before its label) and `:inline? true` (label and control on one line).
 - kit.css: `.ui-rows`, `.ui-row`, `.ui-field--inline`, `.ui-field--check`, `.ui-check`.

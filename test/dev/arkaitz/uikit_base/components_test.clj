@@ -290,6 +290,8 @@
   (is (= "<ul class=\"ui-rows mine\" hx-target=\"this\" id=\"list\"><li class=\"ui-row a b\" hx-target=\"#r1\" id=\"r1\"><span>A&lt;</span>t</li><li class=\"ui-row\">plain</li></ul>"
          (html (ui/rows {:id "list" :class "mine" :hx-target "this"} (ui/row {:id "r1" :hx-target "#r1" :class ["a" :b]} [:span "A<"] "t") (ui/row "plain")))))
   (is (= "<li class=\"ui-row x\" id=\"i\">b</li>" (html (ui/row {"CLASS" "x" :ID "i"} "b"))) "attributes named as a browser reads them")
+  (is (= "<ol class=\"ui-rows h\"><li class=\"ui-row\">first</li></ol>" (html (ui/rows {:ordered? true :class "h"} (ui/row "first"))))
+      "rows whose order means something are an ol, the option no attribute of it")
   (is (= ["uikit-base: an attribute is named by a keyword or a string" {:attribute 1}] (refusal #(ui/row {1 2} "b")))))
 
 (deftest a-tables-rows-take-their-own-attributes

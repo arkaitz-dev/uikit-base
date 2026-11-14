@@ -166,10 +166,11 @@
 (defn rows
   "`(rows attrs? & rows)` → a list of rows, each a `row`: what a page lists when a table's
   grid would be wrong — rows that wrap, that carry their own forms, that htmx swaps one
-  at a time."
+  at a time. `{:ordered? true}` makes it an `<ol>`, for rows whose order means something,
+  such as a history."
   [& more]
   (let [[attrs body] (split-attrs more)]
-    (into [:ul (with-attrs {:class "ui-rows"} attrs [])] body)))
+    (into [(if (:ordered? attrs) :ol :ul) (with-attrs {:class "ui-rows"} (dissoc attrs :ordered?) [])] body)))
 
 (defn row
   "`(row attrs? & body)` → one row of `rows`, its parts laid out in a line that wraps.
