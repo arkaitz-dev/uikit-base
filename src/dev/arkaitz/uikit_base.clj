@@ -105,6 +105,69 @@
            (security/csrf-field request)]
           body)))
 
+(defn- label!
+  "`l` when it is text a button can show, refused by name otherwise."
+  [component k l]
+  (when-not (and (string? l) (not (str/blank? l)))
+    (throw (ex-info (str "uikit-base: " component "'s " (name k) " is the text its button shows") {k l})))
+  l)
+
+(defn- field-name
+  "A field's name or value as a form sends it: a keyword as its text, namespace kept
+  (`:ns/d` is `\"ns/d\"`, which `wb/param` reads back as that string)."
+  [k]
+  (if (keyword? k) (subs (str k) 1) (str k)))
+
+(defn- subject-of [subject]
+  (when-not (or (nil? subject) (and (string? subject) (str/blank? subject)))
+    [:span.ui-sr-only " " subject]))
+
+(defn action
+  "`(action request path opts)` → a form that posts to `path` with one button: what a row
+  does to itself — remove, move, mark. `opts`: `:label`, the button's text; `:hidden`, a
+  map of fields it sends, in the order of their names, each a string, a number, a
+  boolean or a keyword (sent as its text), one per name; `:subject`, what it acts on,
+  read after the label by a screen reader and never shown, so the tenth \"Remove\" on a
+  page still says which; `:variant` and `:size`, the button's; `:attrs`, the form's,
+  refused as `post-form` refuses them — an `hx-post` there is where htmx posts, as on
+  any form; `:button`, the button's own attributes, never a `:type`, `:name`, `:value`,
+  `:variant` or `:size`, which are the action's to decide. A hidden field named as the
+  CSRF field is refused: the form carries the real one first."
+  [request path {:keys [label hidden subject variant size attrs] button-attrs :button}]
+  (label! "an action" :label label)
+  (when-let [bad (seq (filter #{:type :name :value :variant :size} (keys (normalised button-attrs))))]
+    (throw (ex-info "uikit-base: an action's button takes no type, name, value, variant or size of its own" {:attributes (vec (sort bad))})))
+  (let [names (map field-name (keys hidden))]
+    (when (some str/blank? names)
+      (throw (ex-info "uikit-base: an action's hidden field has a name, or a browser would not send it" {:hidden (vec (keys hidden))})))
+    (when-let [bad (seq (filter #(= "__anti-forgery-token" (.toLowerCase ^String % java.util.Locale/ROOT)) names))]
+      (throw (ex-info "uikit-base: an action's hidden fields may not carry the CSRF field" {:hidden (vec bad)})))
+    (when-let [bad (seq (for [[n c] (frequencies names) :when (< 1 c)] n))]
+      (throw (ex-info "uikit-base: an action's hidden fields are one per name" {:hidden (vec (sort bad))}))))
+  (when-let [bad (seq (filter (comp coll? val) hidden))]
+    (throw (ex-info "uikit-base: an action's hidden value is one value, not a collection" {:hidden (vec (sort (map (comp field-name key) bad)))})))
+  (post-form request path (with-attrs {:class "ui-action"} attrs [])
+             (for [[k v] (sort-by (comp field-name key) hidden)]
+               [:input {:type "hidden" :name (field-name k) :value (if (nil? v) "" (field-name v))}])
+             (button (merge (normalised button-attrs) {:variant variant :size size}) label (subject-of subject))))
+
+(defn confirm
+  "`(confirm request path opts)` → an `action` that asks first, with no script: a plain
+  button, `:label`, that opens a second, `:confirm-label` (\"Yes, delete\"), which posts —
+  the second is not rendered, so not reachable, until the first is pressed. Both are
+  text, and never the same, or the second step would read as the first. The second is
+  `:danger` unless `:variant` says otherwise; the rest of `opts` are `action`'s,
+  `:subject` read by both. It asks once; it does not stop a second submit, which is the
+  handler's to make harmless."
+  [request path {:keys [label confirm-label subject variant] :as opts}]
+  (label! "a confirm" :label label)
+  (label! "a confirm" :confirm-label confirm-label)
+  (when (= (str/trim label) (str/trim confirm-label))
+    (throw (ex-info "uikit-base: a confirm's two labels differ, or its second step reads as its first" {:label label})))
+  [:details {:class "ui-confirm"}
+   [:summary {:class "ui-btn"} label (subject-of subject)]
+   (action request path (assoc (dissoc opts :confirm-label) :label confirm-label :variant (or variant :danger)))])
+
 (defn- word
   "A word of the host's dictionary: a key, or a vector of the key and its arguments,
   translated by web-base's `:wb/tr`, which a request it renders always carries."

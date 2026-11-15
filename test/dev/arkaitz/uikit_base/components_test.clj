@@ -210,6 +210,8 @@
                             (ui/field req {:id "a" :label "A" :error :e})
                             (ui/field req {:id "h" :label "H" :hint "h" :required? true})
                             (ui/field req {:id "g" :label "G" :type "radio" :options [["a" "A"]]})
+                            (ui/action req "/a" {:label "A" :subject "s"})
+                            (ui/confirm req "/a" {:label "A" :confirm-label "Yes"})
                             (for [k [:ok :info :warning :error]] (ui/notice k "x"))
                             (ui/table {:caption "c" :head ["h"] :rows [["a" "b"]] :row-header? true})
                             (ui/pager req {:previous "/a" :next "/b"})
@@ -219,7 +221,7 @@
                             (for [k [:neutral :success :danger :warning :info]] (ui/badge k "x"))
                             (ui/card "x")))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 36 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
+    (is (= 39 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
     (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{>]")) kit) classes))
         "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
@@ -240,6 +242,68 @@
     (is (= ["web-base: link's href must be a path on this origin" {:wb/link :href}] (refusal #(ui/link-button p "x"))) (str "path " (pr-str p))))
   (doseq [a [{:hx-get "/x"} {"HREF" "/x"} {"HX-Get" "/x"} {:data-hx-get "/x"}]]
     (is (= ["web-base: link's attrs may not give an href or an htmx attribute" {:wb/link :attrs}] (refusal #(ui/link-button "/a" a "x"))) (pr-str a))))
+
+(def ^:private TOKEN "<input name=\"__anti-forgery-token\" type=\"hidden\" value=\"T&lt;&amp;&quot;\" />")
+
+(deftest an-action-posts-its-fields-with-the-token-first-and-names-what-it-acts-on
+  (is (= (str "<form action=\"/t/1/remove\" class=\"ui-action\" method=\"post\">" TOKEN "<button class=\"ui-btn\" type=\"submit\">Remove</button></form>")
+         (html (ui/action req "/t/1/remove" {:label "Remove"}))))
+  (is (= (str "<form action=\"/t/1/remove\" class=\"ui-action mine\" hx-target=\"closest li\" method=\"post\">" TOKEN
+              "<input name=\"a\" type=\"hidden\" value=\"true\" /><input name=\"b\" type=\"hidden\" value=\"2\" /><input name=\"ns/d\" type=\"hidden\" value=\"\" />"
+              "<button class=\"ui-btn ui-btn--danger ui-btn--sm\" id=\"go\" type=\"submit\">Remove<span class=\"ui-sr-only\"> Al&lt;gebra</span></button></form>")
+         (html (ui/action req "/t/1/remove" {:label "Remove" :hidden {:b 2 :a true :ns/d nil} :subject "Al<gebra" :variant :danger :size :sm
+                                             :attrs {:class "mine" :hx-target "closest li" :method "get" :action "/evil"} :button {:id "go"}})))
+      "fields by name, as text; the subject read after the label, never shown; the form's method and action its own")
+  (is (= ["uikit-base: a form takes no hx-get: htmx would send it, token and all, by another method or to another action" {:attributes [:hx-get]}]
+         (refusal #(ui/action req "/a" {:label "L" :attrs {:hx-get "/x"}}))) "post-form's refusals hold")
+  (is (= ["uikit-base: a button takes no formaction: a submitter's own target would send its form, token and all, where the form does not" {:attributes [:formaction]}]
+         (refusal #(ui/action req "/a" {:label "L" :button {:formaction "/x"}}))) "and button's")
+  (doseq [[a k] [[{"TYPE" "button"} :type] [{:name "id"} :name] [{:value "9"} :value] [{:variant :danger} :variant] [{:size :sm} :size]]]
+    (is (= ["uikit-base: an action's button takes no type, name, value, variant or size of its own" {:attributes [k]}]
+           (refusal #(ui/action req "/a" {:label "L" :button a}))) (pr-str a)))
+  (doseq [k [:__anti-forgery-token "__ANTI-FORGERY-TOKEN"]]
+    (is (= ["uikit-base: an action's hidden fields may not carry the CSRF field" {:hidden [(name k)]}] (refusal #(ui/action req "/a" {:label "L" :hidden {k "evil"}}))) (pr-str k)))
+  (let [d (java.util.Locale/getDefault)]
+    (try (java.util.Locale/setDefault (java.util.Locale. "tr" "TR"))
+         (is (= ["uikit-base: an action's hidden fields may not carry the CSRF field" {:hidden ["__ANTI-FORGERY-TOKEN"]}]
+                (refusal #(ui/action req "/a" {:label "L" :hidden {"__ANTI-FORGERY-TOKEN" "evil"}})))
+             "in a Turkish JVM too, where I lower-cases to a dotless ı")
+         (finally (java.util.Locale/setDefault d))))
+  (is (= ["uikit-base: an action's hidden field has a name, or a browser would not send it" {:hidden [nil]}] (refusal #(ui/action req "/a" {:label "L" :hidden {nil 1}}))))
+  (is (= ["uikit-base: an action's hidden field has a name, or a browser would not send it" {:hidden [" "]}] (refusal #(ui/action req "/a" {:label "L" :hidden {" " 1}}))))
+  (is (= ["uikit-base: an action's hidden fields are one per name" {:hidden ["a"]}] (refusal #(ui/action req "/a" {:label "L" :hidden {:a 1 "a" 2}}))))
+  (is (= ["uikit-base: an action's hidden value is one value, not a collection" {:hidden ["ids"]}] (refusal #(ui/action req "/a" {:label "L" :hidden {:ids [1 2]}}))))
+  (is (str/includes? (html (ui/action req "/a" {:label "L" :hidden {:status :done :to :ns/x}})) "<input name=\"status\" type=\"hidden\" value=\"done\" /><input name=\"to\" type=\"hidden\" value=\"ns/x\" />")
+      "a keyword value is sent as its text, as a keyword name is")
+  (is (= (str "<form action=\"/a\" class=\"ui-action\" method=\"post\">" TOKEN "<button class=\"ui-btn\" type=\"submit\">L</button></form>")
+         (html (ui/action req "/a" {:label "L" :subject ""})))
+      "a blank subject is none")
+  (doseq [l [nil "" "  " :remove]]
+    (is (= ["uikit-base: an action's label is the text its button shows" {:label l}] (refusal #(ui/action req "/a" {:label l}))) (pr-str l))))
+
+(deftest a-confirm-asks-with-a-plain-button-and-posts-from-a-second
+  (is (= (str "<details class=\"ui-confirm\"><summary class=\"ui-btn\">Remove<span class=\"ui-sr-only\"> Algebra</span></summary>"
+              "<form action=\"/t/1/remove\" class=\"ui-action\" method=\"post\">" TOKEN "<input name=\"id\" type=\"hidden\" value=\"7\" />"
+              "<button class=\"ui-btn ui-btn--danger\" type=\"submit\">Yes, remove<span class=\"ui-sr-only\"> Algebra</span></button></form></details>")
+         (html (ui/confirm req "/t/1/remove" {:label "Remove" :confirm-label "Yes, remove" :subject "Algebra" :hidden {:id 7}})))
+      "the first step only opens; the second, danger unless told, posts")
+  (is (= (str "<details class=\"ui-confirm\"><summary class=\"ui-btn\">Archive</summary>"
+              "<form action=\"/a\" class=\"ui-action row\" hx-target=\"closest li\" method=\"post\">" TOKEN
+              "<button class=\"ui-btn ui-btn--warning ui-btn--sm\" id=\"go\" type=\"submit\">Yes, archive</button></form></details>")
+         (html (ui/confirm req "/a" {:label "Archive" :confirm-label "Yes, archive" :variant :warning :size :sm
+                                     :attrs {:class "row" :hx-target "closest li"} :button {:id "go"}})))
+      "the rest of its opts are the action's: a variant, a size, the form's and the button's attrs")
+  (doseq [[o msg] [[{:attrs {:hx-get "/x"}} "uikit-base: a form takes no hx-get: htmx would send it, token and all, by another method or to another action"]
+                   [{:button {:formaction "/x"}} "uikit-base: a button takes no formaction: a submitter's own target would send its form, token and all, where the form does not"]
+                   [{:button {:type "button"}} "uikit-base: an action's button takes no type, name, value, variant or size of its own"]
+                   [{:hidden {"__anti-forgery-token" "x"}} "uikit-base: an action's hidden fields may not carry the CSRF field"]]]
+    (is (= msg (first (refusal #(ui/confirm req "/a" (merge {:label "A" :confirm-label "Yes"} o))))) (str "refused through confirm: " (pr-str o))))
+  (is (= ["uikit-base: a confirm's two labels differ, or its second step reads as its first" {:label "Remove"}]
+         (refusal #(ui/confirm req "/a" {:label "Remove" :confirm-label " Remove "}))))
+  (is (= ["uikit-base: a confirm's confirm-label is the text its button shows" {:confirm-label ""}]
+         (refusal #(ui/confirm req "/a" {:label "Remove" :confirm-label ""}))))
+  (is (= ["uikit-base: a confirm's label is the text its button shows" {:label nil}]
+         (refusal #(ui/confirm req "/a" {:confirm-label "Yes"})))))
 
 (deftest a-table-heads-its-columns-and-captions-what-it-lists
   (is (= (str "<table class=\"ui-table\"><caption>C&lt;</caption><thead><tr><th scope=\"col\">A</th><th scope=\"col\">B&amp;</th></tr></thead>"

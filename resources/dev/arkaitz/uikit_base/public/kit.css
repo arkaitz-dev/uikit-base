@@ -68,6 +68,13 @@
     color: var(--ui-disabled-fg); background: var(--ui-disabled-bg); border-color: var(--ui-disabled-bg); cursor: default;
   }
 
+  /* Actions: one button's form; a confirm opens a second step beneath its first. */
+  .ui-action { display: inline-block; margin: 0; }
+  .ui-confirm { display: inline-block; }
+  .ui-confirm > summary { list-style: none; cursor: pointer; }
+  .ui-confirm > summary::-webkit-details-marker { display: none; }
+  .ui-confirm > .ui-action { margin-block-start: var(--ui-space-sm); }
+
   /* Forms: a field is its label, its control and, when refused, its error. */
   .ui-form { display: grid; gap: var(--ui-space-md); max-width: 32rem; }
   .ui-field { display: grid; gap: var(--ui-space-xs); }
