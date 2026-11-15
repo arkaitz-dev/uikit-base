@@ -13,25 +13,15 @@
 
 (def ^:private source (slurp (io/resource "dev/arkaitz/uikit_base/public/ui.js")))
 
-(def ^:private before-a-regex
-  "The words after which a `/` opens a regex literal, though they end in a letter."
-  #{"return" "typeof" "case" "do" "else" "in" "of" "new" "delete" "void" "throw" "yield" "await" "instanceof"})
-
-(defn- divides?
-  "Whether a `/` after the code `before` divides: it follows a value — a name that is no
-  keyword, a number, a closing bracket. Anything else would open a regex literal."
-  [before]
-  (let [t (str/trimr before)]
-    (boolean (or (re-find #"[)\]]$" t)
-                 (when-let [w (re-find #"[\w$]+$" t)] (not (before-a-regex w)))))))
-
 (defn- code
   "The script with its comments blanked and its strings kept, read by a lexer of its
   quotes and comments: a comment may name what the code never does, and a `//` inside a
   string is no comment. Answers `{:code … :open … :refused …}`: `:open` the quote a string
-  was left open in, `:refused` `[what index]` where the lexer met what it cannot read — a
-  regex literal or a template literal — and stopped, so a desync is a red, never code
-  blanked as a string or a comment."
+  was left open in, `:refused` `[what index]` where the lexer met what it cannot read and
+  stopped, so a desync is a red, never code blanked as a string or a comment. The rule for a
+  slash is strict and has no context to get wrong: `//` and `/*` open comments, a division
+  is written ` / `, a space on each side, and any other `/` — a regex literal, or a division
+  written tight — is refused. A backtick, a template literal, is refused too."
   [^String text]
   (let [n (count text) out (StringBuilder.)]
     (loop [i 0 quote nil]
@@ -47,17 +37,23 @@
             (#{\" \'} c) (do (.append out c) (recur (inc i) c))
             (and (= c \/) (= nxt \/)) (recur (or (str/index-of text "\n" i) n) nil)
             (and (= c \/) (= nxt \*)) (recur (+ 2 (or (str/index-of text "*/" (+ i 2)) (- n 2))) nil)
-            (and (= c \/) (not (divides? (str out)))) {:code (str out) :open nil :refused [:regex-literal i]}
+            (and (= c \/) (not (and (pos? i) (= \space (.charAt text (dec i))) (= \space nxt))))
+            {:code (str out) :open nil :refused [:slash i]}
             :else (do (.append out c) (recur (inc i) nil))))))))
 
 (deftest the-lexer-refuses-what-it-cannot-read
-  ;; Measured against the first lexer: this line passed, its innerHTML blanked as a string.
-  (is (= [:regex-literal 10] (:refused (code "if (ok && /\\/\\//.test(s)) el.innerHTML = s;"))) "a regex after &&")
-  (doseq [[src at] [["return /a/.test(x);" 7] ["x = !/a/.test(y);" 5] ["f(a ? /b/ : c);" 6] ["[/a/];" 1] ["a; /b/.exec(c);" 3] ["x = y || /z/;" 9]]]
-    (is (= [:regex-literal at] (:refused (code src))) src))
+  ;; Each measured against an earlier lexer, which blanked the innerHTML after it.
+  (is (= [:slash 10] (:refused (code "if (ok && /\\/\\//.test(s)) el.innerHTML = s;"))) "a regex after &&")
+  (is (= [:slash 8] (:refused (code "if (ok) /[//]/.test(s) && (el.innerHTML = s);"))) "a regex after a closing parenthesis")
+  (is (= [:slash 4] (:refused (code "x = /[/*]/.test(s); el.innerHTML = s; // */"))) "a regex holding a comment's opening")
+  (doseq [[src at] [["return /a/.test(x);" 7] ["x = !/a/.test(y);" 5] ["f(a ? /b/ : c);" 6] ["[/a/];" 1] ["a; /b/.exec(c);" 3]
+                    ["x = y || /z/;" 9] ["a/2" 1] ["a /2" 2] ["a/ 2" 1] ["/a/" 0]]]
+    (is (= [:slash at] (:refused (code src))) src))
   (is (= [:template-literal 4] (:refused (code "x = `${a}` + innerHTML;"))) "a template literal")
-  (doseq [src ["a / 2" "(a + b) / c" "x[1] / y" "w / h // half"]]
-    (is (nil? (:refused (code src))) (str "a division is read as one: " src))))
+  (doseq [src ["a / 2" "(a + b) / c" "x[1] / y" "w / h // half" "a /* b */ / c"]]
+    (is (nil? (:refused (code src))) (str "a division written / is read as one: " src)))
+  (doseq [d ["(a.width - p.width) / 2" "Math.abs(view.scrollLeft) / view.clientWidth"]]
+    (is (str/includes? source d) (str "witness: ui.js divides, written as the rule asks: " d))))
 
 (def ^:private banned
   "Each construct the script may never contain, and why. The scan is lexical: it reads the
@@ -69,7 +65,10 @@
    [#"\bcreateContextualFragment\b" "markup from a string"] [#"\bDOMParser\b" "markup from a string"]
    [#"\btextContent\b" "text the server did not render"] [#"\binnerText\b" "text the server did not render"]
    [#"\bcreateTextNode\b" "text the server did not render"] [#"\bcreateElement(NS)?\b" "markup the server did not render"]
-   [#"\.(append|prepend|before|after|replaceWith)\s*\(" "nodes placed the server did not render"]
+   [#"\.\s*(append|prepend|before|after|replaceWith|appendChild|insertBefore|replaceChildren)\s*\(" "nodes placed the server did not render"]
+   [#"\binsertAdjacent(Element|Text)\b" "nodes or text placed the server did not render"]
+   [#"\.\s*nodeValue\b" "text the server did not render"] [#"\bnew\s+(Option|Text)\b" "a node the server did not render"]
+   [#"toggleAttribute\s*\(\s*[\"']style" "an inline style, which style-src refuses"]
    [#"\beval\b" "a string evaluated"] [#"\bFunction\s*\(" "a string evaluated"]
    [#"\bset(Timeout|Interval)\s*\((?!\s*function\s*\()" "a timer whose first argument is no function literal"]
    [#"\bReflect\s*\." "a call through reflection"] [#"\.\s*constructor\b" "a constructor reached, the road to Function"]
@@ -109,20 +108,30 @@
         place (second (re-find #"(?s)function place\(pop\) \{(.*?)\n  \}" (:code (code source))))]
     (is (re-find #"position-area\s*:" kit) "witness: the stylesheet places popovers by an anchor area")
     (is (some? place) "witness: the script's placement was found")
-    (is (str/includes? (str place) "\"position-area\": \"none\"") "the placement sets position-area to none before its own top and left")))
+    (is (str/includes? (str place) "\"position-area\": \"none\"") "the placement sets position-area to none before its own top and left")
+    (is (re-find #"position-try-fallbacks\s*:" kit) "witness: the stylesheet flips popovers by a try fallback")
+    (is (str/includes? (str place) "\"position-try-fallbacks\": \"none\"") "the placement sets position-try-fallbacks to none, or the stylesheet's flip would move its box")))
 
 (defn- kebab [camel] (str/replace camel #"[A-Z]" #(str "-" (str/lower-case %))))
 
 (deftest every-class-and-data-attribute-the-script-names-is-the-kits
   ;; A name the script reads that nothing renders is a feature that silently does nothing.
+  ;; Whole names only: a class is `.name` in a rule of kit.css, its comments gone, or one
+  ;; token of a class attribute of the gallery's page; a data name is `[name` there, or an
+  ;; attribute of the page.
   (let [c       (:code (code source))
         strings (map second (re-seq #"\"([^\"]*)\"" c))
         classes (set (for [st strings [_ pre nm] (re-seq #"(data-)?(ui-[\w-]+)" st) :when (nil? pre)] nm))
         data    (into (set (for [st strings nm (re-seq #"data-[\w-]+" st)] nm))
                       (for [[_ k] (re-seq #"\bdataset\.(\w+)" c)] (str "data-" (kebab k))))
-        kit     (slurp (io/resource "dev/arkaitz/uikit_base/public/kit.css"))
+        css     (str/replace (slurp (io/resource "dev/arkaitz/uikit_base/public/kit.css")) #"(?s)/\*.*?\*/" "")
         page    (:body ((gallery/handler) (mock/request :get "/")))
-        known?  (fn [nm] (or (str/includes? kit nm) (re-find (re-pattern (str "[\\s\"]" (java.util.regex.Pattern/quote nm) "[\\s\"=]")) page)))]
-    (is (= 12 (count classes)) (str "witness: the classes the script names, a count measured once: " (vec (sort classes))))
+        drawn   (set (for [[_ v] (re-seq #"class=\"([^\"]*)\"" page) t (str/split v #"\s+")] t))
+        q       #(java.util.regex.Pattern/quote %)
+        class?  (fn [nm] (or (drawn nm) (re-find (re-pattern (str "\\." (q nm) "(?![\\w-])")) css)))
+        datum?  (fn [nm] (or (re-find (re-pattern (str "\\[" (q nm) "(?![\\w-])")) css) (re-find (re-pattern (str "\\s" (q nm) "=")) page)))]
+    (is (every? classes ["ui-carousel__viewport" "ui-tooltip-wrap" "ui-toast__close" "ui-scrollspy" "ui-dropdown__menu"])
+        (str "witness: the script names the classes it drives, read from its strings: " (vec (sort classes))))
     (is (= #{"data-timeout-ms" "data-interval-ms" "data-ui-rotating"} data) "witness: the data attributes the script names")
-    (is (= [] (sort (remove known? (concat classes data)))) "names in ui.js that neither kit.css nor the gallery's page carries")))
+    (is (= [] (sort (remove class? classes))) "classes ui.js names that neither kit.css nor the gallery's page carries whole")
+    (is (= [] (sort (remove datum? data))) "data attributes ui.js names that neither kit.css nor the gallery's page carries whole")))

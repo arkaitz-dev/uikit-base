@@ -9,7 +9,7 @@
   var nativeAnchor = CSS.supports("anchor-name: --a") && CSS.supports("anchor-scope: all");
   var nativeClosedBy = "closedBy" in HTMLDialogElement.prototype;
   var stillMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  var inits = [];
+  var inits = [], spies = [];
   function on(type, listener, capture) { document.addEventListener(type, listener, capture); }
   function closedBy(node) { return node instanceof HTMLDialogElement && node.open && node.getAttribute("closedby"); }
 
@@ -57,41 +57,44 @@
     var top = tip ? (above < 0 ? below : above) : (below + p.height > innerHeight && above >= 0 ? above : below);
     var left = tip ? a.left + (a.width - p.width) / 2 : (rtl ? a.right - p.width : a.left);
     left = Math.max(0, Math.min(left, document.documentElement.clientWidth - p.width));
-    var props = { "position-area": "none", margin: "0", top: top + "px", left: left + "px" };
+    var props = { "position-area": "none", "position-try-fallbacks": "none", margin: "0" };
+    Object.assign(props, { top: top + "px", left: left + "px" });
     Object.keys(props).forEach(function (name) { pop.style.setProperty(name, props[name]); });
   }
   function placeOpen() { if (!nativeAnchor) document.querySelectorAll(open).forEach(place); }
   on("toggle", function (event) { if (event.newState === "open") placeOpen(); }, true);
-  addEventListener("resize", placeOpen);
-  addEventListener("scroll", placeOpen, { capture: true, passive: true });
+  ["resize", "scroll"].forEach((name) => addEventListener(name, placeOpen, { capture: true, passive: true }));
 
   // Tooltips: shown while the trigger or the tooltip is hovered or focused (WCAG 1.4.13).
   // 150 ms is a declared policy: a pointer crosses the few pixels to the tooltip in a frame or
   // two, so a tooltip hides only once neither has been hovered or focused for that long.
-  function tipOf(node) {
-    return node instanceof Element ? node.closest(".ui-tooltip-wrap")?.querySelector(".ui-tooltip") : null;
-  }
+  // One hide timer per tip, cleared when it is entered again, so a stale one never hides it.
+  var tipOf = (node) => node?.closest?.(".ui-tooltip-wrap")?.querySelector(".ui-tooltip");
   function showTip(event) {
     var tip = tipOf(event.target);
+    clearTimeout(tip?.uiHide);
     if (tip && !tip.matches(":popover-open")) { tip.showPopover(); placeOpen(); }
   }
   function hideTip(event) {
     var tip = tipOf(event.target);
-    if (tip) setTimeout(function () {
+    clearTimeout(tip?.uiHide);
+    if (tip) tip.uiHide = setTimeout(function () {
       // The tip is in the top layer, whose :hover its wrap does not share (measured), so ask both.
-      var held = tip.matches(":hover") || tip.parentElement.matches(":hover, :focus-within");
+      var held = tip.matches(":hover") || tip.parentElement?.matches(":hover, :focus-within");
       if (!held && tip.matches(":popover-open")) tip.hidePopover();
     }, 150);
   }
   ["mouseover", "focusin"].forEach(function (type) { on(type, showTip); });
   ["mouseout", "focusout"].forEach(function (type) { on(type, hideTip); });
   // Esc hides an open tooltip, and only that: the dialog around it stays. Where closedby is
-  // missing, Esc is refused too while a closedby=none dialog is open (see above).
+  // missing, Esc is refused too while the focus is in a closedby=none modal and no popover in
+  // it is open, which Esc must still close.
   on("keydown", function (event) {
     if (event.key !== "Escape") return;
     var tips = document.querySelectorAll(".ui-tooltip:popover-open");
     tips.forEach(function (tip) { tip.hidePopover(); });
-    var refused = !nativeClosedBy && document.querySelector("dialog[closedby='none']:modal");
+    var refused = !nativeClosedBy && !document.querySelector("[popover]:popover-open") &&
+      document.activeElement?.closest("dialog[closedby='none']:modal");
     if (tips.length || refused) event.preventDefault();
   }, true);
 
@@ -162,7 +165,6 @@
   });
 
   // Scrollspies: the link whose section is in view is aria-current=location.
-  var spies = [];
   function spy(nav) {
     var links = Array.from(nav.querySelectorAll("a[href^='#']")), seen = new Set();
     var observer = new IntersectionObserver(function (entries) {
