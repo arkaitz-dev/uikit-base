@@ -1193,7 +1193,13 @@
   (doseq [t [[:button "x"] [:a {:href "/x"} "x"] [:input {:type "text"}] [:input] [:select] [:textarea] [:summary "s"] [:span {"TABINDEX" "0"} "i"]
              [:span {:tabindex 2} "i"] [:button#b.c "x"] [:BUTTON "x"] [:A {:href "/x"} "x"] [:button {:disabled false} "x"]
              [:span {:tabindex 0 :disabled true} "i"] [:a {:href "/x" :disabled true} "x"] [:input {:type 5}] [:input {:type true}]]]
-    (is (str/includes? (html (ui/tooltip {:id "t" :text "T"} t)) "aria-describedby=\"t\"") (str "a trigger that takes the focus is described " (pr-str t)))))
+    (is (str/includes? (html (ui/tooltip {:id "t" :text "T"} t)) "aria-describedby=\"t\"") (str "a trigger that takes the focus is described " (pr-str t))))
+  (let [d (java.util.Locale/getDefault)]
+    (try (java.util.Locale/setDefault (java.util.Locale. "tr" "TR"))
+         (is (= "uikit-base: a tooltip's trigger takes the focus by Tab: a button, a link with an href, a form control that is neither hidden nor disabled, a summary, or an element with a tabindex of 0 or more"
+                (first (refusal #(ui/tooltip {:id "t" :text "T"} [:input {:type "HIDDEN"}]))))
+             "a hidden input is hidden in a Turkish JVM too, where I lower-cases to a dotless ı")
+         (finally (java.util.Locale/setDefault d)))))
 
 ;; --- K18: toasts and carousels -----------------------------------------------------------
 

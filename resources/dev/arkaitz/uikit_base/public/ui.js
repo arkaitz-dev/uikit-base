@@ -9,7 +9,7 @@
   var nativeAnchor = CSS.supports("anchor-name: --a") && CSS.supports("anchor-scope: all");
   var nativeClosedBy = "closedBy" in HTMLDialogElement.prototype;
   var stillMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  var inits = [], spies = [], lastModal;
+  var inits = [], spies = [], lastModal, pressedOutside = false;
   function on(type, listener, capture) { document.addEventListener(type, listener, capture); }
   function closedBy(node) { return node instanceof HTMLDialogElement && node.open && node.getAttribute("closedby"); }
 
@@ -40,7 +40,6 @@
     var box = event.target.getBoundingClientRect(), x = event.clientX, y = event.clientY;
     return closedBy(event.target) === "any" && (x < box.left || x > box.right || y < box.top || y > box.bottom);
   }
-  var pressedOutside = false;
   if (!nativeClosedBy) {
     on("cancel", function (event) { if (closedBy(event.target) === "none") event.preventDefault(); }, true);
     on("pointerdown", function (event) { pressedOutside = outside(event); });
@@ -95,8 +94,10 @@
     // The innermost modal holding the focus; when the focus has fallen to body (a click on a
     // modal's text), the modal that held it last, which is the one on top: neither document
     // order nor :modal says which of two open modals is.
+    // A modal that opened without the focus ever entering it leaves no mark: then the first open one.
     var modal = [...document.querySelectorAll(":modal:focus-within")].pop() || lastModal;
-    var held = !nativeClosedBy && !document.querySelector(":popover-open") && modal?.matches("[closedby=none]:modal");
+    modal = modal?.matches(":modal") ? modal : document.querySelector(":modal");
+    var held = !nativeClosedBy && !document.querySelector(":popover-open") && modal?.matches("[closedby=none]");
     if (tips.length || held) event.preventDefault();
   }, true);
 

@@ -96,15 +96,18 @@
     (is (not (str/includes? (:code (code text)) "innerHTML")) "witness: the lexer hides it")
     (is (= [["innerHTML" "markup from a string"]] (found text)) "the bans find it all the same")))
 
-(deftest the-script-holds-none-of-the-banned-constructs
+(deftest the-lexer-reads-the-script-to-its-end
+  ;; The lexer serves the line count, the names and the placement below; the bans read
+  ;; the raw source (next test), so nothing it misreads can hide a banned word.
   (let [{c :code open :open refused :refused} (code source)]
     (is (nil? refused) (str "the lexer met what it cannot read in ui.js, at " refused ": rewrite it so the scan sees every word"))
     (is (nil? open) "witness: every string of the script closes, so the lexer read it to its end")
     (is (str/includes? c "on(\"htmx:after:swap\", init);") "witness: the comments went and the code stayed")
     (is (str/includes? source "so a swap of <main> re-binds nothing") "witness: the phrase below is in a comment of ui.js")
-    (is (not (str/includes? c "re-binds nothing")) "witness: and the comment is gone from the code scanned")
-    (is (= [] (found source))
-        "constructs found in ui.js, each with why it is banned")))
+    (is (not (str/includes? c "re-binds nothing")) "witness: and the comment is gone from the code scanned")))
+
+(deftest the-script-holds-none-of-the-banned-constructs
+  (is (= [] (found source)) "constructs found in ui.js, comments included, each with why it is banned"))
 
 (deftest the-script-is-within-its-bound
   ;; The user's bound is 150 lines of code: a comment or a blank line is not one. Counted by
@@ -120,7 +123,7 @@
   ;; A browser with anchor-name but no anchor-scope runs the script's placement, and would
   ;; apply the stylesheet's position-area as well: the box would land twice as far out.
   (let [kit (slurp (io/resource "dev/arkaitz/uikit_base/public/kit.css"))
-        place (second (re-find #"(?s)function place\(pop\) \{(.*?)\n  \}" source))]
+        place (second (re-find #"(?s)function place\(pop\) \{(.*?)\n  \}" (:code (code source))))]
     (is (re-find #"position-area\s*:" kit) "witness: the stylesheet places popovers by an anchor area")
     (is (some? place) "witness: the script's placement was found")
     (is (str/includes? (str place) "\"position-area\": \"none\"") "the placement sets position-area to none before its own top and left")
@@ -134,7 +137,7 @@
   ;; Whole names only: a class is `.name` in a rule of kit.css, its comments gone, or one
   ;; token of a class attribute of the gallery's page; a data name is `[name` there, or an
   ;; attribute of the page.
-  (let [c       source
+  (let [c       (:code (code source))
         strings (map second (re-seq #"\"([^\"]*)\"" c))
         classes (set (for [st strings [_ pre nm] (re-seq #"(data-)?(ui-[\w-]+)" st) :when (nil? pre)] nm))
         data    (into (set (for [st strings nm (re-seq #"data-[\w-]+" st)] nm))
