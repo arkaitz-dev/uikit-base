@@ -335,7 +335,7 @@
     (is (= "<time datetime=\"2026-01-15T20:00\">t</time>" (html (ui/time (java.time.LocalDateTime/of 2026 1 15 20 0) "t"))))
     (is (= "<time datetime=\"2026-01-15\">15/1</time>" (html (ui/time (java.time.LocalDate/of 2026 1 15) "15/1")))))
   (doseq [v [(java.util.Date. 0) (java.sql.Timestamp. 0) "2026-01-15" nil (java.time.LocalTime/of 1 2)]]
-    (is (= ["uikit-base: a time is a java.time moment, date-time or date" {:value v}] (refusal #(ui/time v "x"))) (pr-str v)))
+    (is (= ["uikit-base: a time is a java.time moment, date-time or date, or epoch milliseconds" {:value v}] (refusal #(ui/time v "x"))) (pr-str v)))
   (is (= ["uikit-base: a time shows something: its body is how the page says it" {}] (refusal #(ui/time (java.time.LocalDate/of 2026 1 15))))))
 
 (deftest a-page-head-is-the-pages-own-heading-with-what-it-offers
@@ -343,8 +343,9 @@
               "<div class=\"ui-page-head__actions ui-cluster\"><b>1</b><i>2</i></div></div>")
          (html (ui/page-head {:title "<T>" :subtitle "s" :level 3 :actions [[:b "1"] [:i "2"]] :attrs {:class "x" :id "h"}}))))
   (is (= "<div class=\"ui-page-head\" id=\"h\"><h2 class=\"ui-page-head__title\">T</h2></div>" (html (ui/page-head {:title "T" :level 2 :attrs {:id "h"}}))))
-  (is (= [:div {:class "ui-page-head"} [:h1 {:class "ui-page-head__title"} "t"]] (ui/page-head {:title "t" :subtitle nil :actions []}))
-      "an h1 unless told; no subtitle, no actions, nothing drawn for them")
+  (is (= [:div {:class "ui-page-head"} [:h2 {:class "ui-page-head__title"} "t"]] (ui/page-head {:title "t" :subtitle nil :actions []}))
+      "an h2 unless told — the shell's header holds the page's h1; no subtitle, no actions, nothing drawn for them")
+  (is (= [:div {:class "ui-page-head"} [:h1 {:class "ui-page-head__title"} "t"]] (ui/page-head {:title "t" :level 1})))
   (is (str/includes? (html (ui/page-head {:title "t" :actions (map (fn [i] [:b i]) [1])})) "<div class=\"ui-page-head__actions ui-cluster\"><b>1</b></div>"))
   (doseq [t [nil false "" "  "]]
     (is (= ["uikit-base: a page-head has a title" {}] (refusal #(ui/page-head {:title t}))) (pr-str t)))
@@ -431,6 +432,56 @@
               "<li><article class=\"ui-message\">b</article></li><li><article class=\"ui-message\">c</article></li></ol>")
          (html (ui/thread {:class "t"} (ui/message {:meta [:span "Ada · 10:00"] :attrs {:id "m1" :class "m"}} [:p "Hi<"]) (ui/message {} "b") (ui/message {:meta " "} "c")))))
   (is (= "<ol class=\"ui-thread\"></ol>" (html (ui/thread)))))
+
+(deftest a-time-takes-the-epoch-milliseconds-a-column-holds
+  (doseq [[v dt] [[0 "1970-01-01T00:00:00Z"] [(int 1000) "1970-01-01T00:00:01Z"] [1763164800000 "2025-11-15T00:00:00Z"] [-1 "1969-12-31T23:59:59.999Z"]]]
+    (is (= (str "<time datetime=\"" dt "\">t</time>") (html (ui/time v "t"))) (pr-str v)))
+  (doseq [v [1.5 5N (short 5) Long/MAX_VALUE (java.time.Instant/parse "+10000-01-01T00:00:00Z") (java.time.Instant/parse "-0001-01-01T00:00:00Z")]]
+    (is (= ["uikit-base: a time is a java.time moment, date-time or date, or epoch milliseconds" {:value v}] (refusal #(ui/time v "t"))) (pr-str v))))
+
+(deftest a-confirms-first-step-and-element-take-their-own-attributes
+  (let [h (html (ui/confirm req "/d" {:label "Delete" :confirm-label "Yes" :subject "Ada"
+                                      :first {:variant :danger :id "f" :class "x"} :details {:id "c" :open true "OPEN" true :class "y"}}))]
+    (is (str/starts-with? h "<details class=\"ui-confirm y\" id=\"c\"><summary class=\"ui-btn ui-btn--danger x\" id=\"f\">Delete<span class=\"ui-sr-only\"> Ada</span></summary>")
+        (str "the element's attrs on the details, the first step's on the summary, styled as its variant: " h))
+    (is (not (re-find #"(?i)\bopen\b" h)) "never opened by the server: the first step is the person's")
+    (is (str/includes? h "<button class=\"ui-btn ui-btn--danger\" type=\"submit\">Yes<span class=\"ui-sr-only\"> Ada</span></button>")))
+  (doseq [a [{:type "button"} {:name "n"} {:value "v"} {:size :sm} {"type" "x"}]]
+    (is (= ["uikit-base: a confirm's first step takes a variant and attributes, never a type, name, value or size" {:attributes [(keyword (str/lower-case (name (key (first a)))))]}]
+           (refusal #(ui/confirm req "/d" {:label "D" :confirm-label "Y" :first a}))) (pr-str a)))
+  (is (= ["uikit-base: a button's :variant is one of the kit's" {:variant "x"}] (refusal #(ui/confirm req "/d" {:label "D" :confirm-label "Y" :first {:variant "x"}}))))
+  (doseq [[a k] [[{:hx-post "/d" :hx-trigger "click"} [:hx-post :hx-trigger]] [{"DATA-HX-GET" "/x"} [:data-hx-get]] [{:hx-post:inherited "/d"} [:hx-post:inherited]]]]
+    (is (= ["uikit-base: a confirm's first step only opens it; it takes no htmx" {:attributes k}]
+           (refusal #(ui/confirm req "/d" {:label "D" :confirm-label "Y" :first a}))) (str "the first press only opens: " (pr-str a))))
+  (doseq [[a k] [[{:hx-post "/d" :hx-trigger "toggle"} [:hx-post]] [{"data-hx-delete" "/d"} [:data-hx-delete]] [{:hx-put:inherited "/d"} [:hx-put:inherited]]]]
+    (is (= ["uikit-base: a confirm's element sends nothing; only its second step does" {:attributes k}]
+           (refusal #(ui/confirm req "/d" {:label "D" :confirm-label "Y" :details a}))) (str "opening it sends nothing: " (pr-str a))))
+  (is (str/includes? (html (ui/confirm req "/d" {:label "D" :confirm-label "Y" :details {:hx-get "/n" :hx-trigger "toggle"}})) "hx-get=\"/n\"")
+      "a GET on opening, to fetch what the second step shows, is the host's"))
+
+(deftest a-link-button-names-its-row-and-a-download-loads-as-a-document
+  (is (str/ends-with? (html (ui/link-button "/a" {:subject "Ada"} "Edit")) "Edit<span class=\"ui-sr-only\"> Ada</span></a>"))
+  (is (not (str/includes? (html (ui/link-button "/a" {:subject "Ada"} "Edit")) "subject")) "the subject is no attribute")
+  (is (= (html (ui/link-button "/a" "Edit")) (html (ui/link-button "/a" {:subject " "} "Edit"))) "a blank subject is none")
+  (is (= "<a class=\"ui-btn ui-btn--primary\" download=\"m.csv\" href=\"/a.csv\">CSV<span class=\"ui-sr-only\"> May</span></a>"
+         (html (ui/link-button "/a.csv" {:download? true :variant :primary :subject "May" :download "m.csv"} "CSV")))
+      "a plain link: no swap, so the browser loads it as a document")
+  (doseq [p ["//evil" "javascript:x" "https://e.test/a" "a.csv" "/\\evil" "" nil "/a b"]]
+    (is (= ["uikit-base: a download's path is a path on this origin" {:path p}] (refusal #(ui/link-button p {:download? true} "x"))) (pr-str p)))
+  (doseq [a [{:hx-get "/x"} {:href "/x"} {:data-hx-get "/x"} {"HX-GET" "/x"}]]
+    (is (= "uikit-base: a download's attrs give no href and no htmx" (first (refusal #(ui/link-button "/a" (assoc a :download? true) "x")))) (pr-str a))))
+
+(deftest an-action-shows-what-it-answers-before-its-button
+  (is (= (str "<form action=\"/d\" class=\"ui-action\" method=\"post\">" TOKEN "<input name=\"a\" type=\"hidden\" value=\"1\" /><p>Sure?</p>"
+              "<button class=\"ui-btn\" type=\"submit\">Go</button></form>")
+         (html (ui/action req "/d" {:label "Go" :hidden {:a 1} :before [:p "Sure?"]})))))
+
+(deftest a-secret-may-carry-the-hosts-own-note
+  (let [h (html (ui/secret {} {:id "s" :label "S" :value "v" :note "Keep it safe."}))]
+    (is (str/includes? h "<span class=\"ui-field__hint\" id=\"s-once\">Keep it safe.</span>"))
+    (is (not (str/includes? h "Copy it now")) "in place of the kit's, not beside it"))
+  (is (str/includes? (html (ui/secret {} {:id "s" :label "S" :value "v" :note " "})) "Copy it now: it will not be shown again.")
+      "a blank note is none"))
 
 (deftest a-table-heads-its-columns-and-captions-what-it-lists
   (is (= (str "<table class=\"ui-table\"><caption>C&lt;</caption><thead><tr><th scope=\"col\">A</th><th scope=\"col\">B&amp;</th></tr></thead>"

@@ -120,6 +120,7 @@ Scales you can use in your own CSS: `--ui-space-xxs` … `--ui-space-xl`, `--ui-
 (ui/field request {:id "kind" :label "Kind" :type "radio" :options [["bug" "Bug"] ["idea" "Idea"]]
                    :hint "What it is" :required? true :value kind :error (:kind errors)})
 (ui/link-button "/things/new" {:variant :primary} "New thing")
+(ui/link-button "/orders.csv" {:download? true} "CSV")                   ; loads as a document
 (ui/action request "/lines/7/remove" {:label "Remove" :subject "Algebra" :hidden {:back here}})
 (ui/confirm request "/lessons/7/delete" {:label "Delete" :confirm-label "Yes, delete" :subject "Week 1"})
 (ui/page-head {:title "Orders" :subtitle "Placed today" :actions [(ui/link-button "/new" "New")]})
@@ -127,7 +128,7 @@ Scales you can use in your own CSS: `--ui-space-xxs` … `--ui-space-xl`, `--ui-
 (ui/tabs-nav request {:label "Status" :items [["/o" "All"] ["/o?s=open" "Open"]] :current here})
 (ui/table {:rows rows :scroll-label "Orders"})                            ; a wide one scrolls
 (ui/pairs [["Ref" ref] ["Paid" (when paid? (ui/time paid-at shown))]])
-(ui/time instant "15 Jan, 20:00")                                       ; datetime for machines
+(ui/time instant "15 Jan, 20:00")                ; or epoch millis; datetime for machines
 (ui/empty "No orders yet.")
 (ui/thread (for [m messages] (ui/message {:meta [:span (:who m) " · " (:when m)]} (:text m))))
 (ui/secret request {:id "token" :label "Your token" :value token})

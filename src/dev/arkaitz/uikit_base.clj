@@ -10,6 +10,7 @@
   (:refer-clojure :exclude [empty time])
   (:require [clojure.string :as str]
             [dev.arkaitz.web-base :as wb]
+            [dev.arkaitz.web-base.render :as render]
             [dev.arkaitz.web-base.security :as security]))
 
 (defn- class-str [c]
@@ -77,15 +78,28 @@
     (into [:button (with-attrs {:type "submit" :class (btn-class variant size)} (dissoc opts :variant :size) [])]
           body)))
 
+(declare subject-of)
+
 (defn link-button
   "`(link-button path opts? & body)` → a link that looks like a `button`: a `wb/link` to
   `path`, so it swaps the page's `<main>` and its path is web-base's to refuse. `opts`
-  name a `:variant` and a `:size` as `button`'s do, refused alike; the rest are the
-  link's attributes, never an `href` or an htmx one, which `wb/link` refuses. For going
-  somewhere; what changes something is a form's button."
+  name a `:variant` and a `:size` as `button`'s do, refused alike; a `:subject`, read
+  after the body by a screen reader and never shown, so the tenth \"Edit\" says which;
+  and `:download? true` for what must load as a document — a CSV, a file — which is then
+  a plain link to a path on this origin, never swapped. The rest are the link's
+  attributes, never an `href` or an htmx one. For going somewhere; what changes something
+  is a form's button."
   [path & more]
-  (let [[opts body] (split-attrs more)]
-    (apply wb/link path (with-attrs {:class (btn-class (:variant opts) (:size opts))} (dissoc opts :variant :size) []) body)))
+  (let [[opts body] (split-attrs more)
+        attrs (with-attrs {:class (btn-class (:variant opts) (:size opts))} (dissoc opts :variant :size :subject :download?) [])
+        body  (concat body [(subject-of (:subject opts))])]
+    (if (:download? opts)
+      (do (when-not (or (= "/" path) (render/local-path? path))
+            (throw (ex-info "uikit-base: a download's path is a path on this origin" {:path path})))
+          (when (some #(or (= :href %) (str/starts-with? (name %) "hx-") (str/starts-with? (name %) "data-hx-")) (keys attrs))
+            (throw (ex-info "uikit-base: a download's attrs give no href and no htmx" {:attributes (vec (sort (keys attrs)))})))
+          (into [:a (assoc attrs :href path)] body))
+      (apply wb/link path attrs body))))
 
 (defn post-form
   "`(post-form request action attrs? & body)` → a form that posts to `action` with the
@@ -132,9 +146,10 @@
   page still says which; `:variant` and `:size`, the button's; `:attrs`, the form's,
   refused as `post-form` refuses them — an `hx-post` there is where htmx posts, as on
   any form; `:button`, the button's own attributes, never a `:type`, `:name`, `:value`,
-  `:variant` or `:size`, which are the action's to decide. A hidden field named as the
-  CSRF field is refused: the form carries the real one first."
-  [request path {:keys [label hidden subject variant size attrs] button-attrs :button}]
+  `:variant` or `:size`, which are the action's to decide; `:before`, what the form shows
+  before its button — the sentence the button answers. A hidden field named as the CSRF
+  field is refused: the form carries the real one first."
+  [request path {:keys [label hidden subject variant size attrs before] button-attrs :button}]
   (label! "an action" :label label)
   (when-let [bad (seq (filter #{:type :name :value :variant :size} (keys (normalised button-attrs))))]
     (throw (ex-info "uikit-base: an action's button takes no type, name, value, variant or size of its own" {:attributes (vec (sort bad))})))
@@ -150,6 +165,7 @@
   (post-form request path (with-attrs {:class "ui-action"} attrs [])
              (for [[k v] (sort-by (comp field-name key) hidden)]
                [:input {:type "hidden" :name (field-name k) :value (if (nil? v) "" (field-name v))}])
+             before
              (button (merge (normalised button-attrs) {:variant variant :size size}) label (subject-of subject))))
 
 (defn confirm
@@ -157,17 +173,25 @@
   button, `:label`, that opens a second, `:confirm-label` (\"Yes, delete\"), which posts —
   the second is not rendered, so not reachable, until the first is pressed. Both are
   text, and never the same, or the second step would read as the first. The second is
-  `:danger` unless `:variant` says otherwise; the rest of `opts` are `action`'s,
-  `:subject` read by both. It asks once; it does not stop a second submit, which is the
+  `:danger` unless `:variant` says otherwise; `:first` styles the first, `{:variant
+  :danger}` and its attributes; `:details` are the element's own, an id or what htmx
+  targets, never `open`. The rest of `opts` are `action`'s, `:subject` read by both. It asks once; it does not stop a second submit, which is the
   handler's to make harmless."
-  [request path {:keys [label confirm-label subject variant] :as opts}]
+  [request path {:keys [label confirm-label subject variant first details] :as opts}]
   (label! "a confirm" :label label)
+  (when-let [bad (seq (filter #{:type :name :value :size} (keys (normalised (dissoc first :variant)))))]
+    (throw (ex-info "uikit-base: a confirm's first step takes a variant and attributes, never a type, name, value or size" {:attributes (vec (sort bad))})))
+  ;; Either would post on the first press, and the second step would never be asked.
+  (when-let [bad (seq (filter #(re-find #"^(data-)?hx-" (name %)) (keys (normalised first))))]
+    (throw (ex-info "uikit-base: a confirm's first step only opens it; it takes no htmx" {:attributes (vec (sort bad))})))
+  (when-let [bad (seq (filter #(re-find #"^(data-)?hx-(post|put|patch|delete)(:|$)" (name %)) (keys (normalised details))))]
+    (throw (ex-info "uikit-base: a confirm's element sends nothing; only its second step does" {:attributes (vec (sort bad))})))
   (label! "a confirm" :confirm-label confirm-label)
   (when (= (str/trim label) (str/trim confirm-label))
     (throw (ex-info "uikit-base: a confirm's two labels differ, or its second step reads as its first" {:label label})))
-  [:details {:class "ui-confirm"}
-   [:summary {:class "ui-btn"} label (subject-of subject)]
-   (action request path (assoc (dissoc opts :confirm-label) :label confirm-label :variant (or variant :danger)))])
+  [:details (with-attrs {:class "ui-confirm"} (dissoc (normalised details) :open) [])
+   [:summary (with-attrs {:class (btn-class (:variant first) nil)} (dissoc first :variant) []) label (subject-of subject)]
+   (action request path (assoc (dissoc opts :confirm-label :first :details) :label confirm-label :variant (or variant :danger)))])
 
 (defn- word
   "A word of the host's dictionary: a key, or a vector of the key and its arguments,
@@ -405,10 +429,11 @@
   "`(secret request {:id :label :value :attrs})` → a value shown once — a token, a feed's
   address — in a labelled, read-only field the reader selects and copies, in figures of
   one width, described by the kit's word `:uikit-base/shown-once` in the reader's
-  language, then by the caller's own `aria-describedby`. It is never sent: it has no
+  language — or by `note`, the host's own sentence in its place — then by the caller's
+  own `aria-describedby`. It is never sent: it has no
   name. `attrs` go on the field, never its `id`, `readonly`, `value`, `type`, `name` or
   `disabled`, which would stop it being copied."
-  [request {:keys [id label value attrs]}]
+  [request {:keys [id label value attrs note]}]
   (when (or (not (string? id)) (str/blank? id) (re-find #"\s" id)
             (nil? label) (and (string? label) (str/blank? label)) (str/blank? (str value)))
     (throw (ex-info "uikit-base: a secret has an id (one word), a label and a value" {:id id})))
@@ -420,7 +445,7 @@
      [:input (with-attrs {:id id :type "text" :class "ui-input ui-input--code" :readonly true :value value
                           :spellcheck "false" :autocomplete "off" :aria-describedby desc}
                          (dissoc attrs :name :disabled :aria-describedby) [:id :readonly :value :type])]
-     [:span.ui-field__hint {:id once} (kit-word request nil :uikit-base/shown-once)]]))
+     [:span.ui-field__hint {:id once} (if (or (nil? note) (and (string? note) (str/blank? note))) (kit-word request nil :uikit-base/shown-once) note)]]))
 
 (defn thread
   "`(thread attrs? & messages)` → a conversation read top to bottom, each a `message`."
@@ -472,7 +497,10 @@
   moment or day."
   [t]
   (condp instance? t
-    java.time.Instant (str t)
+    Long (datetime (java.time.Instant/ofEpochMilli t))
+    Integer (datetime (java.time.Instant/ofEpochMilli (long t)))
+    ;; Past year 9999 or before year 1 an Instant prints a sign HTML's datetime has none of.
+    java.time.Instant (when (<= -62135596800000 (.toEpochMilli ^java.time.Instant t) 253402300799999) (str t))
     java.time.OffsetDateTime (str t)
     java.time.ZonedDateTime (str (.toOffsetDateTime ^java.time.ZonedDateTime t))
     java.time.LocalDateTime (str t)
@@ -480,22 +508,24 @@
     nil))
 
 (defn time
-  "`(time t attrs? & body)` → a `<time>` whose `datetime` is `t` — an `Instant`, an
-  offset or zoned date-time, a local date-time or a date — and whose body is how the page
+  "`(time t attrs? & body)` → a `<time>` whose `datetime` is `t` — an `Instant`, epoch
+  milliseconds (as a database column holds them), an offset or zoned date-time, a local
+  date-time or a date — and whose body is how the page
   shows it, which is the host's: it knows the reader's language and zone. Anything else
   is refused; no attribute changes `datetime`."
   [t & more]
-  (let [dt (or (datetime t) (throw (ex-info "uikit-base: a time is a java.time moment, date-time or date" {:value t})))
+  (let [dt (or (datetime t) (throw (ex-info "uikit-base: a time is a java.time moment, date-time or date, or epoch milliseconds" {:value t})))
         [attrs body] (split-attrs more)]
     (when-not (seq body) (throw (ex-info "uikit-base: a time shows something: its body is how the page says it" {})))
     (into [:time (with-attrs {:datetime dt} attrs [:datetime])] body)))
 
 (defn page-head
   "`(page-head {:title :subtitle :level :actions :attrs})` → a page's own heading inside
-  `<main>`, never the shell's header: `title` as an `h1` (or the `level`, 1 to 3), a
+  `<main>`, never the shell's header, which holds the page's `h1`: `title` as an `h2`
+  (or the `level`, 1 to 3), a
   `subtitle` under it, and `actions` — links or buttons — beside it, wrapping under it
   on a narrow screen."
-  [{:keys [title subtitle level actions attrs] :or {level 1}}]
+  [{:keys [title subtitle level actions attrs] :or {level 2}}]
   (when (or (nil? title) (false? title) (and (string? title) (str/blank? title)))
     (throw (ex-info "uikit-base: a page-head has a title" {})))
   (when-not (#{1 2 3} level) (throw (ex-info "uikit-base: a page-head's level is 1, 2 or 3" {:level level})))

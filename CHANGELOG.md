@@ -23,6 +23,13 @@ More components, and better ones, adopted by every host of the set.
   `thread` and `message`.
 - `table` `:scroll-label` (a region the keyboard scrolls) and the `ui-num` cell; `card`
   `:title` and `:footer`.
+- From the four hosts' adoption, before release: `page-head` is an `h2` unless told (the
+  shell's header holds the `h1`); `confirm` takes `:first` (the opening step's variant
+  and attributes, never htmx, which would post on the first press) and `:details` (the
+  element's, never `open` nor a non-GET htmx verb); `link-button` takes a `:subject` and
+  `:download? true` (a plain link to a path on this origin, loaded as a document);
+  `secret` a `:note` in place of the kit's; `action` a `:before`; `time` epoch
+  milliseconds, years 1 to 9999.
 - kit.css: control states (hover, placeholder, read-only, disabled over all), an input
   the height of a button, a pressed and a busy button, `ui-stack`, `ui-cluster`,
   `ui-grid`, `ui-sr-only`, `ui-prose`; every side a logical one, so a right-to-left page
