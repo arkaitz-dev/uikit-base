@@ -214,6 +214,7 @@
                             (ui/confirm req "/a" {:label "A" :confirm-label "Yes"})
                             (ui/empty "x") (ui/pairs [["a" "b"]])
                             (ui/crumbs req {:items [["/a" "A"] [nil "B"]]})
+                            (ui/card {:title "t" :footer "f"} "b")
                             (ui/tabs-nav req {:label "S" :items [["/a" "A"]] :current "/a"})
                             (ui/page-head {:title "t" :subtitle "s" :actions [(ui/link-button "/a" "x")]})
                             (for [k [:ok :info :warning :error]] (ui/notice k "x"))
@@ -225,7 +226,7 @@
                             (for [k [:neutral :success :danger :warning :info]] (ui/badge k "x"))
                             (ui/card "x")))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 50 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
+    (is (= 52 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
     (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{>]")) kit) classes))
         "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
@@ -394,6 +395,15 @@
       "without a label, the table alone, as before")
   (doseq [l ["" "  " :k]]
     (is (= ["uikit-base: a table's scroll-label names its region" {:scroll-label l}] (refusal #(ui/table {:rows [] :scroll-label l}))) (pr-str l))))
+
+(deftest a-card-may-carry-a-heading-and-a-footer-around-its-body
+  (is (= "<div class=\"ui-card x\" id=\"c\"><h2 class=\"ui-card__head\">T&lt;</h2><p>b</p><i>c</i><div class=\"ui-card__foot\"><a>f</a></div></div>"
+         (html (ui/card {:title "T<" :footer [:a "f"] :class "x" :id "c"} [:p "b"] [:i "c"]))))
+  (is (= "<div class=\"ui-card\"><h4 class=\"ui-card__head\">T</h4>b</div>" (html (ui/card {:title "T" :level 4} "b"))))
+  (is (= [:div {:class "ui-card"} "b"] (ui/card "b")) "no parts, the card it was")
+  (is (= [:div {:class "ui-card" :id "c"} "b"] (ui/card {:id "c" :level 9} "b")) "a level means nothing without a title")
+  (doseq [l [1 5 "2"]]
+    (is (= ["uikit-base: a card's level is 2, 3 or 4" {:level l}] (refusal #(ui/card {:title "T" :level l} "b"))) (pr-str l))))
 
 (deftest a-table-heads-its-columns-and-captions-what-it-lists
   (is (= (str "<table class=\"ui-table\"><caption>C&lt;</caption><thead><tr><th scope=\"col\">A</th><th scope=\"col\">B&amp;</th></tr></thead>"

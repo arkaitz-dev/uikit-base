@@ -171,7 +171,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 115 (count bearing)) (str "witness: the colour-bearing declarations, a count measured once: " (count bearing)))
+    (is (= 116 (count bearing)) (str "witness: the colour-bearing declarations, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -186,7 +186,7 @@
 (def ^:private dividers
   "Lines that separate, not edges that bound a control: drawn in `border`, which is no
   audited non-text pair, and named here one by one so a new one is decided, not inherited."
-  #{[".ui-table th" :border] [".ui-table td" :border] [".ui-row" :border] [".ui-card" :border] [".ui-tabs ul" :border]})
+  #{[".ui-table th" :border] [".ui-table td" :border] [".ui-row" :border] [".ui-card" :border] [".ui-tabs ul" :border] [".ui-card__foot" :border]})
 
 (deftest every-control-edge-is-visible
   (let [found (distinct (for [[sels decls] (leaf-rules) s sels

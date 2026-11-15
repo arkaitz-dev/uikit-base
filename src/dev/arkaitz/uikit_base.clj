@@ -468,7 +468,15 @@
     (seq actions) (conj (into [:div.ui-page-head__actions.ui-cluster] actions))))
 
 (defn card
-  "`(card attrs? & body)` → a raised surface holding its body."
+  "`(card attrs? & body)` → a raised surface holding its body. `attrs` may name a `:title`,
+  drawn as the card's heading (an `h2`, or the `:level`, 2 to 4), and a `:footer`, set
+  under the body; the rest are the card's attributes."
   [& more]
-  (let [[attrs body] (split-attrs more)]
-    (into [:div (with-attrs {:class "ui-card"} attrs [])] body)))
+  (let [[opts body] (split-attrs more)
+        {:keys [title level footer] :or {level 2}} opts]
+    (when (and title (not (#{2 3 4} level)))
+      (throw (ex-info "uikit-base: a card's level is 2, 3 or 4" {:level level})))
+    (cond-> (into (cond-> [:div (with-attrs {:class "ui-card"} (dissoc opts :title :level :footer) [])]
+                    title (conj [(keyword (str "h" level)) {:class "ui-card__head"} title]))
+                  body)
+      footer (conj [:div.ui-card__foot footer]))))
