@@ -9,7 +9,7 @@
   var nativeAnchor = CSS.supports("anchor-name: --a") && CSS.supports("anchor-scope: all");
   var nativeClosedBy = "closedBy" in HTMLDialogElement.prototype;
   var stillMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  var inits = [], spies = [];
+  var inits = [], spies = [], lastModal;
   function on(type, listener, capture) { document.addEventListener(type, listener, capture); }
   function closedBy(node) { return node instanceof HTMLDialogElement && node.open && node.getAttribute("closedby"); }
 
@@ -91,13 +91,13 @@
   // it is open, which Esc must still close.
   on("keydown", function (event) {
     if (event.key !== "Escape") return;
-    var tips = document.querySelectorAll(".ui-tooltip:popover-open");
-    tips.forEach(function (tip) { tip.hidePopover(); });
+    var tips = [...document.querySelectorAll(".ui-tooltip:popover-open")].map((tip) => tip.hidePopover());
     // The innermost modal holding the focus; when the focus has fallen to body (a click on a
-    // modal's text), the open modal itself.
-    var modal = [...document.querySelectorAll(":modal:focus-within")].pop() || document.querySelector(":modal");
-    var refused = !nativeClosedBy && !document.querySelector(":popover-open") && modal?.matches("[closedby=none]");
-    if (tips.length || refused) event.preventDefault();
+    // modal's text), the modal that held it last, which is the one on top: neither document
+    // order nor :modal says which of two open modals is.
+    var modal = [...document.querySelectorAll(":modal:focus-within")].pop() || lastModal;
+    var held = !nativeClosedBy && !document.querySelector(":popover-open") && modal?.matches("[closedby=none]:modal");
+    if (tips.length || held) event.preventDefault();
   }, true);
 
   // Toasts: one with a timeout goes once shown that long, the time stopped while hovered or focused.
@@ -150,6 +150,7 @@
     });
   });
   on("focusin", function (event) {
+    lastModal = event.target.closest(":modal") || lastModal;
     var carousel = event.target.closest(".ui-carousel");
     if (carousel && !event.target.closest(".ui-carousel__rotate")) rotate(carousel, false);
   });

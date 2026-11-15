@@ -1192,7 +1192,7 @@
            (refusal #(ui/tooltip {:id "t" :text "T"} t))) (pr-str t)))
   (doseq [t [[:button "x"] [:a {:href "/x"} "x"] [:input {:type "text"}] [:input] [:select] [:textarea] [:summary "s"] [:span {"TABINDEX" "0"} "i"]
              [:span {:tabindex 2} "i"] [:button#b.c "x"] [:BUTTON "x"] [:A {:href "/x"} "x"] [:button {:disabled false} "x"]
-             [:span {:tabindex 0 :disabled true} "i"] [:a {:href "/x" :disabled true} "x"]]]
+             [:span {:tabindex 0 :disabled true} "i"] [:a {:href "/x" :disabled true} "x"] [:input {:type 5}] [:input {:type true}]]]
     (is (str/includes? (html (ui/tooltip {:id "t" :text "T"} t)) "aria-describedby=\"t\"") (str "a trigger that takes the focus is described " (pr-str t)))))
 
 ;; --- K18: toasts and carousels -----------------------------------------------------------

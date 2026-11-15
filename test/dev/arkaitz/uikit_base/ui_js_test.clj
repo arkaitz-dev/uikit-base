@@ -58,8 +58,9 @@
     (is (str/includes? source d) (str "witness: ui.js divides, written as the rule asks: " d))))
 
 (def ^:private banned
-  "Each construct the script may never contain, and why. The scan is lexical: it reads the
-  script's words, so it holds the code honest and does not claim to catch an obfuscation —
+  "Each construct the script may never contain, and why. The scan reads the raw source,
+  comments included, so no misreading of the lexer can hide a word — and a comment may not
+  name a banned construct either. It is lexical: it reads the script's words, so it holds the code honest and does not claim to catch an obfuscation —
   a name built by concatenation, an access through a computed key — which review must."
   [[#"\binnerHTML\b" "markup from a string"] [#"\bouterHTML\b" "markup from a string"]
    [#"\binsertAdjacentHTML\b" "markup from a string"] [#"\bdocument\s*\.\s*write" "markup from a string"]
@@ -83,6 +84,18 @@
    [#"\bdataset\s*\.\s*\w+\s*=" "a data attribute written"] [#"\bdataset\s*\[" "a data attribute by a computed name"]
    [#"setAttribute\s*\(\s*[\"']data-" "a data attribute written"]])
 
+(defn- found
+  "Each banned construct in `text`, with why, read over the text as it is."
+  [text]
+  (for [[re why] banned :let [m (re-find re text)] :when m] [(if (string? m) m (first m)) why]))
+
+(deftest a-construct-the-lexer-misreads-is-still-found
+  ;; Measured: the lexer reads `/ a'/` as a division, the quote opens a string, and the
+  ;; string's `//` then hides the rest of the line as a comment. The bans read the raw text.
+  (let [text "x = / a'/.test(s); y = 'http://x'; el.innerHTML = s;"]
+    (is (not (str/includes? (:code (code text)) "innerHTML")) "witness: the lexer hides it")
+    (is (= [["innerHTML" "markup from a string"]] (found text)) "the bans find it all the same")))
+
 (deftest the-script-holds-none-of-the-banned-constructs
   (let [{c :code open :open refused :refused} (code source)]
     (is (nil? refused) (str "the lexer met what it cannot read in ui.js, at " refused ": rewrite it so the scan sees every word"))
@@ -90,7 +103,7 @@
     (is (str/includes? c "on(\"htmx:after:swap\", init);") "witness: the comments went and the code stayed")
     (is (str/includes? source "so a swap of <main> re-binds nothing") "witness: the phrase below is in a comment of ui.js")
     (is (not (str/includes? c "re-binds nothing")) "witness: and the comment is gone from the code scanned")
-    (is (= [] (for [[re why] banned :let [m (re-find re c)] :when m] [(if (string? m) m (first m)) why]))
+    (is (= [] (found source))
         "constructs found in ui.js, each with why it is banned")))
 
 (deftest the-script-is-within-its-bound
@@ -107,7 +120,7 @@
   ;; A browser with anchor-name but no anchor-scope runs the script's placement, and would
   ;; apply the stylesheet's position-area as well: the box would land twice as far out.
   (let [kit (slurp (io/resource "dev/arkaitz/uikit_base/public/kit.css"))
-        place (second (re-find #"(?s)function place\(pop\) \{(.*?)\n  \}" (:code (code source))))]
+        place (second (re-find #"(?s)function place\(pop\) \{(.*?)\n  \}" source))]
     (is (re-find #"position-area\s*:" kit) "witness: the stylesheet places popovers by an anchor area")
     (is (some? place) "witness: the script's placement was found")
     (is (str/includes? (str place) "\"position-area\": \"none\"") "the placement sets position-area to none before its own top and left")
@@ -121,7 +134,7 @@
   ;; Whole names only: a class is `.name` in a rule of kit.css, its comments gone, or one
   ;; token of a class attribute of the gallery's page; a data name is `[name` there, or an
   ;; attribute of the page.
-  (let [c       (:code (code source))
+  (let [c       source
         strings (map second (re-seq #"\"([^\"]*)\"" c))
         classes (set (for [st strings [_ pre nm] (re-seq #"(data-)?(ui-[\w-]+)" st) :when (nil? pre)] nm))
         data    (into (set (for [st strings nm (re-seq #"data-[\w-]+" st)] nm))

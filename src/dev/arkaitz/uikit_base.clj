@@ -1046,7 +1046,7 @@
         a  (normalised (first (split-attrs more)))
         tab (some-> (:tabindex a) str str/trim parse-long)]
     ;; Shown on focus as well as hover: a trigger Tab cannot reach hides it from the keyboard.
-    (when-not (and (or (#{:button :select :textarea :summary} el) (and (= :input el) (not= "hidden" (some-> (:type a) name str/lower-case)))
+    (when-not (and (or (#{:button :select :textarea :summary} el) (and (= :input el) (not= "hidden" (some-> (:type a) (as-> t (if (instance? clojure.lang.Named t) (name t) (str t))) (.toLowerCase java.util.Locale/ROOT))))
                        (and (= :a el) (some? (:href a)) (not (false? (:href a)))) (and (some? (:tabindex a)) (some? tab) (<= 0 tab)))
                    ;; Only a form control is disabled by the attribute; a span or a link keeps its focus.
                    (not (and (#{:button :input :select :textarea} el) (:disabled a)))
