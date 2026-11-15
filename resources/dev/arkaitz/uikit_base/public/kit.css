@@ -25,7 +25,7 @@
     .ui-prose a:focus-visible, .ui-crumbs a:focus-visible, .ui-tabs a:focus-visible,
     .ui-table-wrap:focus-visible, .ui-close:focus-visible, .ui-range:focus-visible, .ui-list-group__action:focus-visible,
     .ui-collapse__summary:focus-visible, .ui-accordion__summary:focus-visible, .ui-scroller:focus-visible, .ui-dialog__body:focus-visible,
-    .ui-dropdown__item:focus-visible {
+    .ui-dropdown__item:focus-visible, .ui-carousel__viewport:focus-visible {
       outline: var(--ui-focus-outline-width) solid var(--ui-focus-ring);
       outline-offset: var(--ui-focus-outline-width);
       box-shadow: 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
@@ -496,6 +496,42 @@
       color: var(--ui-on-surface-inverse); background: var(--ui-surface-inverse); border: 0; border-radius: var(--ui-radius-sm);
     }
 
+    /* Toasts: a live region in the corner at the block and inline end, each toast edged in
+     * its kind's colour at its inline start, fading in as it comes. */
+    .ui-toasts {
+      position: fixed; inset-block-end: var(--ui-spacing-md); inset-inline-end: var(--ui-spacing-md); z-index: var(--ui-z-index-toast);
+      display: grid; gap: var(--ui-spacing-sm); inline-size: min(22rem, calc(100% - 2 * var(--ui-spacing-md)));
+    }
+    .ui-toast {
+      display: flex; align-items: flex-start; gap: var(--ui-spacing-sm); padding: var(--ui-spacing-sm) var(--ui-spacing-md);
+      color: var(--ui-on-surface); background: var(--ui-surface); border: 1px solid var(--ui-border);
+      border-inline-start: 4px solid var(--ui-border-strong); border-radius: var(--ui-radius-md); box-shadow: var(--ui-shadow-md);
+      transition: opacity var(--ui-duration-normal);
+    }
+    @starting-style { .ui-toast { opacity: 0; } }
+    .ui-toast--ok { border-inline-start-color: var(--ui-success-border); }
+    .ui-toast--info { border-inline-start-color: var(--ui-info-border); }
+    .ui-toast--warning { border-inline-start-color: var(--ui-warning-border); }
+    .ui-toast--error { border-inline-start-color: var(--ui-danger-border); }
+    .ui-toast__body { flex: 1 1 auto; min-inline-size: 0; }
+    .ui-toast__heading { margin: 0 0 var(--ui-spacing-xxs); font-weight: 600; }
+    .ui-toast__close { margin-block: calc(-1 * var(--ui-spacing-xs)); }
+
+    /* Carousels: a row that scrolls a slide at a time, each as wide as it; its buttons hidden
+     * until the script that drives them runs, and the one that turns it, where motion is
+     * unwelcome. Its label says stop while it turns, start while it stands. */
+    .ui-carousel { display: grid; gap: var(--ui-spacing-sm); }
+    .ui-carousel__controls { display: flex; flex-wrap: wrap; gap: var(--ui-spacing-xs); }
+    /* The rotation's button at the start, previous and next together at the end. */
+    .ui-carousel__prev { margin-inline-start: auto; }
+    .ui-carousel__next { margin-inline-end: 0; }
+    .ui-carousel__controls[hidden] { display: none; }
+    .ui-carousel__viewport {
+      position: relative; display: flex; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: inline mandatory;
+    }
+    .ui-carousel__slide { flex: 0 0 100%; min-inline-size: 0; scroll-snap-align: start; }
+    .ui-carousel[data-ui-rotating] .ui-carousel__start, .ui-carousel:not([data-ui-rotating]) .ui-carousel__stop { display: none; }
+
     /* Layout: a stack of blocks, a cluster that wraps, a grid of as many columns as fit. */
     .ui-stack { display: grid; gap: var(--ui-spacing-md); align-content: start; }
     .ui-stack > * { margin-block: 0; }
@@ -525,7 +561,8 @@
 
     @media (prefers-reduced-motion: reduce) {
       .ui-btn, .ui-switch::before, .ui-field--floating > .ui-field__label, .ui-dialog,
-      .ui-dropdown__menu, .ui-popover, .ui-tooltip { transition: none; }
+      .ui-dropdown__menu, .ui-popover, .ui-tooltip, .ui-toast { transition: none; }
+      .ui-carousel__rotate { display: none; }
       .ui-progress--animated::-webkit-progress-value { animation: none; }
       .ui-progress--animated::-moz-progress-bar { animation: none; }
       .ui-spinner, .ui-placeholder { animation: none; }

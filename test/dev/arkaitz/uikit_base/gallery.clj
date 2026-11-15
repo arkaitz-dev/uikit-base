@@ -96,6 +96,12 @@
       (ui/post-form r "/do" {:class "ui-form"} (ui/field r {:id "g-name" :label "Name"}) (ui/button {:variant :primary} "Save")))
     (ui/dialog r {:id "g-static" :title "Answer first" :static? true :scrollable? true :size :sm}
       (for [i (range 1 13)] [:p "Paragraph " i "."]))]
+   ["motion"
+    (ui/carousel r {:label "Featured" :interval-ms 5000 :slides [(ui/card {:title "One"} "The first slide.") (ui/card {:title "Two"} "The second slide.")
+                                                                 (ui/card {:title "Three"} "The third slide.")]})
+    (ui/carousel r {:label "Still" :slides ["A slide that waits." "Another."]})
+    (ui/toasts (ui/toast r {:kind :ok :heading "Saved" :timeout-ms 8000} "Your draft was saved; it is in Drafts too.")
+               (ui/toast r {:kind :error} "This one stays until it is closed."))]
    ["text"
     [:p (ui/sentence r :gallery/due (ui/time 1763200000000 "15 Nov"))]
     (ui/action r "/do" {:label "Archive" :subject "order 1" :hidden {:id "1"}})

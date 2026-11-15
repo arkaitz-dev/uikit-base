@@ -1177,3 +1177,53 @@
   (is (= ["uikit-base: a tooltip's :text is what it says about its trigger" {:text " "}] (refusal #(ui/tooltip {:id "t" :text " "} [:a "x"]))))
   (doseq [t ["x" nil [[:a "x"]]]]
     (is (= ["uikit-base: a tooltip's trigger is one element, which it describes" {}] (refusal #(ui/tooltip {:id "t" :text "T"} t))) (pr-str t))))
+
+;; --- K18: toasts and carousels -----------------------------------------------------------
+
+(deftest toasts-are-a-polite-live-region-and-a-toast-says-its-message-with-a-way-out
+  (is (= (str "<div aria-live=\"polite\" class=\"ui-toasts x\"><div class=\"ui-toast ui-toast--ok\" data-timeout-ms=\"4000\" id=\"t1\">"
+              "<div class=\"ui-toast__body\"><p class=\"ui-toast__heading\">Saved &lt;it&gt;</p>Body</div>"
+              "<button class=\"ui-close ui-toast__close\" type=\"button\">" close-en "</div></div>")
+         (html (ui/toasts {:class "x" :aria-live "off"} (ui/toast {} {:kind :ok :heading "Saved <it>" :timeout-ms 4000 :attrs {:id "t1" "DATA-TIMEOUT-MS" 1}} "Body"))))
+      "the region is live whatever the attrs say; the timeout is the toast's own, a number")
+  (is (= "<div aria-live=\"polite\" class=\"ui-toasts\"></div>" (html (ui/toasts))) "on the page before any toast")
+  (is (= (str "<div class=\"ui-toast\"><div class=\"ui-toast__body\">B</div><button class=\"ui-close ui-toast__close\" type=\"button\">"
+              "<span aria-hidden=\"true\">×</span><span class=\"ui-sr-only\">Cerrar</span></button></div>")
+         (html (ui/toast {:wb/tr (tr-for :es)} {:heading " "} "B")))
+      "no kind, no timeout, no blank heading; its close button in the reader's language")
+  (doseq [k [:success "ok" :danger]]
+    (is (= ["uikit-base: a toast's :kind is :ok, :info, :warning or :error" {:kind k}] (refusal #(ui/toast {} {:kind k} "x"))) (pr-str k)))
+  (doseq [t [0 -1 1.5 "5000" 5000N]]
+    (is (= ["uikit-base: a toast's :timeout-ms is a whole number of milliseconds above zero" {:timeout-ms t}] (refusal #(ui/toast {} {:timeout-ms t} "x"))) (pr-str t))))
+
+(deftest a-carousel-is-a-named-region-of-numbered-slides-whose-buttons-wait-for-the-script
+  (is (= (str "<section aria-label=\"Featured &lt;new&gt;\" aria-roledescription=\"carousel\" class=\"ui-carousel x\" data-interval-ms=\"5000\">"
+              "<div class=\"ui-carousel__controls\" hidden=\"hidden\"><button class=\"ui-btn ui-btn--sm ui-carousel__rotate\" type=\"button\">"
+              "<span class=\"ui-carousel__stop\">Stop automatic slide show</span><span class=\"ui-carousel__start\">Start automatic slide show</span></button>"
+              "<button class=\"ui-btn ui-btn--sm ui-carousel__prev\" type=\"button\">Previous slide</button>"
+              "<button class=\"ui-btn ui-btn--sm ui-carousel__next\" type=\"button\">Next slide</button></div>"
+              "<div aria-live=\"polite\" class=\"ui-carousel__viewport\" tabindex=\"0\">"
+              "<div aria-label=\"1 of 2\" aria-roledescription=\"slide\" class=\"ui-carousel__slide\" role=\"group\">A</div>"
+              "<div aria-label=\"2 of 2\" aria-roledescription=\"slide\" class=\"ui-carousel__slide\" role=\"group\"><b>B</b></div></div></section>")
+         (html (ui/carousel {} {:label "Featured <new>" :slides ["A" [:b "B"]] :interval-ms 5000
+                                :attrs {:class "x" "ARIA-LABEL" "o" :aria-roledescription "o" :data-interval-ms 1}})))
+      "the rotation button first, then previous and next, all hidden until the script; each slide numbered")
+  (let [es (html (ui/carousel {:wb/tr (tr-for :es)} {:label "Destacados" :slides ["A" "B" "C"]}))]
+    (is (not (str/includes? es "ui-carousel__rotate")) "no interval, no rotation button")
+    (is (not (str/includes? es "data-interval-ms")) "and no interval")
+    (doseq [w ["aria-roledescription=\"carrusel\"" "aria-label=\"3 de 3\"" "aria-roledescription=\"diapositiva\"" ">Diapositiva anterior<" ">Diapositiva siguiente<"]]
+      (is (str/includes? es w) (str "in Spanish: " w))))
+  (is (str/includes? (html (ui/carousel {:wb/tr (tr-for :es)} {:label "D" :slides ["A"] :interval-ms 1})) ">Detener el pase automático</span><span class=\"ui-carousel__start\">Iniciar el pase automático<")
+      "the rotation's two labels in Spanish")
+  (is (str/includes? (html (ui/carousel {:wb/tr (fn [k args] (str "tr:" k ":" (pr-str args)))} {:label "D" :slides ["A" "B"]})) "aria-label=\"tr::uikit-base/slide-of:[2 2]\"")
+      "a slide's number goes to the translator as the word's two arguments")
+  (doseq [l [nil "" " "]]
+    (is (= ["uikit-base: a carousel is named by its label" {:label l}] (refusal #(ui/carousel {} {:label l :slides ["A"]}))) (pr-str l)))
+  (is (= ["uikit-base: a carousel's slides are one or more" {}] (refusal #(ui/carousel {} {:label "C" :slides []}))))
+  (doseq [i [0 "5" 2.5]]
+    (is (= ["uikit-base: a carousel's :interval-ms is a whole number of milliseconds above zero" {:interval-ms i}] (refusal #(ui/carousel {} {:label "C" :slides ["A"] :interval-ms i}))) (pr-str i))))
+
+(deftest every-word-of-the-kit-is-spoken-in-both-its-languages
+  (let [ks (fn [l] (set (keys (get-in ui/words [l :uikit-base]))))]
+    (is (= 14 (count (ks :en))) "witness: the kit's words, a count measured once")
+    (is (= (ks :en) (ks :es)) "a word missing in Spanish would fall back to English mid-page")))

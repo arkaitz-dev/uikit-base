@@ -1,24 +1,21 @@
-// uikit-base: the kit's one script, for what the platform does not yet do in every browser
-// of the floor (invoker commands, anchor positioning, a dialog's closedby) and what no
-// element does on its own (a toast's timeout, a carousel, a scrollspy). Every listener is
-// on document, so nothing is re-bound when htmx swaps <main>; what watches elements is
-// rebuilt after each swap. It writes no markup and no text: the server rendered both.
+// uikit-base: the kit's one script, for what some browser of the floor lacks and no element does
+// alone. Its listeners are on document, so a swap of <main> re-binds nothing; it writes no text.
+// web-base loads it once per document: the shell lists each script once, in the head htmx keeps.
 (function () {
   "use strict";
-  if (window.uikitBaseLoaded) return;
-  window.uikitBaseLoaded = true;
 
   // Read once, as the script loads, so a page that deletes a feature first runs the fallback.
   var nativeCommand = "commandForElement" in HTMLButtonElement.prototype;
   var nativeAnchor = CSS.supports("anchor-name: --a") && CSS.supports("anchor-scope: all");
   var nativeClosedBy = "closedBy" in HTMLDialogElement.prototype;
   var stillMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  var inits = [];
+  function on(type, listener, capture) { document.addEventListener(type, listener, capture); }
 
-  // Invoker commands, where the browser has none: a button's commandfor opens or closes its
-  // dialog, and the focus goes back to that button when the dialog closes, as it does natively.
+  // Invoker commands where missing: open or close a dialog, and give the focus back on close.
   var invokers = new WeakMap();
   if (!nativeCommand) {
-    document.addEventListener("click", function (event) {
+    on("click", function (event) {
       var button = event.target.closest("button[commandfor]");
       var dialog = button && document.getElementById(button.getAttribute("commandfor"));
       if (!(dialog instanceof HTMLDialogElement)) return;
@@ -26,63 +23,44 @@
       if (command === "show-modal" && !dialog.open) { invokers.set(dialog, button); dialog.showModal(); }
       if ((command === "close" || command === "request-close") && dialog.open) dialog.close();
     });
-    document.addEventListener("close", function (event) {
+    on("close", function (event) {
       var button = invokers.get(event.target);
       invokers.delete(event.target);
       if (button && button.isConnected) button.focus();
     }, true);
   }
 
-  // A dialog's closedby, where the browser has none: "none" keeps Esc from closing it, and
-  // "any" lets a click on the backdrop, outside the dialog's box, close it.
+  // A dialog's closedby where missing: "none" refuses Esc, "any" closes on a backdrop click.
+  function closedBy(node) { return node instanceof HTMLDialogElement && node.open && node.getAttribute("closedby"); }
   if (!nativeClosedBy) {
-    document.addEventListener("cancel", function (event) {
-      if (event.target instanceof HTMLDialogElement && event.target.getAttribute("closedby") === "none") {
-        event.preventDefault();
-      }
-    }, true);
-    document.addEventListener("click", function (event) {
-      var dialog = event.target;
-      if (!(dialog instanceof HTMLDialogElement) || !dialog.open || dialog.getAttribute("closedby") !== "any") return;
-      var box = dialog.getBoundingClientRect();
-      var outside = event.clientX < box.left || event.clientX > box.right ||
-        event.clientY < box.top || event.clientY > box.bottom;
-      if (outside) dialog.close();
+    on("cancel", function (event) { if (closedBy(event.target) === "none") event.preventDefault(); }, true);
+    on("click", function (event) {
+      var box = event.target.getBoundingClientRect(), x = event.clientX, y = event.clientY;
+      var outside = x < box.left || x > box.right || y < box.top || y > box.bottom;
+      if (closedBy(event.target) === "any" && outside) event.target.close();
     });
   }
 
-  // Placing a popover against the control before it, where CSS anchor positioning is
-  // missing: below it and inline-start aligned (a tooltip above it, centred), flipped when
-  // the viewport has no room, kept inside it inline.
+  // Where anchor positioning is missing: below the control (a tooltip above), flipped to fit.
   var open = ".ui-dropdown__menu:popover-open, .ui-popover:popover-open, .ui-tooltip:popover-open";
   function place(pop) {
     var a = pop.parentElement.firstElementChild.getBoundingClientRect(), p = pop.getBoundingClientRect();
-    var tip = pop.classList.contains("ui-tooltip"), gap = 4;
+    var tip = pop.classList.contains("ui-tooltip"), gap = 4, rtl = getComputedStyle(pop).direction === "rtl";
     var below = a.bottom + gap, above = a.top - gap - p.height;
     var top = tip ? (above < 0 ? below : above) : (below + p.height > innerHeight && above >= 0 ? above : below);
-    var rtl = getComputedStyle(pop).direction === "rtl";
     var left = tip ? a.left + (a.width - p.width) / 2 : (rtl ? a.right - p.width : a.left);
     pop.style.setProperty("margin", "0");
     pop.style.setProperty("top", top + "px");
-    left = Math.max(0, Math.min(left, document.documentElement.clientWidth - p.width));
-    pop.style.setProperty("left", left + "px");
+    pop.style.setProperty("left", Math.max(0, Math.min(left, document.documentElement.clientWidth - p.width)) + "px");
   }
   function placeOpen() { if (!nativeAnchor) document.querySelectorAll(open).forEach(place); }
-  document.addEventListener("toggle", function (event) { if (event.newState === "open") placeOpen(); }, true);
+  on("toggle", function (event) { if (event.newState === "open") placeOpen(); }, true);
   addEventListener("resize", placeOpen);
   addEventListener("scroll", placeOpen, { capture: true, passive: true });
 
-  // A dropdown's link or button closes it: htmx may swap <main> and leave the menu open.
-  document.addEventListener("click", function (event) {
-    var item = event.target.closest(".ui-dropdown__menu a, .ui-dropdown__menu button");
-    if (item) item.closest("[popover]").hidePopover();
-  });
-
-  // Tooltips: shown while their trigger is hovered or focused, or the pointer rests on the
-  // tooltip itself (WCAG 1.4.13); hidden when neither holds, or on Esc.
+  // Tooltips: shown while the trigger or the tooltip is hovered or focused (WCAG 1.4.13).
   function tipOf(node) {
-    var wrap = node instanceof Element && node.closest(".ui-tooltip-wrap");
-    return wrap ? wrap.querySelector(".ui-tooltip") : null;
+    return node instanceof Element ? node.closest(".ui-tooltip-wrap")?.querySelector(".ui-tooltip") : null;
   }
   function showTip(event) {
     var tip = tipOf(event.target);
@@ -94,18 +72,66 @@
     var held = event.type === "mouseout" ? wrap.contains(document.activeElement) : wrap.matches(":hover");
     if (!held) tip.hidePopover();
   }
-  document.addEventListener("mouseover", showTip);
-  document.addEventListener("focusin", showTip);
-  document.addEventListener("mouseout", hideTip);
-  document.addEventListener("focusout", hideTip);
-  document.addEventListener("keydown", function (event) {
+  ["mouseover", "focusin"].forEach(function (type) { on(type, showTip); });
+  ["mouseout", "focusout"].forEach(function (type) { on(type, hideTip); });
+  on("keydown", function (event) {
     if (event.key !== "Escape") return;
-    document.querySelectorAll(".ui-tooltip:popover-open").forEach(function (t) { t.hidePopover(); });
+    document.querySelectorAll(".ui-tooltip:popover-open").forEach(function (tip) { tip.hidePopover(); });
   });
 
-  var inits = [];
-  function init() { inits.forEach(function (f) { f(); }); }
+  // Toasts: one with a timeout goes once shown that long, the time stopped while hovered or focused.
+  inits.push(function () {
+    document.querySelectorAll(".ui-toast[data-timeout-ms]").forEach(function (toast) {
+      var left = Number(toast.dataset.timeoutMs);
+      toast.uiTimer = toast.uiTimer || setInterval(function () {
+        if (!toast.matches(":hover, :focus-within")) left -= 250;
+        if (left <= 0 || !toast.isConnected) { clearInterval(toast.uiTimer); toast.remove(); }
+      }, 250);
+    });
+  });
 
-  document.addEventListener("htmx:after:swap", init);
+  // Carousels: a button scrolls a slide; an interval advances them, never under reduced motion.
+  function go(carousel, step) {
+    var view = carousel.querySelector(".ui-carousel__viewport"), n = view.children.length;
+    var at = (Math.round(Math.abs(view.scrollLeft) / view.clientWidth) + step + n) % n;
+    var sign = getComputedStyle(view).direction === "rtl" ? -1 : 1;
+    view.scrollTo({ left: sign * at * view.clientWidth, behavior: stillMotion.matches ? "auto" : "smooth" });
+  }
+  function rotate(carousel, rotating) {
+    carousel.toggleAttribute("data-ui-rotating", rotating);
+    carousel.querySelector(".ui-carousel__viewport").setAttribute("aria-live", rotating ? "off" : "polite");
+  }
+  inits.push(function () {
+    document.querySelectorAll(".ui-carousel").forEach(function (carousel) {
+      var controls = carousel.querySelector(".ui-carousel__controls"), ms = Number(carousel.dataset.intervalMs);
+      if (!controls.hidden) return;
+      controls.hidden = false;
+      if (!ms || stillMotion.matches) return;
+      rotate(carousel, true);
+      var timer = setInterval(function () {
+        if (!carousel.isConnected) return clearInterval(timer);
+        if (carousel.matches("[data-ui-rotating]:not(:hover)") && !stillMotion.matches) go(carousel, 1);
+      }, ms);
+    });
+  });
+  on("focusin", function (event) {
+    var carousel = event.target.closest(".ui-carousel");
+    if (carousel && !event.target.closest(".ui-carousel__rotate")) rotate(carousel, false);
+  });
+
+  // A dropdown's item closes it, as htmx may keep it; a toast's close removes it; a carousel turns.
+  on("click", function (event) {
+    var item = event.target.closest(".ui-dropdown__menu a, .ui-dropdown__menu button");
+    var close = event.target.closest(".ui-toast__close"), carousel = event.target.closest(".ui-carousel");
+    var button = carousel && event.target.closest(".ui-carousel__controls button");
+    if (item) item.closest("[popover]").hidePopover();
+    if (close) close.closest(".ui-toast").remove();
+    if (!button) return;
+    if (button.classList.contains("ui-carousel__rotate")) rotate(carousel, !carousel.hasAttribute("data-ui-rotating"));
+    else go(carousel, button.classList.contains("ui-carousel__next") ? 1 : -1);
+  });
+
+  function init() { inits.forEach(function (f) { f(); }); }
+  on("htmx:after:swap", init);
   init();
 })();

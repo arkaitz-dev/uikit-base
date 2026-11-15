@@ -524,9 +524,13 @@
   a dictionary, which a host's own overrides; a language the kit does not speak falls back
   to the English here, so no word of the kit is ever missing from a page."
   {:en {:uikit-base {:previous "Previous" :next "Next" :pages "Pages" :breadcrumbs "Breadcrumbs"
-                     :shown-once "Copy it now: it will not be shown again." :close "Close" :loading "Loading…"}}
+                     :shown-once "Copy it now: it will not be shown again." :close "Close" :loading "Loading…"
+                     :carousel "carousel" :slide "slide" :slide-of "%1 of %2" :previous-slide "Previous slide"
+                     :next-slide "Next slide" :stop-rotation "Stop automatic slide show" :start-rotation "Start automatic slide show"}}
    :es {:uikit-base {:previous "Anterior" :next "Siguiente" :pages "Páginas" :breadcrumbs "Ruta de navegación"
-                     :shown-once "Cópialo ahora: no se volverá a mostrar." :close "Cerrar" :loading "Cargando…"}}})
+                     :shown-once "Cópialo ahora: no se volverá a mostrar." :close "Cerrar" :loading "Cargando…"
+                     :carousel "carrusel" :slide "diapositiva" :slide-of "%1 de %2" :previous-slide "Diapositiva anterior"
+                     :next-slide "Diapositiva siguiente" :stop-rotation "Detener el pase automático" :start-rotation "Iniciar el pase automático"}}})
 
 (defn- kit-word
   "The caller's word, or the kit's `k` in the reader's language when the caller gave none
@@ -1041,3 +1045,71 @@
     [:span.ui-tooltip-wrap
      (into [tag (assoc attrs :aria-describedby described)] body)
      [:span {:id id :popover "manual" :role "tooltip" :class "ui-tooltip"} text]]))
+
+(def ^:private toast-kinds #{:ok :info :warning :error})
+
+(defn toasts
+  "`(toasts attrs? & toasts)` → where toasts appear: a polite live region in a corner of the
+  screen, at the block end and the inline end, which a screen reader reads as a toast is
+  added to it — so it is on the page before any toast, and htmx adds them into it. `attrs`
+  go on it; that it is live is its own."
+  [& more]
+  (let [[attrs body] (split-attrs more)]
+    (into [:div (with-attrs {:class "ui-toasts" :aria-live "polite"} attrs [:aria-live])] body)))
+
+(defn toast
+  "`(toast request opts & body)` → a short message in `toasts`, with a `close-button` that
+  removes it. `:kind`, `:ok`, `:info`, `:warning` or `:error`, edges it in that colour, and
+  the body says it in words; `:heading` is drawn above the body. `:timeout-ms`, a whole
+  number of milliseconds, removes it once it has been shown that long, the time stopped
+  while the pointer rests on it or the focus is inside it — so a toast is never the only
+  copy of a message: what it says is on the page, or in the place it came from, too (WCAG
+  2.2.1). `:attrs` go on the toast. The script that times and closes it is the plugin's
+  `/ui/ui.js`; without it a toast stays."
+  [request {:keys [kind heading timeout-ms attrs]} & body]
+  (when-not (or (nil? kind) (toast-kinds kind))
+    (throw (ex-info "uikit-base: a toast's :kind is :ok, :info, :warning or :error" {:kind kind})))
+  (when-not (or (nil? timeout-ms) (pos-int? timeout-ms))
+    (throw (ex-info "uikit-base: a toast's :timeout-ms is a whole number of milliseconds above zero" {:timeout-ms timeout-ms})))
+  [:div (with-attrs (cond-> {:class (str "ui-toast" (when kind (str " ui-toast--" (name kind))))} timeout-ms (assoc :data-timeout-ms timeout-ms))
+                    (dissoc (normalised attrs) :data-timeout-ms) [])
+   (into (cond-> [:div.ui-toast__body] (not (nothing? heading)) (conj [:p.ui-toast__heading heading])) body)
+   (close-button request {:class "ui-toast__close"})])
+
+(defn- kit-said
+  "The kit's word `k` with `args` where its `%1`, `%2`… stand, in the reader's language, or
+  in the kit's English when the request has no translator."
+  [request k args]
+  (let [said (or (some-> (:wb/tr request) (apply [k (vec args)])) (get-in words [:en :uikit-base (keyword (name k))]))]
+    (reduce-kv (fn [s i a] (str/replace s (str "%" (inc i)) (str a))) said (vec args))))
+
+(defn carousel
+  "`(carousel request opts)` → `:slides`, one or more, shown one at a time, as the ARIA
+  practices draw a carousel: a region named by `:label`, required, read as a carousel, each
+  slide a group read as \"2 of 5\" in the reader's language, and buttons to the previous
+  and next slide. Without a script it is a row that scrolls sideways a slide at a time, by
+  the keyboard too, its buttons hidden, since they would do nothing. With `:interval-ms`,
+  a whole number, the slides advance on their own every so many milliseconds, with a
+  button first that stops and starts it; the advance waits while the pointer rests on the
+  carousel, stops for good once the focus enters it, and never starts where the reader
+  asked for reduced motion. `:attrs` go on the region; its role description and name are
+  its own. The buttons and the advance are the plugin's `/ui/ui.js`."
+  [request {:keys [label slides interval-ms attrs]}]
+  (named! "a carousel" label)
+  (when (empty? slides) (throw (ex-info "uikit-base: a carousel's slides are one or more" {})))
+  (when-not (or (nil? interval-ms) (pos-int? interval-ms))
+    (throw (ex-info "uikit-base: a carousel's :interval-ms is a whole number of milliseconds above zero" {:interval-ms interval-ms})))
+  (let [w (fn [k] (kit-word request nil k))
+        n (count slides)]
+    [:section (with-attrs (cond-> {:class "ui-carousel" :aria-roledescription (w :uikit-base/carousel) :aria-label label}
+                            interval-ms (assoc :data-interval-ms interval-ms))
+                          (dissoc (normalised attrs) :data-interval-ms) [:aria-roledescription :aria-label])
+     (cond-> [:div {:class "ui-carousel__controls" :hidden true}]
+       interval-ms (conj [:button {:type "button" :class "ui-btn ui-btn--sm ui-carousel__rotate"}
+                          [:span.ui-carousel__stop (w :uikit-base/stop-rotation)] [:span.ui-carousel__start (w :uikit-base/start-rotation)]])
+       true (conj (button {:type "button" :size :sm :class "ui-carousel__prev"} (w :uikit-base/previous-slide))
+                  (button {:type "button" :size :sm :class "ui-carousel__next"} (w :uikit-base/next-slide))))
+     (into [:div {:class "ui-carousel__viewport" :tabindex "0" :aria-live "polite"}]
+           (map-indexed (fn [i s] [:div {:class "ui-carousel__slide" :role "group" :aria-roledescription (w :uikit-base/slide)
+                                         :aria-label (kit-said request :uikit-base/slide-of [(inc i) n])} s])
+                        slides))]))

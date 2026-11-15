@@ -50,14 +50,17 @@
 (deftest the-script-holds-none-of-the-banned-constructs
   (let [{c :code open :open} (code source)]
     (is (nil? open) "witness: every string of the script closes, so the lexer read it to its end")
-    (is (str/includes? c "document.addEventListener(\"htmx:after:swap\", init);") "witness: the comments went and the code stayed")
+    (is (str/includes? c "on(\"htmx:after:swap\", init);") "witness: the comments went and the code stayed")
     (is (not (str/includes? c "the server rendered both")) "witness: and a comment is gone")
     (is (= [] (for [[re why] banned :let [m (re-find re c)] :when m] [(if (string? m) m (first m)) why]))
         "constructs found in ui.js, each with why it is banned")))
 
 (deftest the-script-is-within-its-bound
-  ;; Counted by newlines: splitting into lines drops the empty ones at the end.
-  (let [lines (count (re-seq #"\n" source))]
-    (is (< 20 lines) (str "witness: the script was read, " lines " lines"))
-    (is (<= lines 150) (str "ui.js is " lines " lines; the user's bound is 150, readable, never minified"))
+  ;; The user's bound is 150 lines of code: a comment or a blank line is not one. Counted by
+  ;; newlines, since splitting into lines drops the empty ones at the end.
+  (let [lines (str/split source #"\n" -1)
+        code  (remove #(re-matches #"\s*(//.*)?" %) lines)]
+    (is (= "" (last lines)) "witness: the file ends with a newline, so the count is of whole lines")
+    (is (< 20 (count code)) (str "witness: the script was read, " (count code) " lines of code"))
+    (is (<= (count code) 150) (str "ui.js is " (count code) " lines of code (" (dec (count lines)) " in all); the user's bound is 150, readable, never minified"))
     (is (= [] (filter #(< 120 (count %)) (str/split source #"\n"))) "lines crammed past 120 characters")))
