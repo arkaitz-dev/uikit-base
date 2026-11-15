@@ -141,7 +141,7 @@
     (is (= [0 2 1] (specificity ".ui-pager a:focus-visible")) "witness: the test's specificity")
     (is (= #{".ui-btn--primary:hover" ".ui-btn--primary" ".ui-btn:hover" ".ui-btn"} (set (selectors-implied ".ui-btn--primary:hover")))
         "witness: a variant's hover is also the base's hover")
-    (is (= 61 (count pairs)) (str "witness: every painted pair found, a count measured once: " (count pairs)))
+    (is (= 70 (count pairs)) (str "witness: every painted pair found, a count measured once: " (count pairs)))
     (is (= 21.0 (wcag "#000000" "#ffffff")) "witness: the test's WCAG")
     (doseq [[s bg fg :as p] pairs]
       (testing s
@@ -167,11 +167,11 @@
         decls    (for [[sels ds] rules [k v] ds] [sels k v])
         scales   (set (map (comp keyword second) (re-seq #"--ui-([a-z0-9-]+)\s*:" css)))
         token-ok (fn [t] (or (re-matches #"-?[\d.]+(px|rem|em|%)?" t)
-                             (#{"solid" "dashed" "dotted" "none" "inset" "inherit" "currentcolor"} t)
+                             (#{"solid" "dashed" "dotted" "none" "inset" "inherit" "currentcolor" ","} t)
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 107 (count bearing)) (str "witness: the colour-bearing declarations, a count measured once: " (count bearing)))
+    (is (= 113 (count bearing)) (str "witness: the colour-bearing declarations, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -186,7 +186,7 @@
 (def ^:private dividers
   "Lines that separate, not edges that bound a control: drawn in `border`, which is no
   audited non-text pair, and named here one by one so a new one is decided, not inherited."
-  #{[".ui-table th" :border] [".ui-table td" :border] [".ui-row" :border] [".ui-card" :border]})
+  #{[".ui-table th" :border] [".ui-table td" :border] [".ui-row" :border] [".ui-card" :border] [".ui-tabs ul" :border]})
 
 (deftest every-control-edge-is-visible
   (let [found (distinct (for [[sels decls] (leaf-rules) s sels
@@ -197,7 +197,7 @@
                           [s t]))
         edges (remove dividers found)]
     (is (= dividers (set (filter dividers found))) "every divider named is still drawn")
-    (is (= 24 (count edges)) (str "witness: the edges, a count measured once: " (count edges)))
+    (is (= 26 (count edges)) (str "witness: the edges, a count measured once: " (count edges)))
     (doseq [[s t] edges bg [:background :surface :surface-alt]]
       (testing (str s " " t)
         (is (= :ui (audited [bg t])) "an audited non-text pair")
@@ -275,6 +275,8 @@
    'pairs     [(ui/pairs [["a" "b"]])]
    'time      [(ui/time (java.time.LocalDate/of 2026 1 15) "x")]
    'page-head [(ui/page-head {:title "t" :subtitle "s" :actions [(ui/link-button "/a" "x")]})]
+   'crumbs    [(ui/crumbs req {:items [["/a" "A"] [nil "B"]]})]
+   'tabs-nav  [(ui/tabs-nav req {:label "S" :items [["/a" "A"] ["/b" "B"]] :current "/a"})]
    'post-form [(ui/post-form req "/a" (ui/button "x"))]
    'field     (for [t [nil "select" "textarea" "file" "checkbox" "radio"]] (ui/field req {:id "f" :label "F" :type t :options [["a" "A"]] :error :e :hint "h" :required? true}))
    'notice    [(ui/notice :ok "x")]
@@ -315,10 +317,18 @@
                  [tag classes (first ancestors)])]
     (is (= (set (keys fixtures)) (set (remove '#{words cell} (keys (ns-publics 'dev.arkaitz.uikit-base)))))
         "every public component is drawn here, so a new one needs its fixture")
-    (is (= 16 (count found)) (str "witness: the focusables, a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
+    (is (= 19 (count found)) (str "witness: the focusables, a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
     (is (= [] bare) "each wears the ring, through a class of its own or its kit ancestor's")
     (is (= [] (for [[sels decls] (leaf-rules) :let [v (get decls "outline")] :when v :when (not= :focus-ring (palette-var v))] [sels v]))
-        "no rule takes the ring away: an outline is the ring")))
+        "no rule takes the ring away: an outline is the ring")
+    (let [rules  (leaf-rules)
+          shaded (distinct (for [[sels decls] rules s sels :when (contains? decls "box-shadow")
+                                 :when (not (str/ends-with? s ":focus-visible"))
+                                 :when (some #(str/starts-with? s %) ringed)] s))]
+      (is (seq shaded) "witness: a focusable that casts a shadow of its own was found")
+      (is (= [] (for [s shaded :let [v (cascaded rules (str s ":focus-visible") ["box-shadow"])]
+                      :when (not (str/includes? (str v) "var(--ui-focus-ring-halo)"))] [s v]))
+          "and its shadow never takes the ring's halo away: the ring is two bands"))))
 
 (deftest the-disabled-look-wins-over-every-variant-by-coming-last
   (let [rules (leaf-rules)

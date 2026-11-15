@@ -25,7 +25,7 @@
 
   /* The focus ring, on everything the kit makes focusable. */
   .ui-btn:focus-visible, .ui-input:focus-visible, .ui-check:focus-visible, .ui-pager a:focus-visible, .ui-card a:focus-visible,
-  .ui-prose a:focus-visible {
+  .ui-prose a:focus-visible, .ui-crumbs a:focus-visible, .ui-tabs a:focus-visible {
     outline: var(--ui-ring) solid var(--ui-focus-ring);
     outline-offset: var(--ui-ring);
     box-shadow: 0 0 0 var(--ui-ring) var(--ui-focus-ring-halo);
@@ -135,6 +135,23 @@
 
   /* Pager. */
   .ui-pager { display: flex; gap: var(--ui-space-md); align-items: baseline; margin-block: var(--ui-space-md); }
+
+  /* Breadcrumbs and tabs: where a page sits, and the views of one list. */
+  .ui-crumbs { margin-block-end: var(--ui-space-md); }
+  .ui-crumbs ol { display: flex; flex-wrap: wrap; gap: var(--ui-space-xs); list-style: none; padding: 0; margin: 0; }
+  .ui-crumbs li + li::before { content: "/"; margin-inline-end: var(--ui-space-xs); color: var(--ui-text-muted); }
+  .ui-crumbs a { color: var(--ui-link); }
+  .ui-tabs { margin-block-end: var(--ui-space-md); }
+  .ui-tabs ul {
+    display: flex; flex-wrap: wrap; gap: var(--ui-space-xs); list-style: none; padding: 0;
+    margin: 0; border-bottom: 1px solid var(--ui-border);
+  }
+  .ui-tabs a { display: block; padding: var(--ui-space-sm) var(--ui-space-md); color: var(--ui-link); text-decoration: none; }
+  .ui-tabs a[aria-current="page"] { font-weight: 600; box-shadow: inset 0 -2px 0 var(--ui-primary-border); }
+  /* Its own shadow would take the ring's halo away: the two together. */
+  .ui-tabs a[aria-current="page"]:focus-visible {
+    box-shadow: inset 0 -2px 0 var(--ui-primary-border), 0 0 0 var(--ui-ring) var(--ui-focus-ring-halo);
+  }
 
   /* Badges: a status as a small filled label. */
   .ui-badge {

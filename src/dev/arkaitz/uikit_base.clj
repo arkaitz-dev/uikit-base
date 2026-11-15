@@ -326,8 +326,8 @@
   "The kit's own words, for the languages the set's hosts speak. The plugin brings them as
   a dictionary, which a host's own overrides; a language the kit does not speak falls back
   to the English here, so no word of the kit is ever missing from a page."
-  {:en {:uikit-base {:previous "Previous" :next "Next" :pages "Pages"}}
-   :es {:uikit-base {:previous "Anterior" :next "Siguiente" :pages "Páginas"}}})
+  {:en {:uikit-base {:previous "Previous" :next "Next" :pages "Pages" :breadcrumbs "Breadcrumbs"}}
+   :es {:uikit-base {:previous "Anterior" :next "Siguiente" :pages "Páginas" :breadcrumbs "Ruta de navegación"}}})
 
 (defn- kit-word [request given k]
   (or given
@@ -349,6 +349,45 @@
      (when previous (wb/link previous {:rel "prev"} (kit-word request previous-label :uikit-base/previous)))
      (when where [:span where])
      (when next (wb/link next {:rel "next"} (kit-word request next-label :uikit-base/next)))]))
+
+(defn- named-items!
+  "Refuses an item with nothing to name its link: a link without a name is read as its
+  address, or not at all."
+  [component items]
+  (when (some (fn [[_ l]] (or (nil? l) (and (string? l) (str/blank? l)))) items)
+    (throw (ex-info (str "uikit-base: every item of a " component " has a label") {}))))
+
+(defn crumbs
+  "`(crumbs request opts)` → where this page sits: `items`, `[[path label] …]`, each a
+  `wb/link` but the last, `[nil label]`, which is this page and says so
+  (`aria-current`). The nav is named by the kit's word `:uikit-base/breadcrumbs` in the
+  reader's language unless `label` says otherwise; `attrs` go on the nav. Every item but
+  the last has a path and the last has none, or the call is refused."
+  [request {:keys [items label attrs]}]
+  (let [[here & up] (reverse items)]
+    (when (or (nil? here) (some? (first here)) (some (comp nil? first) up))
+      (throw (ex-info "uikit-base: a crumbs' items are paths up to this page, which has none" {})))
+    (named-items! "crumbs" items)
+    [:nav (with-attrs {:class "ui-crumbs" :aria-label (kit-word request label :uikit-base/breadcrumbs)} attrs [])
+     (into [:ol] (concat (for [[p l] (reverse up)] [:li (wb/link p nil l)])
+                         [[:li [:span {:aria-current "page"} (second here)]]]))]))
+
+(defn tabs-nav
+  "`(tabs-nav request opts)` → links between views of one list (all, open, closed): a
+  nav named by `label` — required, since a page holds the shell's nav beside it — whose
+  `items`, `[[path label] …]`, are `wb/link`s, the one whose path is `current` marked
+  `aria-current`. Links, not a tablist: each is a page. No items, two items with one
+  path, or a `current` that is no item's path, is refused; nil marks none."
+  [request {:keys [label items current attrs]}]
+  (when-not (and (string? label) (not (str/blank? label)))
+    (throw (ex-info "uikit-base: a tabs-nav is named by its label" {:label label})))
+  (when (or (empty? items) (not= (count items) (count (distinct (map first items)))))
+    (throw (ex-info "uikit-base: a tabs-nav's items are one or more, each its own path" {})))
+  (named-items! "tabs-nav" items)
+  (when (and (some? current) (not-any? #(= current (first %)) items))
+    (throw (ex-info "uikit-base: a tabs-nav's current is one of its items' paths" {:current current})))
+  [:nav (with-attrs {:class "ui-tabs" :aria-label label} attrs [:aria-label])
+   (into [:ul] (for [[p l] items] [:li (wb/link p (when (= p current) {:aria-current "page"}) l)]))])
 
 (def ^:private badge-kinds #{:neutral :success :danger :warning :info})
 

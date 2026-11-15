@@ -213,6 +213,8 @@
                             (ui/action req "/a" {:label "A" :subject "s"})
                             (ui/confirm req "/a" {:label "A" :confirm-label "Yes"})
                             (ui/empty "x") (ui/pairs [["a" "b"]])
+                            (ui/crumbs req {:items [["/a" "A"] [nil "B"]]})
+                            (ui/tabs-nav req {:label "S" :items [["/a" "A"]] :current "/a"})
                             (ui/page-head {:title "t" :subtitle "s" :actions [(ui/link-button "/a" "x")]})
                             (for [k [:ok :info :warning :error]] (ui/notice k "x"))
                             (ui/table {:caption "c" :head ["h"] :rows [["a" "b"]] :row-header? true})
@@ -223,7 +225,7 @@
                             (for [k [:neutral :success :danger :warning :info]] (ui/badge k "x"))
                             (ui/card "x")))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 46 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
+    (is (= 48 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
     (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{>]")) kit) classes))
         "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
@@ -346,6 +348,44 @@
   (doseq [l [0 4 "1" nil 1.0]]
     (is (= ["uikit-base: a page-head's level is 1, 2 or 3" {:level l}] (refusal #(ui/page-head {:title "t" :level l}))) (pr-str l))))
 
+(deftest crumbs-link-each-page-above-and-mark-this-one
+  (is (= (str "<nav aria-label=\"Breadcrumbs\" class=\"ui-crumbs\"><ol><li>" (L "/c" nil "Courses") "</li><li>" (L "/c/1" nil "Al&lt;g") "</li>"
+              "<li><span aria-current=\"page\">Week &lt;1&gt;</span></li></ol></nav>")
+         (html (ui/crumbs {} {:items [["/c" "Courses"] ["/c/1" "Al<g"] [nil "Week <1>"]]})))
+      "in order, links up, this page marked and no link; named in English with no translator")
+  (is (str/includes? (html (ui/crumbs {:wb/tr (fn [k _] (str "tr:" k))} {:items [[nil "H"]]})) "aria-label=\"tr::uikit-base/breadcrumbs\"")
+      "named by the kit's word in the reader's language")
+  (is (= "<nav aria-label=\"Pa&quot;th\" class=\"ui-crumbs x\" id=\"i\"><ol><li><span aria-current=\"page\">Home</span></li></ol></nav>"
+         (html (ui/crumbs req {:items [[nil "Home"]] :label "Pa\"th" :attrs {:class "x" :id "i"}}))))
+  (is (str/includes? (html (ui/crumbs req {:items [[nil "H"]] :attrs {:aria-label "m"}})) "aria-label=\"m\"") "as a pager, the caller's own name wins")
+  (doseq [items [[] nil [["/a" "A"]] [[nil "A"] [nil "B"]] [["/a" "A"] [nil "B"] [nil "C"]]]]
+    (is (= ["uikit-base: a crumbs' items are paths up to this page, which has none" {}] (refusal #(ui/crumbs req {:items items}))) (pr-str items)))
+  (doseq [p ["//evil.test" "javascript:x"]]
+    (is (= ["web-base: link's href must be a path on this origin" {:wb/link :href}] (refusal #(ui/crumbs req {:items [[p "A"] [nil "B"]]}))) p))
+  (is (not (str/includes? (html (ui/crumbs req {:items [["/a" {:onclick "evil()"}] [nil "B"]]})) "onclick=\""))
+      "a label is the link's body, never its attributes")
+  (doseq [items [[["/a" nil] [nil "B"]] [["/a" "A"] [nil " "]]]]
+    (is (= ["uikit-base: every item of a crumbs has a label" {}] (refusal #(ui/crumbs req {:items items}))) (pr-str items))))
+
+(deftest a-tabs-nav-links-the-views-of-a-list-and-marks-the-current-one
+  (let [cur (fn [href body] (str/replace (L href nil body) "<a href" "<a aria-current=\"page\" href"))]
+    (is (= (str "<nav aria-label=\"St&lt;&quot;\" class=\"ui-tabs x\" id=\"i\"><ul><li>" (L "/o" nil "All") "</li><li>" (cur "/o?s=open" "Op&lt;en") "</li></ul></nav>")
+           (html (ui/tabs-nav req {:label "St<\"" :items [["/o" "All"] ["/o?s=open" "Op<en"]] :current "/o?s=open" :attrs {:class "x" :id "i"}}))))
+    (is (= (str "<nav aria-label=\"S\" class=\"ui-tabs\"><ul><li>" (L "/o" nil "All") "</li><li>" (L "/p" nil "P") "</li></ul></nav>")
+           (html (ui/tabs-nav req {:label "S" :items [["/o" "All"] ["/p" "P"]]})))
+        "no current, none marked"))
+  (doseq [a [{:aria-label "m"} {"Aria-Label" "m"}]]
+    (is (str/starts-with? (html (ui/tabs-nav req {:label "S" :items [["/o" "A"]] :attrs a})) "<nav aria-label=\"S\"") (str "its name is its label: " (pr-str a))))
+  (doseq [l [" " :k nil]]
+    (is (= ["uikit-base: a tabs-nav is named by its label" {:label l}] (refusal #(ui/tabs-nav req {:label l :items [["/o" "A"]]}))) (pr-str l)))
+  (doseq [c ["/x" false]]
+    (is (= ["uikit-base: a tabs-nav's current is one of its items' paths" {:current c}] (refusal #(ui/tabs-nav req {:label "S" :items [["/o" "A"]] :current c}))) (pr-str c)))
+  (doseq [items [[] [["/o" "All"] ["/o" "Again"]]]]
+    (is (= ["uikit-base: a tabs-nav's items are one or more, each its own path" {}] (refusal #(ui/tabs-nav req {:label "S" :items items}))) (pr-str items)))
+  (doseq [p ["//evil.test" "javascript:x" nil]]
+    (is (= ["web-base: link's href must be a path on this origin" {:wb/link :href}] (refusal #(ui/tabs-nav req {:label "S" :items [[p "A"]]}))) (pr-str p)))
+  (is (= ["uikit-base: every item of a tabs-nav has a label" {}] (refusal #(ui/tabs-nav req {:label "S" :items [["/a" ""]]})))))
+
 (deftest a-table-heads-its-columns-and-captions-what-it-lists
   (is (= (str "<table class=\"ui-table\"><caption>C&lt;</caption><thead><tr><th scope=\"col\">A</th><th scope=\"col\">B&amp;</th></tr></thead>"
               "<tbody><tr><td>a1</td><td>b1</td></tr><tr><td>a2</td><td><b>x&lt;</b></td></tr></tbody></table>")
@@ -450,6 +490,11 @@
                 "<span>page 2 of 5</span>" (L "/b" "next" "Siguiente") "</nav></main>")
            (main ((app {:default-locale :es}) (mock/request :get "/"))))
         "a host speaking Spanish: the plugin's words, merged by web-base")
+    (is (str/includes? (str (:body ((wb/handler {:routes [["/" {:wb/layouts [shell/page] :get (fn [q] {:status 200 :body (ui/crumbs q {:items [[nil "x"]]})})}]]
+                                                 :session {:key KEY} :plugins [(web/plugin)] :i18n {:default-locale :es}})
+                                    (mock/request :get "/"))))
+                       "<nav aria-label=\"Ruta de navegación\" class=\"ui-crumbs\">")
+        "and the crumbs' name")
     (is (str/includes? (str (main ((app {:default-locale :es :dict {:es {:uikit-base {:next "Más"}}}}) (mock/request :get "/"))))
                        (str (L "/b" "next" "Más") "</nav>"))
         "a host's own word wins over the kit's")
