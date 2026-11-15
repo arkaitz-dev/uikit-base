@@ -443,7 +443,7 @@
     (is (= [0 2 1] (specificity ".ui-pager a:focus-visible")) "witness: the test's specificity")
     (is (= #{".ui-btn--primary:hover" ".ui-btn--primary" ".ui-btn:hover" ".ui-btn"} (set (selectors-implied ".ui-btn--primary:hover")))
         "witness: a variant's hover is also the base's hover")
-    (is (= 164 (count pairs)) (str "witness: every painted pair found — the kit's 118 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one, the close button in two; K10's floating label on three canvases and the input group's text; K12's stripe, hovered row, current page, current pill, the list group, its link on three canvases, hovered and current), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
+    (is (= 173 (count pairs)) (str "witness: every painted pair found — the kit's 127 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one, the close button in two; K10's floating label on three canvases and the input group's text; K12's stripe, hovered row, current page, current pill, the list group, its link on three canvases, hovered and current; K13's card nav, the figure's caption and the collapse's summary on three canvases each, the accordion and its open summary), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
     (is (= 21.0 (wcag "#000000" "#ffffff")) "witness: the test's WCAG")
     (doseq [[s bg fg :as p] pairs]
       (testing s
@@ -473,7 +473,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 300 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 228 (0.5.0's 119; K9's 42 outline, 4 link, 5 pressed and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9) and the utilities' 72, a count measured once: " (count bearing)))
+    (is (= 312 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 240 (0.5.0's 119; K9's 42 outline, 4 link, 5 pressed and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6) and the utilities' 72, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -493,7 +493,8 @@
   audited non-text pair, and named here one by one so a new one is decided, not inherited."
   #{[".ui-table th" :border] [".ui-table td" :border] [".ui-row" :border] [".ui-card" :border] [".ui-tabs ul" :border] [".ui-card__foot" :border]
     [".ui-table--bordered" :border] [".ui-table--bordered > * > tr > *" :border]
-    [".ui-list-group" :border] [".ui-list-group__item + .ui-list-group__item" :border]})
+    [".ui-list-group" :border] [".ui-list-group__item + .ui-list-group__item" :border]
+    [".ui-card__nav" :border] [".ui-accordion" :border] [".ui-accordion__item + .ui-accordion__item" :border]})
 
 (deftest every-control-edge-is-visible
   (let [found (distinct (for [[sels decls] (leaf-rules) s sels
@@ -504,7 +505,7 @@
                           [s t]))
         edges (remove dividers found)]
     (is (= dividers (set (filter dividers found))) "every divider named is still drawn")
-    (is (= 58 (count edges)) (str "witness: the edges — the kit's 46 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text; K11's progress accent and the spinner's two; K12's list link's ring, its lines named dividers), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
+    (is (= 61 (count edges)) (str "witness: the edges — the kit's 49 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text; K11's progress accent and the spinner's two; K12's list link's ring, its lines named dividers; K13's rings on the collapse's and the accordion's summaries and the scroller), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
     (doseq [[s t] edges bg [:background :surface :surface-alt]]
       (testing (str s " " t)
         (is (= :ui (audited [bg t])) "an audited non-text pair")
@@ -894,6 +895,11 @@
    'pager     [(ui/pager req {:previous "/a" :next "/b" :where "w" :pages [["/a" 1] ["/b" 2]] :current 2})]
    'badge     [(ui/badge :info "x")]
    'card      [(ui/card "x")]
+   'card-group [(ui/card-group (ui/card {:image {:src "/i.png" :alt "i"} :nav (ui/tabs-nav req {:label "C" :items [["/a" "A"]]})} "x") (ui/card "y"))]
+   'figure    [(ui/figure {:image {:src "/i.png" :alt "i"} :caption "c"})]
+   'collapse  [(ui/collapse {:summary "s" :name "g"} "x")]
+   'accordion [(ui/accordion {:items [["a" "x"] ["b" "y"]] :name "g" :open 0})]
+   'scroller  [(ui/scroller {:label "s"} "a" "b")]
    'alert     [(ui/alert req :ok {:heading "h" :dismiss-href "/a"} "x")]
    'progress  [(ui/progress {:label "p" :value 1})]
    'meter     [(ui/meter {:label "m" :value 0.5})]
@@ -930,7 +936,7 @@
                  [tag classes (first ancestors)])]
     (is (= (set (keys fixtures)) (set (remove '#{words cell} (keys (ns-publics 'dev.arkaitz.uikit-base)))))
         "every public component is drawn here, so a new one needs its fixture")
-    (is (= 40 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close, K10's switch, range, floating input, a grouped field's input and button, and the input group's, K11's alert dismiss link, K12's pill, two list links and two numbered pages — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
+    (is (= 45 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close, K10's switch, range, floating input, a grouped field's input and button, and the input group's, K11's alert dismiss link, K12's pill, two list links and two numbered pages, K13's card nav link, a collapse's summary, an accordion's two and the scroller — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
     (is (= [] bare) "each wears the ring, through a class of its own or its kit ancestor's")
     (is (= [] (for [[sels decls] (leaf-rules) :let [v (get decls "outline")] :when v :when (not= :focus-ring (palette-var v))] [sels v]))
         "no rule takes the ring away: an outline is the ring")

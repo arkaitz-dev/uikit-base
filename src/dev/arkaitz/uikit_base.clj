@@ -130,6 +130,18 @@
            (security/csrf-field request)]
           body)))
 
+(defn- nothing?
+  "Whether `x` shows nothing: nil, or blank text."
+  [x]
+  (or (nil? x) (and (string? x) (str/blank? x))))
+
+(defn- named!
+  "Refuses `label` unless it is text that can name `component`: a screen reader reads it
+  as the component's name."
+  [component label]
+  (when-not (and (string? label) (not (str/blank? label)))
+    (throw (ex-info (str "uikit-base: " component " is named by its label") {:label label}))))
+
 (defn- label!
   "`l` when it is text a button can show, refused by name otherwise."
   [component k l]
@@ -225,8 +237,7 @@
   loose ones. The rest of `opts` are its attributes; its role and name are its own."
   [opts & body]
   (let [label (:label opts)]
-    (when-not (and (string? label) (not (str/blank? label)))
-      (throw (ex-info "uikit-base: a button-group is named by its label" {:label label})))
+    (named! "a button-group" label)
     (into [:div (with-attrs {:class "ui-btn-group" :role "group" :aria-label label} (dissoc opts :label) [:role :aria-label])]
           body)))
 
@@ -680,8 +691,7 @@
   `:animated? true` moves the stripes, which stop where the reader asked for reduced
   motion. Its value, max and name are its own; `attrs` are the rest."
   [{:keys [value max label striped? animated? attrs]}]
-  (when-not (and (string? label) (not (str/blank? label)))
-    (throw (ex-info "uikit-base: a progress is named by its label" {:label label})))
+  (named! "a progress" label)
   (let [mx (if (nil? max) 1 max)]
     (when-not (and (finite? mx) (pos? mx))
       (throw (ex-info "uikit-base: a progress's :max is a number above zero" {:max max})))
@@ -702,8 +712,7 @@
   lie within the range, and a low is never above a high. They and the name are its own;
   `attrs` are the rest."
   [{:keys [value min max low high optimum label attrs]}]
-  (when-not (and (string? label) (not (str/blank? label)))
-    (throw (ex-info "uikit-base: a meter is named by its label" {:label label})))
+  (named! "a meter" label)
   (let [mn (if (nil? min) 0 min) mx (if (nil? max) 1 max)]
     (when-not (and (finite? mn) (finite? mx) (< mn mx))
       (throw (ex-info "uikit-base: a meter's :min is a number below its :max" {:min min :max max})))
@@ -799,16 +808,105 @@
     subtitle (conj [:p.ui-page-head__sub subtitle])
     (seq actions) (conj (into [:div.ui-page-head__actions.ui-cluster] actions))))
 
+(defn- image!
+  "An `<img>` of `class` from `{:src :alt :decorative? :attrs}`: a src, and an alt that
+  says what it shows — empty only when `:decorative? true` says the image shows nothing a
+  reader would miss. Its src and alt are its own; `:attrs` are the rest (a width and a
+  height, so the page does not jump; `loading`)."
+  [component class {:keys [src alt decorative? attrs]}]
+  (when-not (and (string? src) (not (str/blank? src)))
+    (throw (ex-info (str "uikit-base: " component "'s image has a src") {:src src})))
+  (if decorative?
+    (when-not (or (nil? alt) (= "" alt))
+      (throw (ex-info (str "uikit-base: " component "'s decorative image has an empty alt") {:alt alt})))
+    (when-not (and (string? alt) (not (str/blank? alt)))
+      (throw (ex-info (str "uikit-base: " component "'s image has an alt that says what it shows, or is :decorative? true") {:alt alt}))))
+  [:img (with-attrs {:class class :src src :alt (if decorative? "" alt)} attrs [:src :alt])])
+
 (defn card
   "`(card attrs? & body)` → a raised surface holding its body. `attrs` may name a `:title`,
   drawn as the card's heading (an `h2`, or the `:level`, 2 to 4), and a `:footer`, set
-  under the body; the rest are the card's attributes."
+  under the body; an `:image`, `{:src :alt :decorative? :attrs}`, drawn edge to edge at
+  its top — its alt says what it shows, and is empty only when `:decorative? true`; and a
+  `:nav` — a `tabs-nav`, say — in a header strip above the title. The rest are the card's
+  attributes."
   [& more]
   (let [[opts body] (split-attrs more)
-        {:keys [title level footer] :or {level 2}} opts]
+        {:keys [title level footer image nav] :or {level 2}} opts]
     (when (and title (not (#{2 3 4} level)))
       (throw (ex-info "uikit-base: a card's level is 2, 3 or 4" {:level level})))
-    (cond-> (into (cond-> [:div (with-attrs {:class "ui-card"} (dissoc opts :title :level :footer) [])]
+    (cond-> (into (cond-> [:div (with-attrs {:class "ui-card"} (dissoc opts :title :level :footer :image :nav) [])]
+                    image (conj (image! "a card" "ui-card__img" image))
+                    nav (conj [:div.ui-card__nav nav])
                     title (conj [(keyword (str "h" level)) {:class "ui-card__head"} title]))
                   body)
       footer (conj [:div.ui-card__foot footer]))))
+
+(defn card-group
+  "`(card-group attrs? & cards)` → cards side by side as one, their edges joined, wrapping
+  on a narrow screen."
+  [& more]
+  (let [[attrs body] (split-attrs more)]
+    (into [:div (with-attrs {:class "ui-card-group"} attrs [])] body)))
+
+(defn figure
+  "`(figure {:image :caption :attrs})` → an image and the caption that says what it is: a
+  `<figure>` whose `<figcaption>` is `:caption`, required. `:image` is a card's,
+  `{:src :alt :decorative? :attrs}`, its alt required alike."
+  [{:keys [image caption attrs]}]
+  (when (nothing? caption)
+    (throw (ex-info "uikit-base: a figure has a caption" {})))
+  [:figure (with-attrs {:class "ui-figure"} attrs [])
+   (image! "a figure" "ui-figure__img" image)
+   [:figcaption.ui-figure__caption caption]])
+
+(defn- group-name!
+  "`n` when it is a name that joins details into one exclusive group, refused otherwise."
+  [component n]
+  (when-not (or (nil? n) (and (string? n) (not (str/blank? n))))
+    (throw (ex-info (str "uikit-base: " component "'s :name is the text that joins its details into one group") {:name n})))
+  n)
+
+(defn collapse
+  "`(collapse {:summary :open? :name :attrs} & body)` → a `<details>` whose `<summary>` —
+  `:summary`, required — opens and closes its body with no script: the summary is the
+  control, reached by the keyboard and ringed when focused. `:open? true` draws it open.
+  `:name` joins it to every details of that name on the page, of which the platform keeps
+  one open at a time. `:attrs` go on the details, never `open`."
+  [{:keys [summary open? name attrs]} & body]
+  (when (nothing? summary)
+    (throw (ex-info "uikit-base: a collapse has a summary" {})))
+  (group-name! "a collapse" name)
+  [:details (with-attrs (cond-> {:class "ui-collapse"} name (assoc :name name) open? (assoc :open true))
+                        (dissoc (normalised attrs) :open) [:name])
+   [:summary.ui-collapse__summary summary]
+   (into [:div.ui-collapse__body] body)])
+
+(defn accordion
+  "`(accordion {:items :name :open :attrs})` → collapses in one bordered column. `:items`,
+  `[[summary body] …]`, each summary required. With `:name` they are one group, opening
+  one closing the one open, by the platform's `details name`; without, each opens alone.
+  `:open` is the index of the item drawn open. `:attrs` go on the column."
+  [{:keys [items name open attrs]}]
+  (when (empty? items) (throw (ex-info "uikit-base: an accordion's items are one or more" {})))
+  (when (some (comp nothing? first) items)
+    (throw (ex-info "uikit-base: every item of an accordion has a summary" {})))
+  (group-name! "an accordion" name)
+  (when-not (or (nil? open) (and (int? open) (< -1 open (count items))))
+    (throw (ex-info "uikit-base: an accordion's :open is the index of one of its items" {:open open})))
+  (into [:div (with-attrs {:class "ui-accordion"} attrs [])]
+        (map-indexed (fn [i [s b]]
+                       [:details (cond-> {:class "ui-accordion__item"} name (assoc :name name) (= i open) (assoc :open true))
+                        [:summary.ui-accordion__summary s]
+                        [:div.ui-accordion__body b]])
+                     items)))
+
+(defn scroller
+  "`(scroller {:label :attrs} & items)` → items in one line that scrolls sideways, each
+  snapping to its start: a region named by `:label`, which is required, and reached by the
+  keyboard, which is how a keyboard scrolls it — as a wide table's is. `:attrs` go on the
+  region; its role, name and tabindex are its own."
+  [{:keys [label attrs]} & items]
+  (named! "a scroller" label)
+  [:div (with-attrs {:class "ui-scroller" :role "region" :tabindex "0" :aria-label label} attrs [:role :tabindex :aria-label])
+   (into [:ul.ui-scroller__list] (for [i items] [:li.ui-scroller__item i]))])

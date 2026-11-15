@@ -23,7 +23,8 @@
     /* The focus ring, on everything the kit makes focusable. */
     .ui-btn:focus-visible, .ui-input:focus-visible, .ui-check:focus-visible, .ui-pager a:focus-visible, .ui-card a:focus-visible,
     .ui-prose a:focus-visible, .ui-crumbs a:focus-visible, .ui-tabs a:focus-visible,
-    .ui-table-wrap:focus-visible, .ui-close:focus-visible, .ui-range:focus-visible, .ui-list-group__action:focus-visible {
+    .ui-table-wrap:focus-visible, .ui-close:focus-visible, .ui-range:focus-visible, .ui-list-group__action:focus-visible,
+    .ui-collapse__summary:focus-visible, .ui-accordion__summary:focus-visible, .ui-scroller:focus-visible {
       outline: var(--ui-focus-outline-width) solid var(--ui-focus-ring);
       outline-offset: var(--ui-focus-outline-width);
       box-shadow: 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
@@ -385,6 +386,46 @@
     }
     .ui-card__head { margin: 0 0 var(--ui-spacing-sm); font-size: var(--ui-font-size-lg); line-height: 1.25; }
     .ui-card__foot { margin-block-start: var(--ui-spacing-md); padding-block-start: var(--ui-spacing-sm); border-top: 1px solid var(--ui-border); }
+    /* An image edge to edge at the top, and a header strip for a nav, over the padding. */
+    .ui-card__img {
+      display: block; inline-size: calc(100% + 2 * var(--ui-spacing-md)); max-inline-size: none; block-size: auto;
+      margin: calc(-1 * var(--ui-spacing-md)) calc(-1 * var(--ui-spacing-md)) var(--ui-spacing-md);
+      border-start-start-radius: var(--ui-radius-lg); border-start-end-radius: var(--ui-radius-lg);
+    }
+    .ui-card__nav {
+      margin: calc(-1 * var(--ui-spacing-md)) calc(-1 * var(--ui-spacing-md)) var(--ui-spacing-md);
+      padding: var(--ui-spacing-xs) var(--ui-spacing-md) 0; color: var(--ui-on-surface-alt); background: var(--ui-surface-alt);
+      border-block-end: 1px solid var(--ui-border); border-start-start-radius: var(--ui-radius-lg); border-start-end-radius: var(--ui-radius-lg);
+    }
+    .ui-card__img + .ui-card__nav { margin-block-start: calc(-1 * var(--ui-spacing-md)); border-radius: 0; }
+    .ui-card__nav > .ui-tabs { margin-block-end: 0; }
+    .ui-card__nav > .ui-tabs > ul { border-block-end: 0; }
+    .ui-card-group { display: flex; flex-wrap: wrap; }
+    .ui-card-group > .ui-card { flex: 1 0 16rem; }
+    .ui-card-group > .ui-card:not(:first-child) { margin-inline-start: -1px; border-start-start-radius: 0; border-end-start-radius: 0; }
+    .ui-card-group > .ui-card:not(:last-child) { border-start-end-radius: 0; border-end-end-radius: 0; }
+
+    /* Figures: an image and the caption that says what it is. */
+    .ui-figure { display: inline-block; margin: 0 0 var(--ui-spacing-md); }
+    .ui-figure__img { display: block; max-inline-size: 100%; block-size: auto; border-radius: var(--ui-radius-md); }
+    .ui-figure__caption { margin-block-start: var(--ui-spacing-xs); font-size: var(--ui-font-size-sm); color: var(--ui-text-muted); }
+
+    /* Collapses and accordions: the platform's details, its summary the control. */
+    .ui-collapse { display: block; }
+    .ui-collapse__summary { cursor: pointer; color: var(--ui-link); }
+    .ui-collapse__body { padding-block-start: var(--ui-spacing-sm); }
+    .ui-accordion { color: var(--ui-on-surface); background: var(--ui-surface); border: 1px solid var(--ui-border); border-radius: var(--ui-radius-md); }
+    .ui-accordion__item { display: block; }
+    .ui-accordion__item + .ui-accordion__item { border-block-start: 1px solid var(--ui-border); }
+    .ui-accordion__summary { padding: var(--ui-spacing-sm) var(--ui-spacing-md); font-weight: 600; cursor: pointer; }
+    .ui-accordion__item[open] > .ui-accordion__summary { color: var(--ui-on-surface-alt); background: var(--ui-surface-alt); }
+    .ui-accordion__body { padding: var(--ui-spacing-sm) var(--ui-spacing-md) var(--ui-spacing-md); }
+
+    /* A scroller: one line that scrolls sideways, each item snapping to its start; a
+     * positioned region, so what it hides is clipped by it. */
+    .ui-scroller { position: relative; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: inline mandatory; }
+    .ui-scroller__list { display: flex; gap: var(--ui-spacing-md); list-style: none; padding: 0; margin: 0; }
+    .ui-scroller__item { flex: 0 0 auto; scroll-snap-align: start; }
 
     /* Layout: a stack of blocks, a cluster that wraps, a grid of as many columns as fit. */
     .ui-stack { display: grid; gap: var(--ui-spacing-md); align-content: start; }

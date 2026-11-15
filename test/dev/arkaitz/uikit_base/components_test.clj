@@ -243,9 +243,13 @@
                             (ui/table {:rows [["a"]] :striped? true :hover? true :bordered? true :compact? true})
                             (ui/pager req {:pages [["/a" 1]] :size :sm}) (ui/pager req {:next "/a" :size :lg})
                             (ui/tabs-nav req {:label "S" :items [["/a" "A"]] :style :pills :fill? true})
-                            (ui/tabs-nav req {:label "S" :items [["/a" "A"]] :justify? true})))
+                            (ui/tabs-nav req {:label "S" :items [["/a" "A"]] :justify? true})
+                            (ui/card-group (ui/card {:image {:src "/i" :alt "i"} :nav "n"} "x"))
+                            (ui/figure {:image {:src "/i" :alt "i"} :caption "c"})
+                            (ui/collapse {:summary "s"} "b") (ui/accordion {:items [["a" "b"]]})
+                            (ui/scroller {:label "s"} "a")))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 99 (count classes)) (str "witness: the classes emitted — 0.5.0's 56, then K9's six outlines, link, block, button-group and close, K10's two sizes, switch, range, floating field, input group and its text, K11's alert and its three parts, corner badge, progress and its two, meter, spinner, placeholders and placeholder, K12's list group and its three, four table variants, numbered pages and two pager sizes, pills, fill and justify — a count measured once: " (sort classes)))
+    (is (= 115 (count classes)) (str "witness: the classes emitted — 0.5.0's 56, then K9's six outlines, link, block, button-group and close, K10's two sizes, switch, range, floating field, input group and its text, K11's alert and its three parts, corner badge, progress and its two, meter, spinner, placeholders and placeholder, K12's list group and its three, four table variants, numbered pages and two pager sizes, pills, fill and justify, K13's card image, card nav, card group, figure and its two, collapse and its two, accordion and its three, scroller and its two — a count measured once: " (sort classes)))
     (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{>]")) kit) classes))
         "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
@@ -1011,3 +1015,72 @@
   (doseq [st [:pill "pills" :underline]]
     (is (= ["uikit-base: a tabs-nav's :style is :tabs or :pills" {:style st}] (refusal #(ui/tabs-nav req {:label "S" :items [["/a" "A"]] :style st}))) (pr-str st)))
   (is (= ["uikit-base: a tabs-nav is :fill? or :justify?, not both" {}] (refusal #(ui/tabs-nav req {:label "S" :items [["/a" "A"]] :fill? true :justify? true})))))
+
+;; --- K13: cards and media ---------------------------------------------------------------
+
+(deftest a-cards-image-says-what-it-shows-unless-it-says-it-shows-nothing
+  (is (= (str "<div class=\"ui-card\"><img alt=\"A &lt;lake&gt;\" class=\"ui-card__img x\" height=\"90\" src=\"/l.png?a=1&amp;b=2\" width=\"160\" />"
+              "<h3 class=\"ui-card__head\">T</h3>b</div>")
+         (html (ui/card {:image {:src "/l.png?a=1&b=2" :alt "A <lake>" :attrs {:class "x" :width 160 :height 90 :src "/evil.png" "ALT" ""}} :title "T" :level 3} "b")))
+      "the image first, edge to edge; its src and alt are its own")
+  (is (str/includes? (html (ui/card {:image {:src "/d.png" :decorative? true}} "b")) "<img alt=\"\" class=\"ui-card__img\" src=\"/d.png\" />")
+      "decorative, and said so: an empty alt")
+  (is (= [:div {:class "ui-card"} "b"] (ui/card {:image nil :nav nil} "b")) "no image and no nav, the card it was")
+  (doseq [im [{:src "/a.png"} {:src "/a.png" :alt ""} {:src "/a.png" :alt "  "} {:src "/a.png" :alt :k}]]
+    (is (= ["uikit-base: a card's image has an alt that says what it shows, or is :decorative? true" {:alt (:alt im)}]
+           (refusal #(ui/card {:image im} "b"))) (pr-str im)))
+  (is (= ["uikit-base: a card's decorative image has an empty alt" {:alt "A lake"}] (refusal #(ui/card {:image {:src "/a.png" :alt "A lake" :decorative? true}} "b"))))
+  (doseq [src [nil "" " " :a]]
+    (is (= ["uikit-base: a card's image has a src" {:src src}] (refusal #(ui/card {:image {:src src :alt "a"}} "b"))) (pr-str src))))
+
+(deftest a-cards-nav-sits-in-a-header-strip-above-its-title
+  (is (= (str "<div class=\"ui-card\"><img alt=\"i\" class=\"ui-card__img\" src=\"/i.png\" /><div class=\"ui-card__nav\"><nav>n</nav></div>"
+              "<h2 class=\"ui-card__head\">T</h2>b<div class=\"ui-card__foot\">f</div></div>")
+         (html (ui/card {:image {:src "/i.png" :alt "i"} :nav [:nav "n"] :title "T" :footer "f"} "b")))
+      "image, nav, title, body, footer; neither option an attribute"))
+
+(deftest a-card-group-holds-cards-side-by-side
+  (is (= "<div class=\"ui-card-group x\"><div class=\"ui-card\">a</div><div class=\"ui-card\">b</div></div>"
+         (html (ui/card-group {:class "x"} (ui/card "a") (ui/card "b"))))))
+
+(deftest a-figure-is-an-image-and-the-caption-that-says-what-it-is
+  (is (= "<figure class=\"ui-figure x\"><img alt=\"Chart\" class=\"ui-figure__img\" src=\"/c.svg\" /><figcaption class=\"ui-figure__caption\">Sales &lt;2026&gt;</figcaption></figure>"
+         (html (ui/figure {:image {:src "/c.svg" :alt "Chart"} :caption "Sales <2026>" :attrs {:class "x"}}))))
+  (doseq [c [nil "" " "]]
+    (is (= ["uikit-base: a figure has a caption" {}] (refusal #(ui/figure {:image {:src "/c.svg" :alt "C"} :caption c}))) (pr-str c)))
+  (is (= ["uikit-base: a figure's image has an alt that says what it shows, or is :decorative? true" {:alt nil}]
+         (refusal #(ui/figure {:image {:src "/c.svg"} :caption "c"})))))
+
+(deftest a-collapse-is-a-details-whose-summary-opens-it
+  (is (= "<details class=\"ui-collapse x\"><summary class=\"ui-collapse__summary\">More &lt;info&gt;</summary><div class=\"ui-collapse__body\"><p>b</p></div></details>"
+         (html (ui/collapse {:summary "More <info>" :attrs {:class "x" :open true "OPEN" true}} [:p "b"])))
+      "closed unless asked, whatever the attrs say")
+  (is (= "<details class=\"ui-collapse\" name=\"faq\" open=\"open\"><summary class=\"ui-collapse__summary\">S</summary><div class=\"ui-collapse__body\">b</div></details>"
+         (html (ui/collapse {:summary "S" :open? true :name "faq" :attrs {:name "other"}} "b")))
+      "open when asked; its group's name its own")
+  (doseq [n ["" " " :faq]]
+    (is (= ["uikit-base: a collapse's :name is the text that joins its details into one group" {:name n}] (refusal #(ui/collapse {:summary "S" :name n} "b"))) (pr-str n)))
+  (doseq [s [nil "" " "]]
+    (is (= ["uikit-base: a collapse has a summary" {}] (refusal #(ui/collapse {:summary s} "b"))) (pr-str s))))
+
+(deftest an-accordion-is-one-group-of-details-one-open-at-a-time
+  (is (= (str "<div class=\"ui-accordion x\"><details class=\"ui-accordion__item\" name=\"faq\"><summary class=\"ui-accordion__summary\">A&lt;</summary><div class=\"ui-accordion__body\">a</div></details>"
+              "<details class=\"ui-accordion__item\" name=\"faq\" open=\"open\"><summary class=\"ui-accordion__summary\">B</summary><div class=\"ui-accordion__body\"><p>b</p></div></details></div>")
+         (html (ui/accordion {:items [["A<" "a"] ["B" [:p "b"]]] :name "faq" :open 1 :attrs {:class "x"}})))
+      "one name, so the platform keeps one open; the one asked for open")
+  (is (= "<div class=\"ui-accordion\"><details class=\"ui-accordion__item\"><summary class=\"ui-accordion__summary\">A</summary><div class=\"ui-accordion__body\">a</div></details></div>"
+         (html (ui/accordion {:items [["A" "a"]]})))
+      "no name, each opens alone; no open, all closed")
+  (doseq [o [2 -1 "0" 0.0]]
+    (is (= ["uikit-base: an accordion's :open is the index of one of its items" {:open o}] (refusal #(ui/accordion {:items [["A" "a"] ["B" "b"]] :open o}))) (pr-str o)))
+  (is (= ["uikit-base: an accordion's items are one or more" {}] (refusal #(ui/accordion {:items []}))))
+  (is (= ["uikit-base: every item of an accordion has a summary" {}] (refusal #(ui/accordion {:items [["A" "a"] [" " "b"]]}))))
+  (is (= ["uikit-base: an accordion's :name is the text that joins its details into one group" {:name ""}] (refusal #(ui/accordion {:items [["A" "a"]] :name ""})))))
+
+(deftest a-scroller-is-a-named-region-the-keyboard-reaches
+  (is (= (str "<div aria-label=\"Courses &lt;new&gt;\" class=\"ui-scroller x\" id=\"s\" role=\"region\" tabindex=\"0\"><ul class=\"ui-scroller__list\">"
+              "<li class=\"ui-scroller__item\">a</li><li class=\"ui-scroller__item\"><b>b</b></li></ul></div>")
+         (html (ui/scroller {:label "Courses <new>" :attrs {:class "x" :id "s" :role "list" :tabindex "-1" "ARIA-LABEL" "o"}} "a" [:b "b"])))
+      "its role, name and place in the tab order are its own")
+  (doseq [l [nil "" " " :k]]
+    (is (= ["uikit-base: a scroller is named by its label" {:label l}] (refusal #(ui/scroller {:label l} "a"))) (pr-str l))))
