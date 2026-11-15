@@ -468,13 +468,17 @@
 
   `scroll-label` puts the table in a region that scrolls sideways on a narrow screen,
   named by it and reachable by the keyboard, which is how a keyboard scrolls it; without
-  one the table is drawn alone."
-  [{:keys [caption head rows row-header? attrs row-attrs scroll-label]}]
+  one the table is drawn alone. `:striped? true` grounds every other body row,
+  `:hover? true` the row under the pointer, `:bordered? true` draws every cell's edge and
+  `:compact? true` halves the cells' padding."
+  [{:keys [caption head rows row-header? attrs row-attrs scroll-label striped? hover? bordered? compact?]}]
   (when (and (some? scroll-label) (not (and (string? scroll-label) (not (str/blank? scroll-label)))))
     (throw (ex-info "uikit-base: a table's scroll-label names its region" {:scroll-label scroll-label})))
   (let [gone  (set (keep-indexed (fn [i h] (when (nil? h) i)) head))
         kept  (fn [cells] (->> cells (map-indexed vector) (remove (comp gone first)) (map second)))
-        table [:table (with-attrs {:class "ui-table"} attrs [])
+        class (str/join " " (cond-> ["ui-table"] striped? (conj "ui-table--striped") hover? (conj "ui-table--hover")
+                                     bordered? (conj "ui-table--bordered") compact? (conj "ui-table--compact")))
+        table [:table (with-attrs {:class class} attrs [])
                (when caption [:caption caption])
                (when (seq head) [:thead [:tr (for [h (kept head)] (cell-of :th {:scope "col"} h))]])
                [:tbody (for [row rows]
@@ -518,6 +522,8 @@
       (some-> (:wb/tr request) (apply [k []]))
       (get-in words [:en :uikit-base (keyword (name k))])))
 
+(declare named-items!)
+
 (defn pager
   "`(pager request opts)` → links to the page before and after, or nil when there is
   neither. `previous` and `next` are paths (as web-base's `paging/path` answers them) or
@@ -526,13 +532,23 @@
   words in the reader's language — `:uikit-base/previous`, `:uikit-base/next`,
   `:uikit-base/pages`, which the plugin brings and a host's dictionary may override, in
   English where neither speaks the reader's — unless `previous-label`, `next-label` or
-  `label` say otherwise."
-  [request {:keys [previous next where label previous-label next-label attrs]}]
-  (when (or previous next)
-    [:nav (with-attrs {:class "ui-pager" :aria-label (kit-word request label :uikit-base/pages)} attrs [])
-     (when previous (wb/link previous {:rel "prev"} (kit-word request previous-label :uikit-base/previous)))
-     (when where [:span.ui-pager__where where])
-     (when next (wb/link next {:rel "next"} (kit-word request next-label :uikit-base/next)))]))
+  `label` say otherwise. `pages`, `[[path n] …]`, numbers the pages between the two, each
+  a `wb/link`, the one whose number is `current` marked `aria-current=page`; a current
+  that is no page's number, or a page with no number, is refused. `size`, `:sm` or `:lg`,
+  sizes its type."
+  [request {:keys [previous next where label previous-label next-label attrs pages current size]}]
+  (when-not (or (nil? size) (sizes size))
+    (throw (ex-info "uikit-base: a pager's :size is :sm or :lg" {:size size})))
+  (named-items! "pager" pages)
+  (when (and (some? current) (not-any? #(= current (second %)) pages))
+    (throw (ex-info "uikit-base: a pager's current is one of its pages" {:current current})))
+  (when (or previous next (seq pages))
+    (cond-> [:nav (with-attrs {:class (cond-> "ui-pager" size (str " ui-pager--" (name size)))
+                               :aria-label (kit-word request label :uikit-base/pages)} attrs [])
+             (when previous (wb/link previous {:rel "prev"} (kit-word request previous-label :uikit-base/previous)))]
+      (seq pages) (conj (into [:ul.ui-pager__pages] (for [[p n] pages] [:li (wb/link p (when (= n current) {:aria-current "page"}) n)])))
+      true (conj (when where [:span.ui-pager__where where])
+                 (when next (wb/link next {:rel "next"} (kit-word request next-label :uikit-base/next)))))))
 
 (defn- named-items!
   "Refuses an item with nothing to name its link: a link without a name is read as its
@@ -561,8 +577,14 @@
   nav named by `label` — required, since a page holds the shell's nav beside it — whose
   `items`, `[[path label] …]`, are `wb/link`s, the one whose path is `current` marked
   `aria-current`. Links, not a tablist: each is a page. No items, two items with one
-  path, or a `current` that is no item's path, is refused; nil marks none."
-  [request {:keys [label items current attrs]}]
+  path, or a `current` that is no item's path, is refused; nil marks none. `:style
+  :pills` draws each as a pill, the current one filled; `:fill? true` shares the line
+  among the items by their width, `:justify? true` in equal parts — one or the other."
+  [request {:keys [label items current attrs style fill? justify?]}]
+  (when-not (contains? #{nil :tabs :pills} style)
+    (throw (ex-info "uikit-base: a tabs-nav's :style is :tabs or :pills" {:style style})))
+  (when (and fill? justify?)
+    (throw (ex-info "uikit-base: a tabs-nav is :fill? or :justify?, not both" {})))
   (when-not (and (string? label) (not (str/blank? label)))
     (throw (ex-info "uikit-base: a tabs-nav is named by its label" {:label label})))
   (when (or (empty? items) (not= (count items) (count (distinct (map first items)))))
@@ -570,8 +592,28 @@
   (named-items! "tabs-nav" items)
   (when (and (some? current) (not-any? #(= current (first %)) items))
     (throw (ex-info "uikit-base: a tabs-nav's current is one of its items' paths" {:current current})))
-  [:nav (with-attrs {:class "ui-tabs" :aria-label label} attrs [:aria-label])
+  [:nav (with-attrs {:class (str/join " " (cond-> ["ui-tabs"] (= :pills style) (conj "ui-tabs--pills")
+                                             fill? (conj "ui-tabs--fill") justify? (conj "ui-tabs--justify")))
+                     :aria-label label} attrs [:aria-label])
    (into [:ul] (for [[p l] items] [:li (wb/link p (when (= p current) {:aria-current "page"}) l)]))])
+
+(defn list-group
+  "`(list-group opts)` → items in one bordered column. `:items`, `[[path content] …]`: an
+  item with a path is a `wb/link` that fills its row, the one whose path is `:current`
+  marked `aria-current=page`; an item with a nil path holds its content as it is — text,
+  or an `action` whose button acts on it. `:flush? true` drops the outer edge and
+  corners, for a list inside a card; `:attrs` go on the list. No items, a current that is
+  no item's path, or an item with nothing in it, is refused."
+  [{:keys [items current flush? attrs]}]
+  (when (empty? items)
+    (throw (ex-info "uikit-base: a list-group's items are one or more" {})))
+  (named-items! "list-group" items)
+  (when (and (some? current) (not-any? #(= current (first %)) items))
+    (throw (ex-info "uikit-base: a list-group's current is one of its items' paths" {:current current})))
+  (into [:ul (with-attrs {:class (cond-> "ui-list-group" flush? (str " ui-list-group--flush"))} attrs [])]
+        (for [[p c] items]
+          [:li.ui-list-group__item
+           (if (some? p) (wb/link p (cond-> {:class "ui-list-group__action"} (= p current) (assoc :aria-current "page")) c) c)])))
 
 (defn secret
   "`(secret request {:id :label :value :attrs})` → a value shown once — a token, a feed's

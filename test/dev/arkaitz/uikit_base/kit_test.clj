@@ -198,6 +198,7 @@
       "a modifier of more than one word implies its base, as a one-word modifier does")
   (is (= [[0 0 0] [0 1 0] [0 2 0] [0 1 1]] (mapv specificity [":where(.a, .b)" ":is(.a, a)" ".x:has(.a)" "a:not(.b)"]))
       "where counts nothing; is, has and not their most specific argument")
+  (is (= [0 2 2] (specificity ".t > tbody > tr:nth-child(odd) > *")) "a pseudo-class's argument is no element, and * counts nothing")
   (is (= {:rules [".a"] :keyframes #{"spin"}}
          (let [p (parse-css "@layer k { @keyframes spin { from { opacity: 0; } to { opacity: 1; } } .a { animation: spin 1s; } }")]
            {:rules (mapcat :selectors (:rules p)) :keyframes (:keyframes p)}))
@@ -250,7 +251,9 @@
         (mapv + (specificity outer) arg))
       [(count (re-seq #"#[\w-]+" sel))
        (count (re-seq #"\.[\w-]+|\[[^\]]*\]|(?<!:):[a-z-]+" sel))
-       (+ (count (re-seq #"(?:^|[\s>+~(])[a-z][a-z0-9]*" sel)) (count (re-seq #"::[a-z-]+" sel)))])))
+       ;; Past :is, :where, :not and :has, a parenthesis holds no selector — `:nth-child(odd)`
+       ;; — so what follows one is no element.
+       (+ (count (re-seq #"(?:^|[\s>+~])[a-z][a-z0-9]*" sel)) (count (re-seq #"::[a-z-]+" sel)))])))
 
 (defn- implied
   "Every compound an element matching `compound` also matches among the kit's rules: its
@@ -440,7 +443,7 @@
     (is (= [0 2 1] (specificity ".ui-pager a:focus-visible")) "witness: the test's specificity")
     (is (= #{".ui-btn--primary:hover" ".ui-btn--primary" ".ui-btn:hover" ".ui-btn"} (set (selectors-implied ".ui-btn--primary:hover")))
         "witness: a variant's hover is also the base's hover")
-    (is (= 154 (count pairs)) (str "witness: every painted pair found — the kit's 108 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one, the close button in two; K10's floating label on three canvases and the input group's text), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
+    (is (= 164 (count pairs)) (str "witness: every painted pair found — the kit's 118 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one, the close button in two; K10's floating label on three canvases and the input group's text; K12's stripe, hovered row, current page, current pill, the list group, its link on three canvases, hovered and current), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
     (is (= 21.0 (wcag "#000000" "#ffffff")) "witness: the test's WCAG")
     (doseq [[s bg fg :as p] pairs]
       (testing s
@@ -470,7 +473,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 279 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 207 (0.5.0's 119; K9's 42 outline, 4 link, 5 pressed and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1) and the utilities' 72, a count measured once: " (count bearing)))
+    (is (= 300 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 228 (0.5.0's 119; K9's 42 outline, 4 link, 5 pressed and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9) and the utilities' 72, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -488,7 +491,9 @@
 (def ^:private dividers
   "Lines that separate, not edges that bound a control: drawn in `border`, which is no
   audited non-text pair, and named here one by one so a new one is decided, not inherited."
-  #{[".ui-table th" :border] [".ui-table td" :border] [".ui-row" :border] [".ui-card" :border] [".ui-tabs ul" :border] [".ui-card__foot" :border]})
+  #{[".ui-table th" :border] [".ui-table td" :border] [".ui-row" :border] [".ui-card" :border] [".ui-tabs ul" :border] [".ui-card__foot" :border]
+    [".ui-table--bordered" :border] [".ui-table--bordered > * > tr > *" :border]
+    [".ui-list-group" :border] [".ui-list-group__item + .ui-list-group__item" :border]})
 
 (deftest every-control-edge-is-visible
   (let [found (distinct (for [[sels decls] (leaf-rules) s sels
@@ -499,7 +504,7 @@
                           [s t]))
         edges (remove dividers found)]
     (is (= dividers (set (filter dividers found))) "every divider named is still drawn")
-    (is (= 57 (count edges)) (str "witness: the edges — the kit's 45 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text; K11's progress accent and the spinner's two), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
+    (is (= 58 (count edges)) (str "witness: the edges — the kit's 46 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text; K11's progress accent and the spinner's two; K12's list link's ring, its lines named dividers), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
     (doseq [[s t] edges bg [:background :surface :surface-alt]]
       (testing (str s " " t)
         (is (= :ui (audited [bg t])) "an audited non-text pair")
@@ -872,7 +877,8 @@
    'time      [(ui/time (java.time.LocalDate/of 2026 1 15) "x")]
    'page-head [(ui/page-head {:title "t" :subtitle "s" :actions [(ui/link-button "/a" "x")]})]
    'crumbs    [(ui/crumbs req {:items [["/a" "A"] [nil "B"]]})]
-   'tabs-nav  [(ui/tabs-nav req {:label "S" :items [["/a" "A"] ["/b" "B"]] :current "/a"})]
+   'tabs-nav  [(ui/tabs-nav req {:label "S" :items [["/a" "A"] ["/b" "B"]] :current "/a"}) (ui/tabs-nav req {:label "P" :items [["/a" "A"]] :current "/a" :style :pills :fill? true})]
+   'list-group [(ui/list-group {:items [["/a" "A"] ["/b" "B"] [nil "C"]] :current "/a"})]
    'secret    [(ui/secret req {:id "s" :label "S" :value "v"})]
    'sentence  [(ui/sentence {:wb/tr (wb/translator {:default-locale :en :dict {:en {:k {:d "Due %1"}}}} [:en])} :k/d (ui/time 0 "x"))]
    'thread    [(ui/thread (ui/message {:meta "m"} "x"))]
@@ -885,7 +891,7 @@
    'table     [(ui/table {:caption "c" :head ["h"] :rows [["a"]] :row-header? true :scroll-label "s"})]
    'rows      [(ui/rows (ui/row "x"))]
    'row       [(ui/row "x")]
-   'pager     [(ui/pager req {:previous "/a" :next "/b" :where "w"})]
+   'pager     [(ui/pager req {:previous "/a" :next "/b" :where "w" :pages [["/a" 1] ["/b" 2]] :current 2})]
    'badge     [(ui/badge :info "x")]
    'card      [(ui/card "x")]
    'alert     [(ui/alert req :ok {:heading "h" :dismiss-href "/a"} "x")]
@@ -920,18 +926,19 @@
         found  (filter focusable? (mapcat #(elements % ()) (vals fixtures)))
         bare   (for [[tag _ classes ancestors :as e] found
                      :when (not (or (some #(ringed (str "." %)) classes)
-                                    (some-> (first ancestors) (#(ringed (str "." % " " tag))))))]
+                                    (some #(ringed (str "." % " " tag)) ancestors)))]
                  [tag classes (first ancestors)])]
     (is (= (set (keys fixtures)) (set (remove '#{words cell} (keys (ns-publics 'dev.arkaitz.uikit-base)))))
         "every public component is drawn here, so a new one needs its fixture")
-    (is (= 35 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close, K10's switch, range, floating input, a grouped field's input and button, and the input group's, K11's alert dismiss link — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
+    (is (= 40 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close, K10's switch, range, floating input, a grouped field's input and button, and the input group's, K11's alert dismiss link, K12's pill, two list links and two numbered pages — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
     (is (= [] bare) "each wears the ring, through a class of its own or its kit ancestor's")
     (is (= [] (for [[sels decls] (leaf-rules) :let [v (get decls "outline")] :when v :when (not= :focus-ring (palette-var v))] [sels v]))
         "no rule takes the ring away: an outline is the ring")
     (let [rules  (leaf-rules)
           shaded (distinct (for [[sels decls] rules s sels :when (contains? decls "box-shadow")
                                  :when (not (str/ends-with? s ":focus-visible"))
-                                 :when (or (some #(str/starts-with? s %) ringed)
+                                 ;; What a variant draws is drawn on its base too: `.ui-tabs--pills a` is a `.ui-tabs a`.
+                                 :when (or (some (fn [r] (some #(str/starts-with? % r) (selectors-implied s))) ringed)
                                            ;; A utility may sit on anything focusable.
                                            (and (re-matches #"\.ui-[\w-]+" s) (some #{s} (mapcat :selectors (:rules utilities-parsed)))))] s))]
       (is (seq shaded) "witness: a focusable that casts a shadow of its own was found")

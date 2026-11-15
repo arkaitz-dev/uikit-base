@@ -238,9 +238,14 @@
                             (ui/alert req :ok {:heading "h" :dismiss-href "/a"} "x")
                             (ui/badge :info {:corner? true} "1")
                             (ui/progress {:label "p" :animated? true}) (ui/meter {:label "m" :value 1})
-                            (ui/spinner req) (ui/placeholder req)))
+                            (ui/spinner req) (ui/placeholder req)
+                            (ui/list-group {:items [["/a" "A"] [nil "B"]] :flush? true})
+                            (ui/table {:rows [["a"]] :striped? true :hover? true :bordered? true :compact? true})
+                            (ui/pager req {:pages [["/a" 1]] :size :sm}) (ui/pager req {:next "/a" :size :lg})
+                            (ui/tabs-nav req {:label "S" :items [["/a" "A"]] :style :pills :fill? true})
+                            (ui/tabs-nav req {:label "S" :items [["/a" "A"]] :justify? true})))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 85 (count classes)) (str "witness: the classes emitted — 0.5.0's 56, then K9's six outlines, link, block, button-group and close, K10's two sizes, switch, range, floating field, input group and its text, K11's alert and its three parts, corner badge, progress and its two, meter, spinner, placeholders and placeholder — a count measured once: " (sort classes)))
+    (is (= 99 (count classes)) (str "witness: the classes emitted — 0.5.0's 56, then K9's six outlines, link, block, button-group and close, K10's two sizes, switch, range, floating field, input group and its text, K11's alert and its three parts, corner badge, progress and its two, meter, spinner, placeholders and placeholder, K12's list group and its three, four table variants, numbered pages and two pager sizes, pills, fill and justify — a count measured once: " (sort classes)))
     (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{>]")) kit) classes))
         "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
@@ -959,3 +964,50 @@
   (is (str/includes? (html (ui/placeholder {:wb/tr (tr-for :es)})) "<span class=\"ui-sr-only\">Cargando…</span>"))
   (doseq [n [0 -1 1.5 "2" nil]]
     (is (= ["uikit-base: a placeholder's :lines is a whole number from 1" {:lines n}] (refusal #(ui/placeholder {} {:lines n}))) (pr-str n))))
+
+;; --- K12: lists, tables, navigation -----------------------------------------------------
+
+(defn- with-class [link cls] (str/replace link "<a href" (str "<a class=\"" cls "\" href")))
+
+(deftest a-list-group-links-its-items-marks-the-current-one-and-holds-the-rest
+  (is (= (str "<ul class=\"ui-list-group x\" id=\"l\"><li class=\"ui-list-group__item\">" (with-class (L "/a" nil "A&lt;") "ui-list-group__action") "</li>"
+              "<li class=\"ui-list-group__item\">" (str/replace (with-class (L "/b" nil "B") "ui-list-group__action") "<a class" "<a aria-current=\"page\" class") "</li>"
+              "<li class=\"ui-list-group__item\"><b>C</b></li></ul>")
+         (html (ui/list-group {:items [["/a" "A<"] ["/b" "B"] [nil [:b "C"]]] :current "/b" :attrs {:class "x" :id "l"}})))
+      "a path is a link filling its row, the current one marked; nil, the content as it is")
+  (is (str/starts-with? (html (ui/list-group {:items [[nil "x"]] :flush? true})) "<ul class=\"ui-list-group ui-list-group--flush\"><li")
+      "flush is a class, never an attribute")
+  (is (= ["uikit-base: a list-group's items are one or more" {}] (refusal #(ui/list-group {:items []}))))
+  (is (= ["uikit-base: a list-group's current is one of its items' paths" {:current "/z"}] (refusal #(ui/list-group {:items [["/a" "A"]] :current "/z"}))))
+  (is (= ["uikit-base: every item of a list-group has a label" {}] (refusal #(ui/list-group {:items [["/a" " "]]}))))
+  (is (= ["web-base: link's href must be a path on this origin" {:wb/link :href}] (refusal #(ui/list-group {:items [["//evil" "A"]]})))))
+
+(deftest a-tables-variants-are-classes-of-the-table
+  (is (= "<table class=\"ui-table ui-table--striped ui-table--hover ui-table--bordered ui-table--compact x\"><tbody><tr><td>a</td></tr></tbody></table>"
+         (html (ui/table {:rows [["a"]] :striped? true :hover? true :bordered? true :compact? true :attrs {:class "x"}}))))
+  (is (= "<table class=\"ui-table ui-table--hover\"><tbody><tr><td>a</td></tr></tbody></table>" (html (ui/table {:rows [["a"]] :hover? true :striped? false})))))
+
+(deftest a-pager-numbers-its-pages-and-marks-the-current-one
+  (let [cur #(str/replace (L %1 nil %2) "<a href" "<a aria-current=\"page\" href")]
+    (is (= (str "<nav aria-label=\"Pages\" class=\"ui-pager ui-pager--sm\">" (L "/l?p=1" "prev" "Previous")
+                "<ul class=\"ui-pager__pages\"><li>" (L "/l?p=1" nil "1") "</li><li>" (cur "/l?p=2" "2") "</li><li>" (L "/l?p=3" nil "3") "</li></ul>"
+                (L "/l?p=3" "next" "Next") "</nav>")
+           (html (ui/pager {} {:previous "/l?p=1" :next "/l?p=3" :pages [["/l?p=1" 1] ["/l?p=2" 2] ["/l?p=3" 3]] :current 2 :size :sm})))
+        "the previous, the pages, the next, the current one marked"))
+  (is (= (str "<nav aria-label=\"Pages\" class=\"ui-pager ui-pager--lg\"><ul class=\"ui-pager__pages\"><li>" (L "/l" nil "1") "</li></ul></nav>")
+         (html (ui/pager {} {:pages [["/l" 1]] :size :lg})))
+      "pages alone are a pager; no current, none marked")
+  (is (= [:nav {:class "ui-pager" :aria-label "Pages"} (wb/link "/n" {:rel "prev"} "Previous") nil nil]
+         (ui/pager {} {:previous "/n"}))
+      "witness: without pages, the Hiccup's shape is 0.5.0's — one place for each of previous, where and next")
+  (is (= ["uikit-base: a pager's current is one of its pages" {:current 4}] (refusal #(ui/pager {} {:pages [["/l" 1]] :current 4}))))
+  (is (= ["uikit-base: a pager's :size is :sm or :lg" {:size :md}] (refusal #(ui/pager {} {:next "/n" :size :md}))))
+  (is (= ["uikit-base: every item of a pager has a label" {}] (refusal #(ui/pager {} {:pages [["/l" nil]]}))))
+  (is (= ["web-base: link's href must be a path on this origin" {:wb/link :href}] (refusal #(ui/pager {} {:pages [["https://e.test/" 1]]})))))
+
+(deftest a-tabs-nav-may-be-pills-and-share-its-line
+  (is (str/starts-with? (html (ui/tabs-nav req {:label "S" :items [["/a" "A"]] :style :pills :fill? true})) "<nav aria-label=\"S\" class=\"ui-tabs ui-tabs--pills ui-tabs--fill\"><ul>"))
+  (is (str/starts-with? (html (ui/tabs-nav req {:label "S" :items [["/a" "A"]] :style :tabs :justify? true :attrs {:class "x"}})) "<nav aria-label=\"S\" class=\"ui-tabs ui-tabs--justify x\"><ul>"))
+  (doseq [st [:pill "pills" :underline]]
+    (is (= ["uikit-base: a tabs-nav's :style is :tabs or :pills" {:style st}] (refusal #(ui/tabs-nav req {:label "S" :items [["/a" "A"]] :style st}))) (pr-str st)))
+  (is (= ["uikit-base: a tabs-nav is :fill? or :justify?, not both" {}] (refusal #(ui/tabs-nav req {:label "S" :items [["/a" "A"]] :fill? true :justify? true})))))

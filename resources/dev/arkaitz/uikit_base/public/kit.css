@@ -23,7 +23,7 @@
     /* The focus ring, on everything the kit makes focusable. */
     .ui-btn:focus-visible, .ui-input:focus-visible, .ui-check:focus-visible, .ui-pager a:focus-visible, .ui-card a:focus-visible,
     .ui-prose a:focus-visible, .ui-crumbs a:focus-visible, .ui-tabs a:focus-visible,
-    .ui-table-wrap:focus-visible, .ui-close:focus-visible, .ui-range:focus-visible {
+    .ui-table-wrap:focus-visible, .ui-close:focus-visible, .ui-range:focus-visible, .ui-list-group__action:focus-visible {
       outline: var(--ui-focus-outline-width) solid var(--ui-focus-ring);
       outline-offset: var(--ui-focus-outline-width);
       box-shadow: 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
@@ -226,6 +226,12 @@
     .ui-table th, .ui-table td { padding: var(--ui-spacing-sm); text-align: start; border-bottom: 1px solid var(--ui-border); }
     .ui-table thead th { border-bottom: 2px solid var(--ui-border-strong); }
     .ui-table .ui-num { text-align: end; font-variant-numeric: tabular-nums; }
+    /* Variants: stripes on the alternate surface, the hovered row on the hover surface, each
+     * with its own audited ink; every cell's edge; half the padding. */
+    .ui-table--striped > tbody > tr:nth-child(odd) > * { color: var(--ui-on-surface-alt); background: var(--ui-surface-alt); }
+    .ui-table--hover > tbody > tr:hover > * { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
+    .ui-table--bordered, .ui-table--bordered > * > tr > * { border: 1px solid var(--ui-border); }
+    .ui-table--compact > * > tr > * { padding: var(--ui-spacing-xs); }
 
     /* Rows: a list whose rows wrap, each a line of its parts. */
     .ui-rows { list-style: none; padding: 0; margin: 0; }
@@ -240,6 +246,14 @@
     .ui-pager { display: flex; gap: var(--ui-spacing-md); align-items: baseline; margin-block: var(--ui-spacing-md); }
     .ui-pager a { color: var(--ui-link); padding-block: var(--ui-spacing-xs); }
     .ui-pager__where { color: var(--ui-text-muted); }
+    .ui-pager__pages { display: flex; flex-wrap: wrap; gap: var(--ui-spacing-xs); list-style: none; padding: 0; margin: 0; }
+    .ui-pager__pages a {
+      display: inline-block; min-inline-size: 2em; padding: var(--ui-spacing-xs) var(--ui-spacing-sm);
+      text-align: center; border-radius: var(--ui-radius-md);
+    }
+    .ui-pager a[aria-current="page"] { color: var(--ui-on-primary); background: var(--ui-primary); text-decoration: none; }
+    .ui-pager--sm { font-size: var(--ui-font-size-sm); }
+    .ui-pager--lg { font-size: var(--ui-font-size-lg); }
 
     /* Breadcrumbs and tabs: where a page sits, and the views of one list. */
     .ui-crumbs { margin-block-end: var(--ui-spacing-md); }
@@ -257,6 +271,30 @@
     .ui-tabs a[aria-current="page"]:focus-visible {
       box-shadow: inset 0 -2px 0 var(--ui-primary-border), 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
     }
+    /* Pills: the current one filled, no line beneath; focused, the halo alone. */
+    .ui-tabs--pills > ul { border-block-end: 0; }
+    .ui-tabs--pills a { border-radius: var(--ui-radius-md); }
+    .ui-tabs--pills a[aria-current="page"] { color: var(--ui-on-primary); background: var(--ui-primary); box-shadow: none; }
+    .ui-tabs--pills a[aria-current="page"]:focus-visible { box-shadow: 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo); }
+    .ui-tabs--fill > ul > li { flex: 1 1 auto; text-align: center; }
+    .ui-tabs--justify > ul > li { flex: 1 1 0; text-align: center; }
+
+    /* List groups: one bordered column; an item with a path is a link that fills it. */
+    .ui-list-group {
+      list-style: none; padding: 0; margin: 0; color: var(--ui-on-surface); background: var(--ui-surface);
+      border: 1px solid var(--ui-border); border-radius: var(--ui-radius-md);
+    }
+    .ui-list-group__item { padding: var(--ui-spacing-sm) var(--ui-spacing-md); }
+    .ui-list-group__item + .ui-list-group__item { border-block-start: 1px solid var(--ui-border); }
+    .ui-list-group__item:has(> .ui-list-group__action) { padding: 0; }
+    .ui-list-group__action { display: block; padding: var(--ui-spacing-sm) var(--ui-spacing-md); color: var(--ui-link); text-decoration: none; }
+    .ui-list-group__action:hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
+    .ui-list-group__action[aria-current="page"] { color: var(--ui-on-primary); background: var(--ui-primary); }
+    .ui-list-group__item:first-child > .ui-list-group__action { border-start-start-radius: inherit; border-start-end-radius: inherit; }
+    .ui-list-group__item:last-child > .ui-list-group__action { border-end-start-radius: inherit; border-end-end-radius: inherit; }
+    .ui-list-group__item:first-child { border-start-start-radius: var(--ui-radius-md); border-start-end-radius: var(--ui-radius-md); }
+    .ui-list-group__item:last-child { border-end-start-radius: var(--ui-radius-md); border-end-end-radius: var(--ui-radius-md); }
+    .ui-list-group--flush { border-width: 0; border-radius: 0; }
 
     /* Badges: a status as a small filled label. */
     .ui-badge {
