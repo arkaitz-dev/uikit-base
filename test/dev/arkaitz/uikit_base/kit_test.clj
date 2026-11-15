@@ -39,12 +39,90 @@
               (and (= ch \;) (zero? depth)) (recur (inc i) 0 (inc i) (conj items (str/trim (subs text start i))))
               :else (recur (inc i) depth start items))))))
 
+(defn- parse-css
+  "The stylesheet as its rules, in order: each `{:selectors :decls :index :layer :conditions}`,
+  `:layer` the path of named layers it sits in (`[\"uikit\" \"components\"]`), `:conditions`
+  the preludes of the `@media` and `@starting-style` blocks around it, and the order the
+  layers were named in, per parent, as `:layer-order`. A rule nested in a rule is refused:
+  the regex this replaces read one as a selector."
+  [text]
+  (let [order (atom {}) out (atom [])
+        note! (fn [parent nm] (swap! order update parent #(if (some #{nm} %) % (conj (or % []) nm))))]
+    (letfn [(block-end [t from]
+              (loop [i from depth 1]
+                (let [c (.charAt ^String t i)]
+                  (cond (= c \{) (recur (inc i) (inc depth))
+                        (= c \}) (if (= 1 depth) i (recur (inc i) (dec depth)))
+                        :else (recur (inc i) depth)))))
+            (walk [t layer conds]
+              (loop [t (str/trim t)]
+                (when (seq t)
+                  (let [brace (str/index-of t "{") semi (str/index-of t ";")]
+                    (if (and semi (or (nil? brace) (< semi brace)))
+                      (let [stmt (str/trim (subs t 0 semi))]
+                        (when-let [[_ names] (re-matches #"@layer\s+(.+)" stmt)]
+                          (doseq [n (str/split names #"\s*,\s*")] (note! layer n)))
+                        (recur (str/trim (subs t (inc semi)))))
+                      (let [prelude (str/trim (subs t 0 brace)) end (block-end t (inc brace))
+                            body (subs t (inc brace) end) rest (str/trim (subs t (inc end)))]
+                        (cond
+                          (str/starts-with? prelude "@layer")
+                          (let [nm (str/trim (subs prelude 6))] (note! layer nm) (walk body (conj layer nm) conds))
+                          (or (str/starts-with? prelude "@media") (str/starts-with? prelude "@starting-style"))
+                          (walk body layer (conj conds prelude))
+                          (str/includes? body "{")
+                          (throw (ex-info "kit.css: a rule nested in a rule" {:selector prelude}))
+                          :else
+                          (swap! out conj {:selectors (mapv str/trim (str/split prelude #","))
+                                           :decls (into {} (for [d (str/split body #";") :let [[k v] (str/split d #":" 2)] :when v] [(str/trim k) (str/trim v)]))
+                                           :layer layer :conditions conds}))
+                        (recur rest)))))))]
+      (walk text [] [])
+      {:rules (vec (map-indexed #(assoc %2 :index %1) @out)) :layer-order @order})))
+
+(def ^:private parsed (parse-css css))
+
+(defn- rank-key
+  "Where a rule's layer stands in the cascade, compared element by element: a later-named
+  sub-layer wins over an earlier one, and a rule directly in a layer (its missing depths
+  read as the highest rank) wins over every one of that layer's sub-layers."
+  [order layer]
+  (let [r (vec (for [i (range 1 (inc (count layer)))]
+                 (.indexOf ^java.util.List (get order (subvec layer 0 (dec i)) []) (nth layer (dec i)))))]
+    (vec (concat r (repeat (- 4 (count r)) Integer/MAX_VALUE)))))
+
 (defn- leaf-rules
-  "Every `selector { declarations }` with no block inside, as [selectors decls index]."
+  "Every rule as [selectors decls index layer conditions]."
   []
-  (vec (map-indexed (fn [i [_ sel body]]
-                      [(mapv str/trim (str/split sel #",")) (into {} (for [d (str/split body #";") :let [[k v] (str/split d #":" 2)] :when v] [(str/trim k) (str/trim v)])) i])
-                    (re-seq #"([^{}]+)\{([^{}]*)\}" (subs css (inc (str/index-of css "{")))))))
+  (mapv (juxt :selectors :decls :index :layer :conditions) (:rules parsed)))
+
+(def ^:private environments
+  "Where the kit is read: six widths, both schemes, either motion preference."
+  (for [w [360 640 768 1024 1280 1536] scheme [:light :dark] motion [:no-preference :reduce]]
+    {:width w :scheme scheme :motion motion}))
+
+(defn- holds?
+  "Whether one media condition holds in `env`; an unknown one is refused, so a new query is
+  modelled before it is trusted."
+  [prelude env]
+  (cond
+    (str/starts-with? prelude "@starting-style") false
+    :else
+    (let [q (str/trim (str/replace prelude #"^@media" ""))]
+      (every? (fn [part]
+                (let [part (str/trim part)]
+                  (if-let [[_ f n u] (re-matches #"\((min|max)-width:\s*([\d.]+)(px|rem)\)" part)]
+                    (let [px (* (Double/parseDouble n) (if (= u "rem") 16 1))]
+                      (if (= f "min") (>= (:width env) px) (<= (:width env) px)))
+                    (if-let [[_ f v] (re-matches #"\((prefers-color-scheme|prefers-reduced-motion):\s*([a-z-]+)\)" part)]
+                      (= v (name (if (= f "prefers-color-scheme") (:scheme env) (:motion env))))
+                      (throw (ex-info "kit_test: a media condition the model does not know" {:condition part}))))))
+              (str/split q #"\s+and\s+")))))
+
+(defn- in-env
+  "The rules that apply in `env`."
+  [rules env]
+  (filterv (fn [[_ _ _ _ conds]] (every? #(holds? % env) conds)) rules))
 
 (defn- palette-var
   "The palette token a value reads, skipping the kit's own scales (`outline: var(--ui-ring)
@@ -58,6 +136,29 @@
         lum (fn [s] (let [[r g b] (hex s)] (+ (* 0.2126 (lin r)) (* 0.7152 (lin g)) (* 0.0722 (lin b)))))
         la (lum a) lb (lum b)]
     (/ (+ (max la lb) 0.05) (+ (min la lb) 0.05))))
+
+(declare cascaded specificity)
+
+(deftest the-tests-model-of-the-cascade-knows-layers-media-and-specificity
+  ;; The model every other test here stands on, checked against stylesheets whose cascade
+  ;; is known: if it mis-ranked layers or ignored a query, those tests would audit the
+  ;; wrong winner and stay green.
+  (let [p (parse-css "@layer k { @layer base, components, utilities; @layer utilities { .x { color: u; } } @layer components { .w .x { color: c; } } .d .e { color: d; } @layer base { .d .e { color: b; } } .m { color: narrow; } @media (min-width: 48rem) and (prefers-color-scheme: dark) { .m { color: wide; } } }")
+        rules (mapv (juxt :selectors :decls :index :layer :conditions) (:rules p))
+        win (fn [env sel] (cascaded (:layer-order p) (in-env rules env) sel ["color"]))]
+    (is (= {["k"] ["base" "components" "utilities"]} (dissoc (:layer-order p) []))
+        "witness: the sub-layers in the order they were named")
+    (is (= "u" (win {:width 360 :scheme :light :motion :reduce} ".w .x"))
+        "a later sub-layer wins over a more specific rule of an earlier one")
+    (is (= "d" (win {:width 360 :scheme :light :motion :reduce} ".d .e"))
+        "a rule directly in a layer wins over that layer's sub-layers")
+    (is (= ["wide" "narrow" "narrow"] (mapv #(win % ".m") [{:width 768 :scheme :dark :motion :reduce} {:width 767 :scheme :dark :motion :reduce} {:width 1024 :scheme :light :motion :reduce}]))
+        "a query applies where it holds and nowhere else, its conditions all at once"))
+  (is (= [[0 0 0] [0 1 0] [0 2 0] [0 1 1]] (mapv specificity [":where(.a, .b)" ":is(.a, a)" ".x:has(.a)" "a:not(.b)"]))
+      "where counts nothing; is, has and not their most specific argument")
+  (is (= "kit.css: a rule nested in a rule" (try (parse-css ".a { color: x; .b { color: y; } }") nil (catch clojure.lang.ExceptionInfo e (ex-message e)))))
+  (is (= "kit_test: a media condition the model does not know" (try (holds? "@media (hover: hover)" (first environments)) nil (catch clojure.lang.ExceptionInfo e (ex-message e)))))
+  (is (= 24 (count environments)) "witness: six widths, two schemes, two motions"))
 
 (deftest every-rule-sits-in-the-one-layer-and-nothing-is-important
   (let [{:keys [items depth rest]} (top-level css)]
@@ -79,13 +180,21 @@
 
 (defn- specificity
   "A selector's specificity, [ids classes elements]: a class, an attribute and a
-  pseudo-class are one class each (`:not(x)` counts its argument), a type or a
-  pseudo-element one element."
+  pseudo-class are one class each, a type or a pseudo-element one element; `:where(…)`
+  counts nothing, and `:is(…)`, `:not(…)` and `:has(…)` count their most specific
+  argument."
   [sel]
-  (let [s (str/replace sel #":not\(" "(")]
-    [(count (re-seq #"#[\w-]+" s))
-     (count (re-seq #"\.[\w-]+|\[[^\]]*\]|(?<!:):[a-z-]+" s))
-     (+ (count (re-seq #"(?:^|[\s>+~(])[a-z][a-z0-9]*" s)) (count (re-seq #"::[a-z-]+" s)))]))
+  (let [m (re-matcher #":(is|where|not|has)\(" sel)]
+    (if (.find m)
+      (let [start (.start m) open (dec (.end m))
+            close (loop [i (inc open) d 1] (let [c (.charAt ^String sel i)] (cond (= c \() (recur (inc i) (inc d)) (= c \)) (if (= d 1) i (recur (inc i) (dec d))) :else (recur (inc i) d))))
+            inner (subs sel (inc open) close)
+            outer (str (subs sel 0 start) (subs sel (inc close)))
+            arg (if (= "where" (.group m 1)) [0 0 0] (last (sort (map #(specificity (str/trim %)) (str/split inner #",")))))]
+        (mapv + (specificity outer) arg))
+      [(count (re-seq #"#[\w-]+" sel))
+       (count (re-seq #"\.[\w-]+|\[[^\]]*\]|(?<!:):[a-z-]+" sel))
+       (+ (count (re-seq #"(?:^|[\s>+~(])[a-z][a-z0-9]*" sel)) (count (re-seq #"::[a-z-]+" sel)))])))
 
 (defn- implied
   "Every compound an element matching `compound` also matches among the kit's rules: its
@@ -102,20 +211,28 @@
 
 (defn- selectors-implied
   "Every selector an element matching `sel` also matches: the product of each compound's
-  implications, the combinators kept."
+  implications, the combinators kept, and the same with any leading ancestors dropped —
+  what matches `.w .x` matches `.x` too, which is how a utility meets a component's rule."
   [sel]
-  (let [parts (re-seq #"[^\s>+~]+|\s*[>+~]\s*|\s+" (str/trim sel))]
-    (map str/join (reduce (fn [acc part] (for [a acc x (if (re-matches compound-re part) (implied part) [part])] (conj a x))) [[]] parts))))
+  (let [parts  (vec (re-seq #"[^\s>+~]+|\s*[>+~]\s*|\s+" (str/trim sel)))
+        starts (cons 0 (keep-indexed (fn [i p] (when (re-matches #"\s*[>+~]?\s*" p) (inc i))) parts))]
+    (distinct
+      (for [st starts
+            implied-sel (map str/join (reduce (fn [acc part] (for [a acc x (if (re-matches compound-re part) (implied part) [part])] (conj a x)))
+                                              [[]] (subvec parts st)))]
+        implied-sel))))
 
 (defn- cascaded
   "The value the cascade gives `sel` for the first of `props` any rule sets: among the
-  kit's rules that apply to it, the one of highest specificity, then the last — they share
-  a layer. Nil when none sets it."
-  [rules sel props]
+  rules that apply to it, the one of the highest layer, then of highest specificity, then
+  the last. Nil when none sets it. `order` is the layers' naming order, the kit's unless
+  given."
+  ([rules sel props] (cascaded (:layer-order parsed) rules sel props))
+  ([order rules sel props]
   (let [applies (set (selectors-implied sel))]
-    (some-> (last (sort-by (juxt (comp specificity first) second)
-                           (for [[sels decls i] rules s sels :when (applies s) p props :when (contains? decls p)] [s i (get decls p)])))
-            (nth 2))))
+    (some-> (last (sort-by (fn [[s i _ layer]] [(rank-key order layer) (specificity s) i])
+                           (for [[sels decls i layer] rules s sels :when (applies s) p props :when (contains? decls p)] [s i (get decls p) layer])))
+            (nth 2)))))
 
 (defn- resolved
   "The palette token the cascade gives `sel` for one of `props`. With none, a
@@ -130,8 +247,7 @@
 (def ^:private backgrounds ["background" "background-color"])
 
 (deftest every-text-the-kit-paints-is-an-audited-pair-and-reads-at-4-5
-  (let [rules  (leaf-rules)
-        pairs  (distinct (for [[sels decls] rules s sels
+  (let [pairs  (distinct (for [env environments :let [rules (in-env (leaf-rules) env)] [sels decls] rules s sels
                                :when (some #(contains? decls %) (cons "color" backgrounds))
                                :let [fg (resolved rules s ["color"]) bg (resolved rules s backgrounds)]
                                :when fg
@@ -226,30 +342,32 @@
     (map #(str ".ui-input" (apply str %)) (reduce (fn [acc st] (concat acc (map #(conj % st) acc))) [[]] states))))
 
 (deftest a-refused-control-keeps-its-danger-edge-in-every-state
-  (let [rules (leaf-rules)
+  (doseq [env environments :let [rules (in-env (leaf-rules) env)]]
+  (let [
         live  (remove #(str/includes? % ":disabled") (filter #(str/includes? % "[aria-invalid=\"true\"]") (input-states)))]
     (is (= 8 (count live)) (str "witness: the refused states, a count measured once: " (vec live)))
     (is (= [] (for [s live :let [t (resolved rules s ["border-color" "border"])] :when (not= :danger-border t)] [s t]))
-        "hovered, read-only or not, a refused control is edged in danger")))
+        (str "hovered, read-only or not, a refused control is edged in danger " env)))))
 
 (deftest a-disabled-input-looks-disabled-in-every-state
-  (let [rules (leaf-rules)
+  (doseq [env environments :let [rules (in-env (leaf-rules) env)]]
+  (let [
         look  (fn [s] (mapv #(resolved rules s %) [["color"] backgrounds ["border-color" "border"]]))
         dead  (filter #(str/includes? % ":disabled") (input-states))]
     (is (= [:disabled-fg :disabled-bg :disabled-bg] (look ".ui-input:disabled")) "witness: the disabled look")
     (is (= 16 (count dead)) (str "witness: the disabled states, a count measured once: " (count dead)))
     (is (= [] (for [s dead :let [l (look s)] :when (not= l (look ".ui-input:disabled"))] [s l]))
-        "no hover, refusal or read-only shows through a disabled control")))
+        (str "no hover, refusal or read-only shows through a disabled control " env)))))
 
 (deftest an-input-and-a-button-share-one-box
   ;; Only the declarations are compared: a browser alone measures pixels.
-  (let [rules (leaf-rules)
-        box   (fn [s] [(cascaded rules s ["font-size"]) (cascaded rules s ["line-height"])
+  (doseq [env environments :let [rules (in-env (leaf-rules) env)]]
+  (let [box   (fn [s] [(cascaded rules s ["font-size"]) (cascaded rules s ["line-height"])
                        (some-> (cascaded rules s ["padding-block" "padding"]) (str/split #"\s+") first)
                        (some-> (cascaded rules s ["border-width" "border"]) (str/split #"\s+") first)
                        (cascaded rules s ["height" "min-height"])])]
     (is (= ["var(--ui-font-base)" "1.25" "var(--ui-space-sm)" "1px" nil] (box ".ui-btn")) "witness: the button's box")
-    (is (= (box ".ui-btn") (box ".ui-input")) "an inline input sits level with the button beside it")))
+    (is (= (box ".ui-btn") (box ".ui-input")) (str "an inline input sits level with the button beside it " env)))))
 
 (deftest screen-reader-text-is-hidden-from-the-eye-and-not-from-the-reader
   (let [d (some (fn [[sels decls]] (when (= [".ui-sr-only"] sels) decls)) (leaf-rules))]
