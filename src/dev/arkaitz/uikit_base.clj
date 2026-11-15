@@ -260,7 +260,7 @@
                    "a submitter's own target would send its form, token and all, where the form does not")
     [:button (with-attrs {:type "button" :class "ui-close"} attrs [])
      [:span {:aria-hidden "true"} "\u00d7"]
-     [:span.ui-sr-only (kit-word request (given label) :uikit-base/close)]]))
+     [:span.ui-sr-only (kit-word request label :uikit-base/close)]]))
 
 (defn- word
   "A word of the host's dictionary: a key, or a vector of the key and its arguments,
@@ -450,7 +450,7 @@
              (into (cond-> [:div.ui-alert__body] (some? heading) (conj [:p.ui-alert__heading heading])) body)]
       (some? dismiss-href) (conj (wb/link dismiss-href {:class "ui-close ui-alert__dismiss"}
                                           [:span {:aria-hidden "true"} "\u00d7"]
-                                          [:span.ui-sr-only (kit-word request (given dismiss-label) :uikit-base/close)])))))
+                                          [:span.ui-sr-only (kit-word request dismiss-label :uikit-base/close)])))))
 
 (defn cell
   "`(cell attrs & body)` → a table cell with attributes of its own: in `table`'s `head` a
@@ -528,8 +528,11 @@
    :es {:uikit-base {:previous "Anterior" :next "Siguiente" :pages "Páginas" :breadcrumbs "Ruta de navegación"
                      :shown-once "Cópialo ahora: no se volverá a mostrar." :close "Cerrar" :loading "Cargando…"}}})
 
-(defn- kit-word [request given k]
-  (or given
+(defn- kit-word
+  "The caller's word, or the kit's `k` in the reader's language when the caller gave none
+  or a blank one, which would leave what it names unnamed."
+  [request own k]
+  (or (given own)
       (some-> (:wb/tr request) (apply [k []]))
       (get-in words [:en :uikit-base (keyword (name k))])))
 
@@ -732,7 +735,7 @@
   reduced motion. The rest of `opts` are its attributes; its role is its own."
   [request & [opts]]
   [:span (with-attrs {:class "ui-spinner" :role "status"} (dissoc opts :label) [:role])
-   [:span.ui-sr-only (kit-word request (given (:label opts)) :uikit-base/loading)]])
+   [:span.ui-sr-only (kit-word request (:label opts) :uikit-base/loading)]])
 
 (defn placeholder
   "`(placeholder request opts?)` → what stands in for content still loading: `:lines`
@@ -745,7 +748,7 @@
     (when-not (and (int? n) (pos? n))
       (throw (ex-info "uikit-base: a placeholder's :lines is a whole number from 1" {:lines n})))
     (into [:div (with-attrs {:class "ui-placeholders" :aria-busy "true"} (dissoc opts :lines :label) [:aria-busy])
-           [:span.ui-sr-only (kit-word request (given (:label opts)) :uikit-base/loading)]]
+           [:span.ui-sr-only (kit-word request (:label opts) :uikit-base/loading)]]
           (repeat n [:span {:class "ui-placeholder" :aria-hidden "true"}]))))
 
 (defn empty

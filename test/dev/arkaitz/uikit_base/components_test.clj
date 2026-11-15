@@ -1084,3 +1084,13 @@
       "its role, name and place in the tab order are its own")
   (doseq [l [nil "" " " :k]]
     (is (= ["uikit-base: a scroller is named by its label" {:label l}] (refusal #(ui/scroller {:label l} "a"))) (pr-str l))))
+
+(deftest a-blank-label-of-the-callers-never-leaves-a-kit-component-unnamed
+  (let [r {:wb/tr (fn [k _] (str "tr:" k))}
+        pager (html (ui/pager r {:previous "/l?p=1" :next "/l?p=3" :label "" :previous-label " " :next-label ""}))
+        crumbs (html (ui/crumbs r {:label "  " :items [[nil "H"]]}))]
+    (is (not (str/includes? (str pager crumbs) "aria-label=\"\"")) "no landmark is named by nothing")
+    (is (str/includes? pager "aria-label=\"tr::uikit-base/pages\"") "the pager's name is the kit's word")
+    (is (str/includes? pager ">tr::uikit-base/previous</a>") "the previous link reads the kit's word")
+    (is (str/includes? pager ">tr::uikit-base/next</a>") "the next link reads the kit's word")
+    (is (str/includes? crumbs "aria-label=\"tr::uikit-base/breadcrumbs\"") "the crumbs' name is the kit's word")))
