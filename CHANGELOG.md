@@ -5,6 +5,172 @@ changes what a working host sees. A **minor** adds, and may break: when it does,
 opens with **Breaking** and says what a host must change. Every release is on Clojars as
 `dev.arkaitz/uikit-base` and tagged `vX.Y.Z`.
 
+## 0.6.0 — 2026-11-16
+
+basaku's scales and personality, Bootstrap 5.3's utilities and grid, and the components
+that need a script, with the one script they need.
+
+**Breaking:**
+- **The scales are renamed** after basaku's, and kit.css declares no custom property: the
+  scales live in the generated colours file now. In your own CSS:
+
+  | 0.5.0 | 0.6.0 |
+  |---|---|
+  | `--ui-space-xxs` … `--ui-space-xl` | `--ui-spacing-xxs` … `--ui-spacing-xl` (new: `-xxl`, `-xxxl`) |
+  | `--ui-font-xs` … `--ui-font-xl` | `--ui-font-size-xs` … `--ui-font-size-xl` (new: `-xxl`, `-xxxl`) |
+  | `--ui-duration` | `--ui-duration-normal` (new: `-fast`, `-slow`) |
+  | `--ui-ring` | `--ui-focus-outline-width` |
+
+  `--ui-radius-sm` `-md` `-lg` `-full` and `--ui-shadow-sm` keep their names. An old name
+  is simply unset, with no error anywhere: search your app.css for it.
+- **A change you will see:** the layout scales grow with the screen, at 640px and 1024px,
+  as basaku's do. Below 640px `--ui-spacing-md` is 0.85rem (it was 1rem everywhere) and
+  `--ui-font-size-xl` 1.25rem (it was 1.44rem); dark shadows are darker than light ones.
+- **web-base 0.25.0 is required:** the plugin loads its script through a plugin's
+  `:scripts`, which 0.25.0 is the first to take.
+- **A script on every page:** the plugin loads `/ui/ui.js`, deferred, under the page's
+  nonce, and a third stylesheet, `/ui/ui-utilities.css`, after kit.css. A CSP that allows
+  scripts by nonce needs nothing more.
+- **The generated colours file holds the scales**, so a 0.5.0 file is not what
+  `build/expected` answers for the same brand: your drift test reds until you regenerate.
+- **brand.edn is a closed map of more keys.** `read-brand` takes `:primary` and the options
+  below, and refuses anything else, naming the path and what is wrong: a file that cannot
+  be read, is not EDN or holds no map; a missing `:primary`; a key the kit does not know
+  (listed); a seed that is no `#rrggbb` colour; a level that is none of its axis's
+  (listed). These replace 0.5.0's one message, "must hold {:primary …} and nothing else".
+- **CLAUDE.md's rule 4 changed**, by the user's decision of 2026-11-15: from "colour is the
+  only knob" to basaku's own closed knobs, the colours, a presence and four personality
+  axes. Everything else is still decided once, and hand CSS still overrides anything.
+
+**Added — theme.**
+- brand.edn takes up to three seeds, `:primary`, `:secondary` and `:tertiary` (the last
+  two derived from the primary when absent); `:presence`, `:calm` (the default),
+  `:balanced` or `:vivid`; and four personality axes, each one of basaku's levels:
+  `:density` (`:compact` `:cozy` `:comfortable`), `:roundness` (`:sharp` `:soft` `:round`),
+  `:typography` (`:sans` `:serif` `:mono`) and `:elevation` (`:flat` `:normal` `:raised`,
+  which also sets the dark surfaces' tiers). The defaults are basaku's: cozy, soft, sans,
+  normal.
+- The scales are basaku's: spacing `xxs`…`xxxl`, radius `none`…`full`, type `xs`…`xxxl`,
+  shadows `sm`…`xl`, families, line heights, weights, motion, z-index, opacity and focus.
+  Held to basaku's own output, exact: the colour options for 19 seeds by 3 presences by 3
+  elevations and 30 seed cases (14472 tokens; all 201 palettes pass the full audit), and
+  the scales for eleven personality cases of 99 declarations each.
+- `@layer uikit` names three sub-layers, `base`, `components` and `utilities`, in that
+  order: a utility beats a component by its layer, with no `!important`, and your
+  unlayered stylesheet still beats all three.
+
+**Added — utilities and grid.** `ui-utilities.css`, generated in `@layer uikit.utilities`.
+- A twelve-column CSS grid: `ui-layout`; spans `ui-col-*` and `ui-col-{bp}-*`; `ui-offset-*`;
+  gutters `ui-g-*` `ui-gx-*` `ui-gy-*`; `ui-order-*`; `ui-layout-cols-*`; `ui-col` and
+  `ui-col-auto`; and the containers `ui-container`, `ui-container-fluid`, `ui-container-{bp}`.
+- Every family of Bootstrap 5.3.8's utilities as `ui-<name>`: display (print too), flex,
+  spacing on the kit's scale, sizing, position, borders, radii, shadows, type, text,
+  colours, and the helpers (clearfix, ratio, fixed and sticky, stacks, visually-hidden,
+  stretched-link, truncate, vr, icon-link, focus-ring).
+- Breakpoints are basaku's: `sm` 640, `md` 768, `lg` 1024, `xl` 1280, `xxl` 1536.
+- 79908 bytes, 10132 gzipped (Bootstrap's utilities and grid are 107938 and 70323 bytes),
+  held to that plus a tenth by a test.
+
+**Added — CSS components**, with no script.
+- Buttons: `:variant` `:outline-<fill>` and `:link`, `:block? true`; `toggle-button`, its
+  `aria-pressed` the server's; `button-group`, named by a required `:label`; `close-button`,
+  named by the new kit word `:uikit-base/close`.
+- Forms: `field` `:size`, `:type "switch"` and `"range"`, `:before` and `:after` (an input
+  group), `:floating? true` (a placeholder required); `input-group`. A text control is
+  edged in danger once left invalid, and in success once a required one is filled, never
+  before it was touched.
+- Feedback: `alert` (a `:heading`, a `:dismiss-href`); `badge` `:label` and `:corner?
+  true`; `progress` and `meter`, named by a required label, their numbers checked;
+  `spinner` and `placeholder`, saying the kit word `:uikit-base/loading`. Every motion
+  stops under reduced motion.
+- Lists: `list-group`; `table` `:striped?` `:hover?` `:bordered?` `:compact?`; `pager`
+  `:pages`, `:current` and `:size`; `tabs-nav` `:style :pills`, `:fill?` or `:justify?`.
+- Cards: `card` `:image` (an alt required unless `:decorative? true`) and `:nav`;
+  `card-group`; `figure`, its caption required; `collapse` and `accordion` on the
+  platform's `<details>`, `:name` for one exclusive group; `scroller`, a named,
+  keyboard-reachable line that snaps.
+
+**Added — interactive components**, on the platform's own elements, with `ui.js` for what a
+browser of the floor lacks.
+- `dialog` and `dialog-button`: the modal `<dialog>`, opened by an invoker command, named by
+  its title; `:size`, `:fullscreen?`, `:scrollable?`, and `:static?` (`closedby=none`: only
+  its own buttons close it). `offcanvas`: a dialog drawn as a sheet at the inline `:start`
+  or `:end`.
+- `dropdown` and `popover`: a button and the platform's popover, placed by CSS anchor
+  positioning. A dropdown holds links and actions, never an ARIA menu.
+- `tooltip`: the server's text in a `role=tooltip`, named first in the trigger's
+  `aria-describedby`; shown on hover and focus, kept while the pointer rests on it, hidden
+  150 ms after neither is hovered or focused, and by Esc (WCAG 1.4.13). A trigger that Tab
+  cannot reach is refused.
+- `toasts`, a polite live region, and `toast`: `:timeout-ms` counts down only while it is
+  neither hovered nor focused, and a toast is never the only copy of a message (WCAG 2.2.1).
+- `carousel`, as the ARIA practices draw one: without the script, a row that snaps; with it,
+  previous and next buttons, and `:interval-ms` from 334 ms (WCAG 2.3.1's three changes a
+  second) to 2147483647 ms (the most a browser's timer holds), refused outside. The
+  rotation waits while hovered, stops for good once the focus enters, and never starts under
+  reduced motion.
+- `scrollspy`: `#fragment` links, the one whose section is in view `aria-current=location`.
+- `ui.js`, the kit's one script: invoker commands, `closedby` and anchor positioning where
+  the browser has none, detected once as it loads; the toasts' timer, the carousel, the
+  scrollspy. It writes no markup, no text and no inline style as a string, evaluates no
+  string, fetches nothing, and positions only through single CSSOM properties
+  (`style.setProperty`), which `style-src 'self'` allows. At most
+  150 lines of code, which `ui_js_test` holds.
+- Seven new kit words for the carousel, in English and Spanish, beside `:close` and
+  `:loading`.
+
+**Added — testing.**
+- `testing/unaudited-pairs`: every element of a page whose own classes combine colour
+  utilities into a pair basaku never audited — a text utility on a fill, a fill on a
+  background utility, two fills.
+- `clojure -M:gallery [port]`: every public component on one page, served by web-base under
+  the template's CSP; `gallery_test` holds that none is missing, that the page carries no
+  inline style, handler or un-nonced script, and that every class it draws is defined.
+
+**Named deviations from Bootstrap.** A parity test reads Bootstrap 5.3.8's utilities and
+grid and requires each of its 1705 classes to equal the kit's, after a stated
+normalisation, or to be one of 444 named deviations. They fall in these classes:
+- logical sides only (`ui-ms-*` is `margin-inline-start`), no `!important`, basaku's
+  breakpoints and scales;
+- colour utilities only from audited pairs: inks at AA on every canvas, background
+  utilities on the three neutral surfaces only, a fill with its own ink (`ui-text-bg-*`),
+  edges from the audited ones; no opacity, subtle, emphasis, gradient or transparent
+  variants, and one focus ring;
+- the grid a CSS grid, not a flex row with negative margins: `row` is `ui-layout` and
+  `row-cols-*` is `ui-layout-cols-*`, since `ui-row` is the kit's rows component;
+- a scrolling region is positioned, and a shadow keeps the focus ring's halo beneath it.
+
+The full list, each entry with its reason, is `deviations` in
+`test/dev/arkaitz/uikit_base/kit_test.clj`. Beyond the utilities, there is no navbar (an
+`offcanvas` holds a narrow screen's navigation), and a dropdown is never `role=menu`.
+
+**Browser evidence.** `test/browser/gallery-check.mjs` runs the gallery in WebKit 26.4 and
+Chromium 145, natively and with the floor's gaps forced (invoker commands cancelled,
+`closedBy` deleted, anchor positioning faked away; in Chromium also anchor positioning
+without `anchor-scope`): twelve checks per mode, all passing, recorded in
+`test/resources/browser-checks.edn`. `browser_checks_test` holds that every check passed
+and that kit.css, ui-utilities.css, ui.js and the script are the bytes they ran against.
+Not verified:
+- the `closedby` shim in a Chromium without it (131–133): Chromium's own cannot be
+  switched off, so the shim's Esc decision is read from `defaultPrevented`; WebKit 26.4,
+  which lacks `closedby`, runs the shim for real;
+- Firefox: no engine of it was on the machine;
+- a real Safari 18.x: its gaps are forced in WebKit 26.4 and Chromium, never run.
+
+**A platform note:** in WebKit, a dialog opened by a mouse click gives the focus to
+`<main>` on Esc, not to its button, since a click does not focus a button there; opened by
+the keyboard it gives it back to the button (measured).
+
+**In your app:**
+1. Bump web-base to 0.25.0.
+2. Rename the tokens in app.css, by the table above.
+3. Take the brand options you want into brand.edn, if any, and regenerate ui-colors.css
+   with `build/write!`; your drift test goes green again.
+
+Nothing else is required. A few keys that 0.5.0 passed through as attributes are options
+now: `badge`'s `:label` and `:corner?`, `card`'s `:image` and `:nav`, and `:block?` on
+`button` and `link-button`.
+
 ## 0.5.0 — 2026-11-15
 
 - **A fix you will see on a phone:** a confirm's screen-reader text inside a scrolling
