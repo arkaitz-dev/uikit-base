@@ -261,6 +261,17 @@
     (is (= [] (for [[sels decls] (leaf-rules) s sels :when (str/includes? s "ui-sr-only") :when (not= [".ui-sr-only"] sels)] [sels decls]))
         "and no other rule reaches it")))
 
+(deftest a-region-that-scrolls-contains-what-it-hides
+  ;; Text hidden for the eye is `position: absolute`; with no positioned ancestor its box
+  ;; is placed against the page, escapes the region's clip, and widens the page (measured:
+  ;; 366px on a 360px phone, a confirm's subject inside a scrolling table).
+  (let [scrolling (for [[sels decls] (leaf-rules) s sels
+                        :when (some #(re-find #"\b(auto|scroll)\b" (str (get decls %))) ["overflow" "overflow-x" "overflow-y"])]
+                    [s (get decls "position")])]
+    (is (seq scrolling) "witness: a rule that scrolls was found")
+    (is (= [] (remove (fn [[_ p]] (#{"relative" "absolute" "fixed" "sticky"} p)) scrolling))
+        "each is positioned, so what it holds is clipped by it")))
+
 (def ^:private req
   {::security/csrf-stored true :anti-forgery-token "T" ::security/csrf-used (volatile! false)
    :wb/tr (fn [k args] (str k args))})

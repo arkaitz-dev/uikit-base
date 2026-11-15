@@ -120,7 +120,7 @@
   .ui-notice--warning { border-inline-start-color: var(--ui-warning-border); color: var(--ui-warning-ink); }
 
   /* Tables, and the region that scrolls a wide one on a narrow screen. */
-  .ui-table-wrap { overflow-x: auto; }
+  .ui-table-wrap { position: relative; overflow-x: auto; }
   .ui-table { border-collapse: collapse; width: 100%; }
   .ui-table caption { text-align: start; padding-block-end: var(--ui-space-sm); color: var(--ui-text-muted); }
   .ui-table th, .ui-table td { padding: var(--ui-space-sm); text-align: start; border-bottom: 1px solid var(--ui-border); }
