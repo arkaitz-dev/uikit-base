@@ -141,7 +141,7 @@
     (is (= [0 2 1] (specificity ".ui-pager a:focus-visible")) "witness: the test's specificity")
     (is (= #{".ui-btn--primary:hover" ".ui-btn--primary" ".ui-btn:hover" ".ui-btn"} (set (selectors-implied ".ui-btn--primary:hover")))
         "witness: a variant's hover is also the base's hover")
-    (is (= 44 (count pairs)) (str "witness: every painted pair found, a count measured once: " (count pairs)))
+    (is (= 49 (count pairs)) (str "witness: every painted pair found, a count measured once: " (count pairs)))
     (is (= 21.0 (wcag "#000000" "#ffffff")) "witness: the test's WCAG")
     (doseq [[s bg fg :as p] pairs]
       (testing s
@@ -171,7 +171,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 97 (count bearing)) (str "witness: the colour-bearing declarations, a count measured once: " (count bearing)))
+    (is (= 102 (count bearing)) (str "witness: the colour-bearing declarations, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -197,7 +197,7 @@
                           [s t]))
         edges (remove dividers found)]
     (is (= dividers (set (filter dividers found))) "every divider named is still drawn")
-    (is (= 22 (count edges)) (str "witness: the edges, a count measured once: " (count edges)))
+    (is (= 24 (count edges)) (str "witness: the edges, a count measured once: " (count edges)))
     (doseq [[s t] edges bg [:background :surface :surface-alt]]
       (testing (str s " " t)
         (is (= :ui (audited [bg t])) "an audited non-text pair")
@@ -250,6 +250,16 @@
                        (cascaded rules s ["height" "min-height"])])]
     (is (= ["var(--ui-font-base)" "1.25" "var(--ui-space-sm)" "1px" nil] (box ".ui-btn")) "witness: the button's box")
     (is (= (box ".ui-btn") (box ".ui-input")) "an inline input sits level with the button beside it")))
+
+(deftest screen-reader-text-is-hidden-from-the-eye-and-not-from-the-reader
+  (let [d (some (fn [[sels decls]] (when (= [".ui-sr-only"] sels) decls)) (leaf-rules))]
+    (is (= {"position" "absolute" "width" "1px" "height" "1px" "overflow" "hidden" "clip" "rect(0, 0, 0, 0)"}
+           (select-keys d ["position" "width" "height" "overflow" "clip"]))
+        "out of the flow, one pixel (a zero-sized box some readers skip), clipped")
+    (is (= {} (select-keys d ["display" "visibility" "content-visibility" "opacity"]))
+        "never what hides it from a screen reader as well")
+    (is (= [] (for [[sels decls] (leaf-rules) s sels :when (str/includes? s "ui-sr-only") :when (not= [".ui-sr-only"] sels)] [sels decls]))
+        "and no other rule reaches it")))
 
 (def ^:private req
   {::security/csrf-stored true :anti-forgery-token "T" ::security/csrf-used (volatile! false)
