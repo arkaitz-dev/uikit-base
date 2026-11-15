@@ -268,6 +268,7 @@
 (def ^:private fixtures
   "Every component, drawn with everything it can make focusable."
   {'button    [(ui/button "x") (ui/button {:variant :primary} "x")]
+   'link-button [(ui/link-button "/a" {:variant :primary} "x")]
    'post-form [(ui/post-form req "/a" (ui/button "x"))]
    'field     (for [t [nil "select" "textarea" "file" "checkbox" "radio"]] (ui/field req {:id "f" :label "F" :type t :options [["a" "A"]] :error :e :hint "h" :required? true}))
    'notice    [(ui/notice :ok "x")]
@@ -308,7 +309,7 @@
                  [tag classes (first ancestors)])]
     (is (= (set (keys fixtures)) (set (remove '#{words cell} (keys (ns-publics 'dev.arkaitz.uikit-base)))))
         "every public component is drawn here, so a new one needs its fixture")
-    (is (= 11 (count found)) (str "witness: the focusables, a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
+    (is (= 12 (count found)) (str "witness: the focusables, a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
     (is (= [] bare) "each wears the ring, through a class of its own or its kit ancestor's")
     (is (= [] (for [[sels decls] (leaf-rules) :let [v (get decls "outline")] :when v :when (not= :focus-ring (palette-var v))] [sels v]))
         "no rule takes the ring away: an outline is the ring")))

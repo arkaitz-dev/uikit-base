@@ -228,6 +228,19 @@
 (def ^:private link-attrs "hx-push-url=\"true\" hx-select=\"main\" hx-swap=\"outerHTML show:top showTarget:body\" hx-target=\"main\"")
 (defn- L [href rel body] (str "<a href=\"" href "\" hx-get=\"" href "\" " link-attrs (when rel (str " rel=\"" rel "\"")) ">" body "</a>"))
 
+(deftest a-link-button-is-a-swapping-link-that-looks-like-a-button
+  (is (= (str/replace (L "/a" nil "Go") "<a href" "<a class=\"ui-btn\" href") (html (ui/link-button "/a" "Go"))))
+  (is (= (str/replace (L "/a" "next" "Go<b>x</b>") "<a href" "<a class=\"ui-btn ui-btn--primary ui-btn--sm mine\" href")
+         (html (ui/link-button "/a" {:variant :primary :size :sm :class "mine" :rel "next"} "Go" [:b "x"])))
+      "the variant's and size's classes, the caller's joined, its other attrs kept")
+  (is (= (str/replace (L "/" nil "&lt;&amp;&gt;") "<a href" "<a class=\"ui-btn a b\" href") (html (ui/link-button "/" {:class ["a" :b]} "<&>"))))
+  (is (= ["uikit-base: a button's :variant is one of the kit's" {:variant :huge}] (refusal #(ui/link-button "/a" {:variant :huge} "x"))))
+  (is (= ["uikit-base: a button's :size is :sm or :lg" {:size :md}] (refusal #(ui/link-button "/a" {:size :md} "x"))))
+  (doseq [p ["//evil" "https://evil.test/" nil]]
+    (is (= ["web-base: link's href must be a path on this origin" {:wb/link :href}] (refusal #(ui/link-button p "x"))) (str "path " (pr-str p))))
+  (doseq [a [{:hx-get "/x"} {"HREF" "/x"} {"HX-Get" "/x"} {:data-hx-get "/x"}]]
+    (is (= ["web-base: link's attrs may not give an href or an htmx attribute" {:wb/link :attrs}] (refusal #(ui/link-button "/a" a "x"))) (pr-str a))))
+
 (deftest a-table-heads-its-columns-and-captions-what-it-lists
   (is (= (str "<table class=\"ui-table\"><caption>C&lt;</caption><thead><tr><th scope=\"col\">A</th><th scope=\"col\">B&amp;</th></tr></thead>"
               "<tbody><tr><td>a1</td><td>b1</td></tr><tr><td>a2</td><td><b>x&lt;</b></td></tr></tbody></table>")

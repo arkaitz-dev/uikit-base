@@ -51,6 +51,17 @@
 (def ^:private variants #{:primary :secondary :success :danger :warning :info})
 (def ^:private sizes #{:sm :lg})
 
+(defn- btn-class
+  "The classes of a button of `variant` and `size`, either refused when it is not the kit's."
+  [variant size]
+  (when-not (or (nil? variant) (variants variant))
+    (throw (ex-info "uikit-base: a button's :variant is one of the kit's" {:variant variant})))
+  (when-not (or (nil? size) (sizes size))
+    (throw (ex-info "uikit-base: a button's :size is :sm or :lg" {:size size})))
+  (str/join " " (cond-> ["ui-btn"]
+                  variant (conj (str "ui-btn--" (name variant)))
+                  size (conj (str "ui-btn--" (name size))))))
+
 (defn button
   "`(button opts? & body)` → a `<button>` of the kit. `opts` may name a `:variant` —
   `:primary`, `:secondary`, `:success`, `:danger`, `:warning` or `:info`, or none for a
@@ -62,16 +73,18 @@
         {:keys [variant size]} opts]
     (refuse-attrs! (normalised (dissoc opts :variant :size)) [:formaction :formmethod :form] "button"
                    "a submitter's own target would send its form, token and all, where the form does not")
-    (when-not (or (nil? variant) (variants variant))
-      (throw (ex-info "uikit-base: a button's :variant is one of the kit's" {:variant variant})))
-    (when-not (or (nil? size) (sizes size))
-      (throw (ex-info "uikit-base: a button's :size is :sm or :lg" {:size size})))
-    (into [:button (with-attrs {:type "submit"
-                                :class (str/join " " (cond-> ["ui-btn"]
-                                                       variant (conj (str "ui-btn--" (name variant)))
-                                                       size (conj (str "ui-btn--" (name size)))))}
-                               (dissoc opts :variant :size) [])]
+    (into [:button (with-attrs {:type "submit" :class (btn-class variant size)} (dissoc opts :variant :size) [])]
           body)))
+
+(defn link-button
+  "`(link-button path opts? & body)` → a link that looks like a `button`: a `wb/link` to
+  `path`, so it swaps the page's `<main>` and its path is web-base's to refuse. `opts`
+  name a `:variant` and a `:size` as `button`'s do, refused alike; the rest are the
+  link's attributes, never an `href` or an htmx one, which `wb/link` refuses. For going
+  somewhere; what changes something is a form's button."
+  [path & more]
+  (let [[opts body] (split-attrs more)]
+    (apply wb/link path (with-attrs {:class (btn-class (:variant opts) (:size opts))} (dissoc opts :variant :size) []) body)))
 
 (defn post-form
   "`(post-form request action attrs? & body)` → a form that posts to `action` with the
