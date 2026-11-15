@@ -971,3 +971,73 @@
     (into [:button (with-attrs {:type "button" :class (btn-class variant size block?) :commandfor dialog :command "show-modal"}
                                (dissoc opts :dialog :variant :size :block?) [:type :commandfor :command])]
           body)))
+
+(defn offcanvas
+  "`(offcanvas request opts & body)` → a `dialog` drawn as a sheet along one side of the
+  screen, `:side` `:start` (unless given) or `:end` — the inline start or end, so a page in a
+  right-to-left language draws it on the other side. Opened by a `dialog-button` naming its
+  `:id`, named by its `:title`, closed as a dialog is, `:static?` alike; its body scrolls,
+  and the keyboard reaches it. A navigation on a narrow screen is one: its links inside."
+  [request {:keys [side] :as opts} & body]
+  (when-not (contains? #{nil :start :end} side)
+    (throw (ex-info "uikit-base: an offcanvas's :side is :start or :end" {:side side})))
+  (sheet request "an offcanvas" (str "ui-dialog ui-dialog--scrollable ui-offcanvas ui-offcanvas--" (name (or side :start)))
+         (assoc opts :scrollable? true) body))
+
+(defn- toggle
+  "The button that opens popover `id`, by the platform's `popovertarget`."
+  [component id label variant size]
+  (id! component :id id)
+  (label! component :label label)
+  [:button {:type "button" :class (btn-class variant size) :popovertarget id} label])
+
+(defn dropdown
+  "`(dropdown opts)` → a button, `:label`, that opens a menu of `:items` below it — the
+  platform's popover, which Esc and a click outside close, and the keyboard reaches after
+  the button. `:items`, `[[path content] …]`: an item with a path is a `wb/link`; one with a
+  nil path holds its content as it is, an `action` whose button acts. Links and forms, not
+  an ARIA menu: Tab moves through them, as through any links. Choosing one closes the menu.
+  `:id` is the menu's, one word; `:variant` and `:size` are the button's; `:attrs` go on
+  the wrapper. Placed below the button, flipped above when the screen has no room, by CSS
+  anchor positioning, or by the plugin's `/ui/ui.js` where the browser has none."
+  [{:keys [id label items variant size attrs]}]
+  (when (empty? items) (throw (ex-info "uikit-base: a dropdown's items are one or more" {})))
+  (named-items! "dropdown" items)
+  [:div (with-attrs {:class "ui-dropdown"} attrs [])
+   (toggle "a dropdown" id label variant size)
+   [:div {:id id :popover "auto" :class "ui-dropdown__menu"}
+    (into [:ul.ui-dropdown__items]
+          (for [[p c] items] [:li (if (some? p) (wb/link p {:class "ui-dropdown__item"} c) c)]))]])
+
+(defn popover
+  "`(popover opts & body)` → a button, `:label`, that opens `body` beside it in a box — the
+  platform's popover, which Esc and a click outside close, and the keyboard reaches after
+  the button. `:title`, when given, heads the box. `:id` is the box's, one word; `:variant`
+  and `:size` are the button's; `:attrs` go on the wrapper. Placed as a `dropdown`'s menu."
+  [{:keys [id label title variant size attrs]} & body]
+  [:div (with-attrs {:class "ui-popover-wrap"} attrs [])
+   (toggle "a popover" id label variant size)
+   (into (cond-> [:div {:id id :popover "auto" :class "ui-popover"}] (not (nothing? title)) (conj [:p.ui-popover__head title]))
+         body)])
+
+(defn tooltip
+  "`(tooltip opts trigger)` → `trigger`, one element that takes the focus — a button, a
+  link — described by `:text`, which is shown above it while it is hovered or focused, and
+  while the pointer rests on the text itself, and hidden by Esc. The text is the server's,
+  in a `role=tooltip` that the trigger's `aria-describedby` names, before any of the
+  trigger's own; a screen reader reads it with or without a script. A tooltip says more
+  about a control that is named already; it never names one. `:id` is the text's, one word.
+  Shown by the plugin's `/ui/ui.js`."
+  [{:keys [id text]} trigger]
+  (id! "a tooltip" :id id)
+  (when (or (not (string? text)) (str/blank? text))
+    (throw (ex-info "uikit-base: a tooltip's :text is what it says about its trigger" {:text text})))
+  (when-not (and (vector? trigger) (keyword? (first trigger)))
+    (throw (ex-info "uikit-base: a tooltip's trigger is one element, which it describes" {})))
+  (let [[tag & more] trigger
+        [attrs body] (split-attrs more)
+        attrs (normalised attrs)
+        described (str/join " " (distinct (cons id (remove str/blank? (str/split (str/trim (str (:aria-describedby attrs ""))) #"\s+")))))]
+    [:span.ui-tooltip-wrap
+     (into [tag (assoc attrs :aria-describedby described)] body)
+     [:span {:id id :popover "manual" :role "tooltip" :class "ui-tooltip"} text]]))

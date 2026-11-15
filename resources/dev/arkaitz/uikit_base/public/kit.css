@@ -24,7 +24,8 @@
     .ui-btn:focus-visible, .ui-input:focus-visible, .ui-check:focus-visible, .ui-pager a:focus-visible, .ui-card a:focus-visible,
     .ui-prose a:focus-visible, .ui-crumbs a:focus-visible, .ui-tabs a:focus-visible,
     .ui-table-wrap:focus-visible, .ui-close:focus-visible, .ui-range:focus-visible, .ui-list-group__action:focus-visible,
-    .ui-collapse__summary:focus-visible, .ui-accordion__summary:focus-visible, .ui-scroller:focus-visible, .ui-dialog__body:focus-visible {
+    .ui-collapse__summary:focus-visible, .ui-accordion__summary:focus-visible, .ui-scroller:focus-visible, .ui-dialog__body:focus-visible,
+    .ui-dropdown__item:focus-visible {
       outline: var(--ui-focus-outline-width) solid var(--ui-focus-ring);
       outline-offset: var(--ui-focus-outline-width);
       box-shadow: 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
@@ -458,6 +459,43 @@
     .ui-dialog--scrollable[open] { display: flex; flex-direction: column; }
     .ui-dialog--scrollable > .ui-dialog__body { position: relative; flex: 1 1 auto; min-block-size: 0; overflow-y: auto; }
 
+    /* Offcanvas: a dialog drawn as a sheet along the inline start or end, the screen's height. */
+    .ui-offcanvas {
+      inline-size: min(24rem, calc(100% - var(--ui-spacing-xl))); block-size: 100%; max-block-size: none;
+      margin-block: 0; border-block-width: 0; border-radius: 0;
+    }
+    .ui-offcanvas--start { margin-inline: 0 auto; border-inline-start-width: 0; }
+    .ui-offcanvas--end { margin-inline: auto 0; border-inline-end-width: 0; }
+
+    /* Dropdowns, popovers and tooltips: the platform's popover, in the top layer, placed
+     * against the control before it by anchor positioning, which each wrapper scopes so one
+     * name serves them all; where a browser has none, ui.js places it. */
+    .ui-dropdown, .ui-popover-wrap, .ui-tooltip-wrap { display: inline-block; anchor-scope: --ui-anchor; }
+    .ui-dropdown > :first-child, .ui-popover-wrap > :first-child, .ui-tooltip-wrap > :first-child { anchor-name: --ui-anchor; }
+    .ui-dropdown__menu, .ui-popover, .ui-tooltip {
+      position-anchor: --ui-anchor; inset: auto; margin: 0; margin-block-start: var(--ui-spacing-xs);
+      position-area: block-end span-inline-end; position-try-fallbacks: flip-block;
+      transition: opacity var(--ui-duration-normal);
+    }
+    @starting-style { .ui-dropdown__menu:popover-open, .ui-popover:popover-open, .ui-tooltip:popover-open { opacity: 0; } }
+    .ui-dropdown__menu, .ui-popover {
+      min-inline-size: 10rem; max-inline-size: min(20rem, calc(100vw - 2 * var(--ui-spacing-md)));
+      padding: var(--ui-spacing-xs) 0; color: var(--ui-on-surface); background: var(--ui-surface);
+      border: 1px solid var(--ui-border); border-radius: var(--ui-radius-md); box-shadow: var(--ui-shadow-md);
+    }
+    .ui-popover { padding: var(--ui-spacing-sm) var(--ui-spacing-md); }
+    .ui-popover__head { margin: 0 0 var(--ui-spacing-xs); font-weight: 600; }
+    .ui-dropdown__items { list-style: none; margin: 0; padding: 0; }
+    .ui-dropdown__item { display: block; padding: var(--ui-spacing-xs) var(--ui-spacing-md); color: var(--ui-link); text-decoration: none; }
+    .ui-dropdown__item:hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
+    .ui-dropdown__items > li > .ui-action { display: block; padding: var(--ui-spacing-xs) var(--ui-spacing-md); }
+    /* A tooltip: above its trigger, centred, in the inverse surface. */
+    .ui-tooltip {
+      margin-block: 0 var(--ui-spacing-xs); position-area: block-start; max-inline-size: 16rem;
+      padding: var(--ui-spacing-xxs) var(--ui-spacing-sm); font-size: var(--ui-font-size-sm);
+      color: var(--ui-on-surface-inverse); background: var(--ui-surface-inverse); border: 0; border-radius: var(--ui-radius-sm);
+    }
+
     /* Layout: a stack of blocks, a cluster that wraps, a grid of as many columns as fit. */
     .ui-stack { display: grid; gap: var(--ui-spacing-md); align-content: start; }
     .ui-stack > * { margin-block: 0; }
@@ -486,7 +524,8 @@
     .ui-prose kbd { border: 1px solid var(--ui-border-strong); }
 
     @media (prefers-reduced-motion: reduce) {
-      .ui-btn, .ui-switch::before, .ui-field--floating > .ui-field__label, .ui-dialog { transition: none; }
+      .ui-btn, .ui-switch::before, .ui-field--floating > .ui-field__label, .ui-dialog,
+      .ui-dropdown__menu, .ui-popover, .ui-tooltip { transition: none; }
       .ui-progress--animated::-webkit-progress-value { animation: none; }
       .ui-progress--animated::-moz-progress-bar { animation: none; }
       .ui-spinner, .ui-placeholder { animation: none; }

@@ -51,6 +51,58 @@
     });
   }
 
+  // Placing a popover against the control before it, where CSS anchor positioning is
+  // missing: below it and inline-start aligned (a tooltip above it, centred), flipped when
+  // the viewport has no room, kept inside it inline.
+  var open = ".ui-dropdown__menu:popover-open, .ui-popover:popover-open, .ui-tooltip:popover-open";
+  function place(pop) {
+    var a = pop.parentElement.firstElementChild.getBoundingClientRect(), p = pop.getBoundingClientRect();
+    var tip = pop.classList.contains("ui-tooltip"), gap = 4;
+    var below = a.bottom + gap, above = a.top - gap - p.height;
+    var top = tip ? (above < 0 ? below : above) : (below + p.height > innerHeight && above >= 0 ? above : below);
+    var rtl = getComputedStyle(pop).direction === "rtl";
+    var left = tip ? a.left + (a.width - p.width) / 2 : (rtl ? a.right - p.width : a.left);
+    pop.style.setProperty("margin", "0");
+    pop.style.setProperty("top", top + "px");
+    left = Math.max(0, Math.min(left, document.documentElement.clientWidth - p.width));
+    pop.style.setProperty("left", left + "px");
+  }
+  function placeOpen() { if (!nativeAnchor) document.querySelectorAll(open).forEach(place); }
+  document.addEventListener("toggle", function (event) { if (event.newState === "open") placeOpen(); }, true);
+  addEventListener("resize", placeOpen);
+  addEventListener("scroll", placeOpen, { capture: true, passive: true });
+
+  // A dropdown's link or button closes it: htmx may swap <main> and leave the menu open.
+  document.addEventListener("click", function (event) {
+    var item = event.target.closest(".ui-dropdown__menu a, .ui-dropdown__menu button");
+    if (item) item.closest("[popover]").hidePopover();
+  });
+
+  // Tooltips: shown while their trigger is hovered or focused, or the pointer rests on the
+  // tooltip itself (WCAG 1.4.13); hidden when neither holds, or on Esc.
+  function tipOf(node) {
+    var wrap = node instanceof Element && node.closest(".ui-tooltip-wrap");
+    return wrap ? wrap.querySelector(".ui-tooltip") : null;
+  }
+  function showTip(event) {
+    var tip = tipOf(event.target);
+    if (tip && !tip.matches(":popover-open")) { tip.showPopover(); placeOpen(); }
+  }
+  function hideTip(event) {
+    var tip = tipOf(event.target), wrap = tip && tip.parentElement;
+    if (!tip || tipOf(event.relatedTarget) === tip) return;
+    var held = event.type === "mouseout" ? wrap.contains(document.activeElement) : wrap.matches(":hover");
+    if (!held) tip.hidePopover();
+  }
+  document.addEventListener("mouseover", showTip);
+  document.addEventListener("focusin", showTip);
+  document.addEventListener("mouseout", hideTip);
+  document.addEventListener("focusout", hideTip);
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Escape") return;
+    document.querySelectorAll(".ui-tooltip:popover-open").forEach(function (t) { t.hidePopover(); });
+  });
+
   var inits = [];
   function init() { inits.forEach(function (f) { f(); }); }
 

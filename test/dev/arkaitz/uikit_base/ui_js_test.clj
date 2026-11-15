@@ -60,4 +60,4 @@
   (let [lines (count (re-seq #"\n" source))]
     (is (< 20 lines) (str "witness: the script was read, " lines " lines"))
     (is (<= lines 150) (str "ui.js is " lines " lines; the user's bound is 150, readable, never minified"))
-    (is (not-any? #(< 120 (count %)) (str/split source #"\n")) "and no line is crammed past 120 characters")))
+    (is (= [] (filter #(< 120 (count %)) (str/split source #"\n"))) "lines crammed past 120 characters")))

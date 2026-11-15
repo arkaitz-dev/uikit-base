@@ -1128,3 +1128,52 @@
   (is (= ["uikit-base: a dialog-button's :dialog is one word, a letter first, that an element carries as its id" {:dialog nil}]
          (refusal #(ui/dialog-button {} "Open"))))
   (is (= ["uikit-base: a button's :variant is one of the kit's" {:variant :huge}] (refusal #(ui/dialog-button {:dialog "d" :variant :huge} "x")))))
+
+;; --- K17: offcanvas, dropdown, popover, tooltip -------------------------------------------
+
+(deftest an-offcanvas-is-a-dialog-drawn-along-one-side-whose-body-scrolls
+  (is (= (str "<dialog aria-labelledby=\"nav-title\" class=\"ui-dialog ui-dialog--scrollable ui-offcanvas ui-offcanvas--end x\" closedby=\"any\" id=\"nav\">"
+              "<div class=\"ui-dialog__head\"><h2 class=\"ui-dialog__title\" id=\"nav-title\">Menu</h2>"
+              "<button class=\"ui-close\" command=\"close\" commandfor=\"nav\" type=\"button\">" close-en "</div>"
+              "<div class=\"ui-dialog__body\" tabindex=\"0\"><p>b</p></div></dialog>")
+         (html (ui/offcanvas {} {:id "nav" :title "Menu" :side :end :attrs {:class "x"}} [:p "b"]))))
+  (is (str/includes? (html (ui/offcanvas {} {:id "nav" :title "Menu"} "b")) "class=\"ui-dialog ui-dialog--scrollable ui-offcanvas ui-offcanvas--start\"")
+      "the inline start unless told")
+  (is (str/includes? (html (ui/offcanvas {} {:id "nav" :title "Menu" :static? true} "b")) "closedby=\"none\"") "static as a dialog is")
+  (doseq [side [:left :right "end"]]
+    (is (= ["uikit-base: an offcanvas's :side is :start or :end" {:side side}] (refusal #(ui/offcanvas {} {:id "n" :title "M" :side side}))) (pr-str side)))
+  (is (= ["uikit-base: an offcanvas has a title, which names it" {:id "n"}] (refusal #(ui/offcanvas {} {:id "n"})))))
+
+(def ^:private nav-attrs "hx-push-url=\"true\" hx-select=\"main\" hx-swap=\"outerHTML show:top showTarget:body\" hx-target=\"main\"")
+
+(deftest a-dropdown-is-a-button-and-a-popover-of-links-and-actions
+  (is (= (str "<div class=\"ui-dropdown x\"><button class=\"ui-btn ui-btn--secondary ui-btn--sm\" popovertarget=\"acts\" type=\"button\">Actions &lt;x&gt;</button>"
+              "<div class=\"ui-dropdown__menu\" id=\"acts\" popover=\"auto\"><ul class=\"ui-dropdown__items\">"
+              "<li><a class=\"ui-dropdown__item\" href=\"/a\" hx-get=\"/a\" " nav-attrs ">Edit &lt;it&gt;</a></li><li><b>act</b></li></ul></div></div>")
+         (html (ui/dropdown {:id "acts" :label "Actions <x>" :variant :secondary :size :sm :attrs {:class "x"} :items [["/a" "Edit <it>"] [nil [:b "act"]]]})))
+      "a link swaps <main> as every link does; a nil path holds its content; no role=menu")
+  (is (= ["uikit-base: a dropdown's items are one or more" {}] (refusal #(ui/dropdown {:id "m" :label "M" :items []}))))
+  (is (= ["uikit-base: every item of a dropdown has a label" {}] (refusal #(ui/dropdown {:id "m" :label "M" :items [["/a" " "]]}))))
+  (is (= ["uikit-base: a dropdown's label is the text its button shows" {:label ""}] (refusal #(ui/dropdown {:id "m" :label "" :items [["/a" "A"]]}))))
+  (is (= ["uikit-base: a dropdown's :id is one word, a letter first, that an element carries as its id" {:id "a b"}]
+         (refusal #(ui/dropdown {:id "a b" :label "M" :items [["/a" "A"]]})))))
+
+(deftest a-popover-is-a-button-and-the-box-it-opens
+  (is (= (str "<div class=\"ui-popover-wrap\" id=\"w\"><button class=\"ui-btn\" popovertarget=\"p\" type=\"button\">Info</button>"
+              "<div class=\"ui-popover\" id=\"p\" popover=\"auto\"><p class=\"ui-popover__head\">About &lt;it&gt;</p><p>b</p></div></div>")
+         (html (ui/popover {:id "p" :label "Info" :title "About <it>" :attrs {:id "w"}} [:p "b"]))))
+  (is (= "<div class=\"ui-popover-wrap\"><button class=\"ui-btn\" popovertarget=\"p\" type=\"button\">Info</button><div class=\"ui-popover\" id=\"p\" popover=\"auto\">b</div></div>"
+         (html (ui/popover {:id "p" :label "Info" :title " "} "b")))
+      "a blank title draws no head")
+  (is (= ["uikit-base: a popover's label is the text its button shows" {:label nil}] (refusal #(ui/popover {:id "p"} "b")))))
+
+(deftest a-tooltip-describes-its-trigger-with-the-servers-text
+  (is (= (str "<span class=\"ui-tooltip-wrap\"><button aria-describedby=\"tip hint\" class=\"ui-btn y\" type=\"button\">Save</button>"
+              "<span class=\"ui-tooltip\" id=\"tip\" popover=\"manual\" role=\"tooltip\">Saves &lt;now&gt;</span></span>")
+         (html (ui/tooltip {:id "tip" :text "Saves <now>"} (ui/button {:type "button" :aria-describedby "hint tip" :class "y"} "Save"))))
+      "its text first among the trigger's descriptions, once")
+  (is (= "<span class=\"ui-tooltip-wrap\"><a aria-describedby=\"tip\" href=\"/x\">x</a><span class=\"ui-tooltip\" id=\"tip\" popover=\"manual\" role=\"tooltip\">T</span></span>"
+         (html (ui/tooltip {:id "tip" :text "T"} [:a {"HREF" "/x"} "x"]))))
+  (is (= ["uikit-base: a tooltip's :text is what it says about its trigger" {:text " "}] (refusal #(ui/tooltip {:id "t" :text " "} [:a "x"]))))
+  (doseq [t ["x" nil [[:a "x"]]]]
+    (is (= ["uikit-base: a tooltip's trigger is one element, which it describes" {}] (refusal #(ui/tooltip {:id "t" :text "T"} t))) (pr-str t))))

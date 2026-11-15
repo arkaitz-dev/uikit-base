@@ -84,7 +84,14 @@
    ["overlays"
     [:div.ui-cluster
      (ui/dialog-button {:dialog "g-dialog" :variant :primary} "Open a dialog")
-     (ui/dialog-button {:dialog "g-static"} "Open a static dialog")]
+     (ui/dialog-button {:dialog "g-static"} "Open a static dialog")
+     (ui/dialog-button {:dialog "g-start"} "Open a sheet at the start")
+     (ui/dialog-button {:dialog "g-end"} "Open a sheet at the end")
+     (ui/dropdown {:id "g-menu" :label "Actions" :items [["/" "Home"] ["/open" "Open items"] [nil (ui/action r "/do" {:label "Archive" :subject "the gallery"})]]})
+     (ui/popover {:id "g-pop" :label "What is this?" :title "The gallery"} [:p "Every component of the kit on one page."])
+     (ui/tooltip {:id "g-tip" :text "Saves the draft, not the page"} (ui/button {:type "button"} "Save draft"))]
+    (ui/offcanvas r {:id "g-start" :title "Navigation"} (ui/list-group {:items [["/" "Home"] ["/open" "Open items"]]}))
+    (ui/offcanvas r {:id "g-end" :title "Filters" :side :end} [:p "Filters would go here."])
     (ui/dialog r {:id "g-dialog" :title "Rename" :footer (ui/button {:type "button" :commandfor "g-dialog" :command "close"} "Cancel")}
       (ui/post-form r "/do" {:class "ui-form"} (ui/field r {:id "g-name" :label "Name"}) (ui/button {:variant :primary} "Save")))
     (ui/dialog r {:id "g-static" :title "Answer first" :static? true :scrollable? true :size :sm}
