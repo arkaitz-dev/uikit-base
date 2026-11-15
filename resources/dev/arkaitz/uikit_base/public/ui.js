@@ -11,6 +11,7 @@
   var stillMotion = matchMedia("(prefers-reduced-motion: reduce)");
   var inits = [];
   function on(type, listener, capture) { document.addEventListener(type, listener, capture); }
+  function closedBy(node) { return node instanceof HTMLDialogElement && node.open && node.getAttribute("closedby"); }
 
   // Invoker commands where missing: open or close a dialog, and give the focus back on close.
   var invokers = new WeakMap();
@@ -21,7 +22,8 @@
       if (!(dialog instanceof HTMLDialogElement)) return;
       var command = button.getAttribute("command");
       if (command === "show-modal" && !dialog.open) { invokers.set(dialog, button); dialog.showModal(); }
-      if ((command === "close" || command === "request-close") && dialog.open) dialog.close();
+      if (command === "close" && dialog.open) dialog.close();
+      if (command === "request-close" && dialog.open && closedBy(dialog) !== "none") dialog.close();
     });
     on("close", function (event) {
       var button = invokers.get(event.target);
@@ -30,18 +32,22 @@
     }, true);
   }
 
-  // A dialog's closedby where missing: "none" refuses Esc, "any" closes on a backdrop click.
-  function closedBy(node) { return node instanceof HTMLDialogElement && node.open && node.getAttribute("closedby"); }
+  // A dialog's closedby where missing: "none" refuses Esc — its keydown too, since a browser
+  // that lacks closedby may not let a second cancel be refused — and "any" closes on a press
+  // that both starts and ends on the backdrop, as light dismiss does, never on a drag out.
+  function outside(event) {
+    var box = event.target.getBoundingClientRect(), x = event.clientX, y = event.clientY;
+    return closedBy(event.target) === "any" && (x < box.left || x > box.right || y < box.top || y > box.bottom);
+  }
+  var pressedOutside = false;
   if (!nativeClosedBy) {
     on("cancel", function (event) { if (closedBy(event.target) === "none") event.preventDefault(); }, true);
-    on("click", function (event) {
-      var box = event.target.getBoundingClientRect(), x = event.clientX, y = event.clientY;
-      var outside = x < box.left || x > box.right || y < box.top || y > box.bottom;
-      if (closedBy(event.target) === "any" && outside) event.target.close();
-    });
+    on("pointerdown", function (event) { pressedOutside = outside(event); });
+    on("click", function (event) { if (pressedOutside && outside(event)) event.target.close(); });
   }
 
   // Where anchor positioning is missing: below the control (a tooltip above), flipped to fit.
+  // A browser with anchor-name but no anchor-scope would apply the stylesheet's area too.
   var open = ".ui-dropdown__menu:popover-open, .ui-popover:popover-open, .ui-tooltip:popover-open";
   function place(pop) {
     var a = pop.parentElement.firstElementChild.getBoundingClientRect(), p = pop.getBoundingClientRect();
@@ -49,9 +55,9 @@
     var below = a.bottom + gap, above = a.top - gap - p.height;
     var top = tip ? (above < 0 ? below : above) : (below + p.height > innerHeight && above >= 0 ? above : below);
     var left = tip ? a.left + (a.width - p.width) / 2 : (rtl ? a.right - p.width : a.left);
-    pop.style.setProperty("margin", "0");
-    pop.style.setProperty("top", top + "px");
-    pop.style.setProperty("left", Math.max(0, Math.min(left, document.documentElement.clientWidth - p.width)) + "px");
+    left = Math.max(0, Math.min(left, document.documentElement.clientWidth - p.width));
+    var props = { "position-area": "none", margin: "0", top: top + "px", left: left + "px" };
+    Object.keys(props).forEach(function (name) { pop.style.setProperty(name, props[name]); });
   }
   function placeOpen() { if (!nativeAnchor) document.querySelectorAll(open).forEach(place); }
   on("toggle", function (event) { if (event.newState === "open") placeOpen(); }, true);
@@ -59,6 +65,8 @@
   addEventListener("scroll", placeOpen, { capture: true, passive: true });
 
   // Tooltips: shown while the trigger or the tooltip is hovered or focused (WCAG 1.4.13).
+  // 150 ms is a declared policy: a pointer crosses the few pixels to the tooltip in a frame or
+  // two, so a tooltip hides only once neither has been hovered or focused for that long.
   function tipOf(node) {
     return node instanceof Element ? node.closest(".ui-tooltip-wrap")?.querySelector(".ui-tooltip") : null;
   }
@@ -67,17 +75,23 @@
     if (tip && !tip.matches(":popover-open")) { tip.showPopover(); placeOpen(); }
   }
   function hideTip(event) {
-    var tip = tipOf(event.target), wrap = tip && tip.parentElement;
-    if (!tip || tipOf(event.relatedTarget) === tip) return;
-    var held = event.type === "mouseout" ? wrap.contains(document.activeElement) : wrap.matches(":hover");
-    if (!held) tip.hidePopover();
+    var tip = tipOf(event.target);
+    if (tip) setTimeout(function () {
+      var wrap = tip.parentElement, held = wrap.matches(":hover") || wrap.contains(document.activeElement);
+      if (!held && tip.matches(":popover-open")) tip.hidePopover();
+    }, 150);
   }
   ["mouseover", "focusin"].forEach(function (type) { on(type, showTip); });
   ["mouseout", "focusout"].forEach(function (type) { on(type, hideTip); });
+  // Esc hides an open tooltip, and only that: the dialog around it stays. Where closedby is
+  // missing, Esc is refused too while a closedby=none dialog is open (see above).
   on("keydown", function (event) {
     if (event.key !== "Escape") return;
-    document.querySelectorAll(".ui-tooltip:popover-open").forEach(function (tip) { tip.hidePopover(); });
-  });
+    var tips = document.querySelectorAll(".ui-tooltip:popover-open");
+    tips.forEach(function (tip) { tip.hidePopover(); });
+    var refused = !nativeClosedBy && document.querySelector("dialog[closedby='none']:modal");
+    if (tips.length || refused) event.preventDefault();
+  }, true);
 
   // Toasts: one with a timeout goes once shown that long, the time stopped while hovered or focused.
   inits.push(function () {
@@ -89,22 +103,33 @@
       }, 250);
     });
   });
+  // A closed toast whose button had the focus hands it to the next toast's, or the one before.
+  function dismiss(close) {
+    var toast = close.closest(".ui-toast"), focused = document.activeElement === close;
+    var next = toast.nextElementSibling, near = next?.matches(".ui-toast") ? next : toast.previousElementSibling;
+    toast.remove();
+    if (focused && near?.matches(".ui-toast")) near.querySelector(".ui-toast__close")?.focus();
+  }
 
   // Carousels: a button scrolls a slide; an interval advances them, never under reduced motion.
+  // Mid-scroll the position is between slides, so a press counts from the slide last aimed at.
   function go(carousel, step) {
-    var view = carousel.querySelector(".ui-carousel__viewport"), n = view.children.length;
-    var at = (Math.round(Math.abs(view.scrollLeft) / view.clientWidth) + step + n) % n;
+    var view = carousel.querySelector(".ui-carousel__viewport"), n = view ? view.children.length : 0;
+    if (!n || !view.clientWidth) return;
+    var at = Math.abs(view.scrollLeft) / view.clientWidth;
+    var from = Math.abs(at - Math.round(at)) < 0.01 || carousel.uiAt === undefined ? Math.round(at) : carousel.uiAt;
+    carousel.uiAt = (from + step + n) % n;
     var sign = getComputedStyle(view).direction === "rtl" ? -1 : 1;
-    view.scrollTo({ left: sign * at * view.clientWidth, behavior: stillMotion.matches ? "auto" : "smooth" });
+    view.scrollTo({ left: sign * carousel.uiAt * view.clientWidth, behavior: stillMotion.matches ? "auto" : "smooth" });
   }
   function rotate(carousel, rotating) {
     carousel.toggleAttribute("data-ui-rotating", rotating);
-    carousel.querySelector(".ui-carousel__viewport").setAttribute("aria-live", rotating ? "off" : "polite");
+    carousel.querySelector(".ui-carousel__viewport")?.setAttribute("aria-live", rotating ? "off" : "polite");
   }
   inits.push(function () {
     document.querySelectorAll(".ui-carousel").forEach(function (carousel) {
       var controls = carousel.querySelector(".ui-carousel__controls"), ms = Number(carousel.dataset.intervalMs);
-      if (!controls.hidden) return;
+      if (!controls || !controls.hidden || !carousel.querySelector(".ui-carousel__viewport")) return;
       controls.hidden = false;
       if (!ms || stillMotion.matches) return;
       rotate(carousel, true);
@@ -125,7 +150,7 @@
     var close = event.target.closest(".ui-toast__close"), carousel = event.target.closest(".ui-carousel");
     var button = carousel && event.target.closest(".ui-carousel__controls button");
     if (item) item.closest("[popover]").hidePopover();
-    if (close) close.closest(".ui-toast").remove();
+    if (close) dismiss(close);
     if (!button) return;
     if (button.classList.contains("ui-carousel__rotate")) rotate(carousel, !carousel.hasAttribute("data-ui-rotating"));
     else go(carousel, button.classList.contains("ui-carousel__next") ? 1 : -1);

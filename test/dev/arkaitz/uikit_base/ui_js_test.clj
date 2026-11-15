@@ -64,3 +64,12 @@
     (is (< 20 (count code)) (str "witness: the script was read, " (count code) " lines of code"))
     (is (<= (count code) 150) (str "ui.js is " (count code) " lines of code (" (dec (count lines)) " in all); the user's bound is 150, readable, never minified"))
     (is (= [] (filter #(< 120 (count %)) (str/split source #"\n"))) "lines crammed past 120 characters")))
+
+(deftest the-fallback-placement-undoes-the-stylesheets-anchor-area
+  ;; A browser with anchor-name but no anchor-scope runs the script's placement, and would
+  ;; apply the stylesheet's position-area as well: the box would land twice as far out.
+  (let [kit (slurp (io/resource "dev/arkaitz/uikit_base/public/kit.css"))
+        place (second (re-find #"(?s)function place\(pop\) \{(.*?)\n  \}" (:code (code source))))]
+    (is (re-find #"position-area\s*:" kit) "witness: the stylesheet places popovers by an anchor area")
+    (is (some? place) "witness: the script's placement was found")
+    (is (str/includes? (str place) "\"position-area\": \"none\"") "the placement sets position-area to none before its own top and left")))
