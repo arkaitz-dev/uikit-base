@@ -940,7 +940,7 @@
               [:h2 {:id title-id :class "ui-dialog__title"} title]
               (close-button request {:commandfor id :command "close"})]
              (into [:div (cond-> {:class "ui-dialog__body"} scrollable? (assoc :tabindex "0"))] body)]
-      (not (or (nothing? footer) (and (coll? footer) (empty? footer)))) (conj [:div.ui-dialog__foot footer]))))
+      (not (or (nothing? footer) (and (coll? footer) (every? nothing? footer)))) (conj [:div.ui-dialog__foot footer]))))
 
 (defn dialog
   "`(dialog request opts & body)` → the platform's modal `<dialog>`, opened by a
@@ -1031,8 +1031,9 @@
   in a `role=tooltip` that the trigger's `aria-describedby` names, before any of the
   trigger's own; a screen reader reads it with or without a script. A tooltip says more
   about a control that is named already; it never names one. `:id` is the text's, one word.
-  The trigger must take the focus — a button, a link with an `href`, a form control, a
-  summary, or an element with a `tabindex` — or it is refused. Shown by the plugin's
+  The trigger must take the focus by Tab — a button, a link with an `href`, a form control
+  neither hidden nor disabled, a summary, or an element with a `tabindex` of 0 or more — or
+  it is refused. Shown by the plugin's
   `/ui/ui.js`."
   [{:keys [id text]} trigger]
   (id! "a tooltip" :id id)
@@ -1041,11 +1042,15 @@
   (when-not (and (vector? trigger) (keyword? (first trigger)))
     (throw (ex-info "uikit-base: a tooltip's trigger is one element, which it describes" {})))
   (let [[tag & more] trigger
-        el (keyword (first (str/split (name tag) #"[.#]")))
-        a  (normalised (first (split-attrs more)))]
-    ;; Shown on focus as well as hover: a trigger the keyboard cannot reach hides it from both.
-    (when-not (or (#{:button :input :select :textarea :summary} el) (and (= :a el) (contains? a :href)) (contains? a :tabindex))
-      (throw (ex-info "uikit-base: a tooltip's trigger takes the focus: a button, a link with an href, a form control, a summary, or an element with a tabindex" {:trigger el}))))
+        el (keyword (.toLowerCase ^String (first (str/split (name tag) #"[.#]")) java.util.Locale/ROOT))
+        a  (normalised (first (split-attrs more)))
+        tab (some-> (:tabindex a) str str/trim parse-long)]
+    ;; Shown on focus as well as hover: a trigger Tab cannot reach hides it from the keyboard.
+    (when-not (and (or (#{:button :select :textarea :summary} el) (and (= :input el) (not= "hidden" (some-> (:type a) str str/lower-case)))
+                       (and (= :a el) (some? (:href a))) (and (some? (:tabindex a)) (some? tab) (<= 0 tab)))
+                   (not (:disabled a))
+                   (not (and (some? (:tabindex a)) (or (nil? tab) (neg? tab)))))
+      (throw (ex-info "uikit-base: a tooltip's trigger takes the focus by Tab: a button, a link with an href, a form control that is neither hidden nor disabled, a summary, or an element with a tabindex of 0 or more" {:trigger el}))))
   (let [[tag & more] trigger
         [attrs body] (split-attrs more)
         attrs (normalised attrs)

@@ -985,7 +985,13 @@
       (let [own (fn [props] (some #(palette-var (on-element rules {:classes classes} %)) props))]
         (is (and (own ["color"]) (own backgrounds)) (str (vec (sort classes)) " sets both its ink and its ground " (:width env) " " (:scheme env)))))))
 
+(def ^:private rotate-classes
+  "The kit classes of a carousel's rotation button, as `carousel` renders it."
+  (some (fn [[_ _ classes]] (when (classes "ui-carousel__rotate") classes))
+        (elements (ui/carousel req {:label "c" :slides ["a"] :interval-ms 5000}) ())))
+
 (deftest a-carousels-rotation-button-says-what-it-will-do-and-is-gone-under-reduced-motion
+  (is (contains? rotate-classes "ui-btn") (str "witness: the rotation button is a kit button, " rotate-classes))
   ;; Its two labels are the server's; the script only flags the carousel as turning, and
   ;; the stylesheet shows the one that names what a press would do.
   (doseq [[env rules] @env-rules
@@ -994,9 +1000,10 @@
            [(shown ".ui-carousel[data-ui-rotating] .ui-carousel__start") (shown ".ui-carousel[data-ui-rotating] .ui-carousel__stop")
             (shown ".ui-carousel:not([data-ui-rotating]) .ui-carousel__start") (shown ".ui-carousel:not([data-ui-rotating]) .ui-carousel__stop")])
         (str "turning, it says stop; standing, start " (:width env)))
-    ;; The button is a .ui-btn too, whose own display it must win over: read on the element.
+    ;; The button is a .ui-btn too, whose own display it must win over: read on the element,
+    ;; its classes as the component renders them.
     (is (= (if (= :reduce (:motion env)) "none" "inline-flex")
-           (on-element rules {:classes #{"ui-btn" "ui-btn--sm" "ui-carousel__rotate"}} "display"))
+           (on-element rules {:classes rotate-classes} "display"))
         (str "a carousel never turns where reduced motion was asked for, so its button is not offered " (:motion env)))))
 
 (deftest no-text-travels-through-a-data-attribute

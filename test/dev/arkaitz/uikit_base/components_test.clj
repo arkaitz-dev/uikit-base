@@ -1120,7 +1120,7 @@
   (doseq [t [nil "" "  "]]
     (is (= ["uikit-base: a dialog has a title, which names it" {:id "d"}] (refusal #(ui/dialog {} {:id "d" :title t}))) (pr-str t)))
   (is (= ["uikit-base: a dialog's :size is :sm or :lg" {:size :md}] (refusal #(ui/dialog {} {:id "d" :title "T" :size :md}))))
-  (doseq [f [nil "" " " [] ()]]
+  (doseq [f [nil "" " " [] () [nil] (list nil " ") [nil ""]]]
     (is (not (str/includes? (html (ui/dialog {} {:id "d" :title "T" :footer f} "b")) "ui-dialog__foot")) (str "a footer of nothing draws no foot " (pr-str f))))
   (is (str/includes? (html (ui/dialog {} {:id "d" :title "T" :footer 0} "b")) "<div class=\"ui-dialog__foot\">0</div>") "witness: a footer of something is drawn"))
 
@@ -1183,10 +1183,15 @@
   (doseq [id [nil "" "a b" "1t" :t]]
     (is (= ["uikit-base: a tooltip's :id is one word, a letter first, that an element carries as its id" {:id id}]
            (refusal #(ui/tooltip {:id id :text "T"} [:button "x"]))) (pr-str id)))
-  (doseq [[t el] [[[:a "x"] :a] [[:span "x"] :span] [[:div.icon {:class "y"} "x"] :div] [[:img {:src "/i.png" :alt "i"}] :img]]]
-    (is (= ["uikit-base: a tooltip's trigger takes the focus: a button, a link with an href, a form control, a summary, or an element with a tabindex" {:trigger el}]
+  (doseq [[t el] [[[:a "x"] :a] [[:span "x"] :span] [[:div.icon {:class "y"} "x"] :div] [[:img {:src "/i.png" :alt "i"}] :img]
+                  [[:a {:href nil} "x"] :a] [[:span {:tabindex nil} "x"] :span] [[:span {:tabindex "-1"} "x"] :span] [[:span {:tabindex -2} "x"] :span]
+                  [[:span {:tabindex "x"} "x"] :span] [[:button {:tabindex "-1"} "x"] :button] [[:button {:disabled true} "x"] :button]
+                  [[:input {"DISABLED" "disabled"}] :input] [[:input {:type "hidden"}] :input] [[:input {:type "HIDDEN"}] :input]
+                  [[:SPAN "x"] :span]]]
+    (is (= ["uikit-base: a tooltip's trigger takes the focus by Tab: a button, a link with an href, a form control that is neither hidden nor disabled, a summary, or an element with a tabindex of 0 or more" {:trigger el}]
            (refusal #(ui/tooltip {:id "t" :text "T"} t))) (pr-str t)))
-  (doseq [t [[:button "x"] [:a {:href "/x"} "x"] [:input {:type "text"}] [:select] [:textarea] [:summary "s"] [:span {"TABINDEX" "0"} "i"] [:button#b.c "x"]]]
+  (doseq [t [[:button "x"] [:a {:href "/x"} "x"] [:input {:type "text"}] [:input] [:select] [:textarea] [:summary "s"] [:span {"TABINDEX" "0"} "i"]
+             [:span {:tabindex 2} "i"] [:button#b.c "x"] [:BUTTON "x"] [:A {:href "/x"} "x"] [:button {:disabled false} "x"]]]
     (is (str/includes? (html (ui/tooltip {:id "t" :text "T"} t)) "aria-describedby=\"t\"") (str "a trigger that takes the focus is described " (pr-str t)))))
 
 ;; --- K18: toasts and carousels -----------------------------------------------------------
