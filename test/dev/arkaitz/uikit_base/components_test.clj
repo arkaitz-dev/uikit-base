@@ -212,6 +212,8 @@
                             (ui/field req {:id "g" :label "G" :type "radio" :options [["a" "A"]]})
                             (ui/action req "/a" {:label "A" :subject "s"})
                             (ui/confirm req "/a" {:label "A" :confirm-label "Yes"})
+                            (ui/empty "x") (ui/pairs [["a" "b"]])
+                            (ui/page-head {:title "t" :subtitle "s" :actions [(ui/link-button "/a" "x")]})
                             (for [k [:ok :info :warning :error]] (ui/notice k "x"))
                             (ui/table {:caption "c" :head ["h"] :rows [["a" "b"]] :row-header? true})
                             (ui/pager req {:previous "/a" :next "/b"})
@@ -221,7 +223,7 @@
                             (for [k [:neutral :success :danger :warning :info]] (ui/badge k "x"))
                             (ui/card "x")))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 39 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
+    (is (= 46 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
     (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{>]")) kit) classes))
         "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
@@ -304,6 +306,45 @@
          (refusal #(ui/confirm req "/a" {:label "Remove" :confirm-label ""}))))
   (is (= ["uikit-base: a confirm's label is the text its button shows" {:label nil}]
          (refusal #(ui/confirm req "/a" {:confirm-label "Yes"})))))
+
+(deftest an-empty-state-is-a-quiet-line
+  (is (= "<p class=\"ui-empty\">No orders &lt;yet&gt;.</p>" (html (ui/empty "No orders <yet>."))))
+  (is (= "<p class=\"ui-empty x\" id=\"e\">None</p>" (html (ui/empty {:class "x" :id "e"} "None")))))
+
+(deftest pairs-describe-in-order-and-leave-out-what-has-no-description
+  (is (= "<dl class=\"ui-pairs\"><dt>Ref</dt><dd>A1</dd><dt>Total</dt><dd><b>9</b></dd><dt>Note</dt><dd>z</dd></dl>"
+         (html (ui/pairs [["Ref" "A1"] ["Paid" nil] ["Total" [:b "9"]] ["Note" "z"]]))))
+  (is (= "<dl class=\"ui-pairs k\"><dt>&lt;a&gt;</dt><dd>&lt;b&gt;</dd></dl>" (html (ui/pairs {:class "k"} [["<a>" "<b>"]]))))
+  (is (= "<dl class=\"ui-pairs\"><dt>Paid</dt><dd>false</dd><dt>Count</dt><dd>0</dd></dl>" (html (ui/pairs [["Paid" false] ["Count" 0]])))
+      "only nil leaves a term out: a false shows, so a slip in the view is seen, not hidden")
+  (is (= "<dl class=\"ui-pairs\"></dl>" (html (ui/pairs nil))))
+  (doseq [args [[["a" "b"]] [[["a" "b"]] [["c" "d"]]] [[["a"]]]]]
+    (is (= ["uikit-base: a pairs takes its attrs and one sequence of [term description]" {}] (refusal #(apply ui/pairs args))) (pr-str args))))
+
+(deftest a-time-carries-its-moment-for-machines-and-the-hosts-words-for-people
+  (let [madrid (java.time.ZonedDateTime/of 2026 1 15 20 0 0 0 (java.time.ZoneId/of "Europe/Madrid"))]
+    (is (= "<time datetime=\"2026-01-15T19:00:00Z\">15 Jan, 20:00</time>" (html (ui/time (java.time.Instant/parse "2026-01-15T19:00:00Z") "15 Jan, 20:00"))))
+    (is (= "<time class=\"c\" datetime=\"2026-01-15T20:00+01:00\">20:00</time>" (html (ui/time madrid {:datetime "x" "DATETIME" "y" :class "c"} "20:00")))
+        "a zoned moment as its offset, never the zone's bracketed name; no attribute changes it")
+    (is (= "<time datetime=\"2026-01-15T20:00+01:00\">t</time>" (html (ui/time (.toOffsetDateTime madrid) "t"))))
+    (is (= "<time datetime=\"2026-01-15T20:00\">t</time>" (html (ui/time (java.time.LocalDateTime/of 2026 1 15 20 0) "t"))))
+    (is (= "<time datetime=\"2026-01-15\">15/1</time>" (html (ui/time (java.time.LocalDate/of 2026 1 15) "15/1")))))
+  (doseq [v [(java.util.Date. 0) (java.sql.Timestamp. 0) "2026-01-15" nil (java.time.LocalTime/of 1 2)]]
+    (is (= ["uikit-base: a time is a java.time moment, date-time or date" {:value v}] (refusal #(ui/time v "x"))) (pr-str v)))
+  (is (= ["uikit-base: a time shows something: its body is how the page says it" {}] (refusal #(ui/time (java.time.LocalDate/of 2026 1 15))))))
+
+(deftest a-page-head-is-the-pages-own-heading-with-what-it-offers
+  (is (= (str "<div class=\"ui-page-head x\" id=\"h\"><h3 class=\"ui-page-head__title\">&lt;T&gt;</h3><p class=\"ui-page-head__sub\">s</p>"
+              "<div class=\"ui-page-head__actions ui-cluster\"><b>1</b><i>2</i></div></div>")
+         (html (ui/page-head {:title "<T>" :subtitle "s" :level 3 :actions [[:b "1"] [:i "2"]] :attrs {:class "x" :id "h"}}))))
+  (is (= "<div class=\"ui-page-head\" id=\"h\"><h2 class=\"ui-page-head__title\">T</h2></div>" (html (ui/page-head {:title "T" :level 2 :attrs {:id "h"}}))))
+  (is (= [:div {:class "ui-page-head"} [:h1 {:class "ui-page-head__title"} "t"]] (ui/page-head {:title "t" :subtitle nil :actions []}))
+      "an h1 unless told; no subtitle, no actions, nothing drawn for them")
+  (is (str/includes? (html (ui/page-head {:title "t" :actions (map (fn [i] [:b i]) [1])})) "<div class=\"ui-page-head__actions ui-cluster\"><b>1</b></div>"))
+  (doseq [t [nil false "" "  "]]
+    (is (= ["uikit-base: a page-head has a title" {}] (refusal #(ui/page-head {:title t}))) (pr-str t)))
+  (doseq [l [0 4 "1" nil 1.0]]
+    (is (= ["uikit-base: a page-head's level is 1, 2 or 3" {:level l}] (refusal #(ui/page-head {:title "t" :level l}))) (pr-str l))))
 
 (deftest a-table-heads-its-columns-and-captions-what-it-lists
   (is (= (str "<table class=\"ui-table\"><caption>C&lt;</caption><thead><tr><th scope=\"col\">A</th><th scope=\"col\">B&amp;</th></tr></thead>"

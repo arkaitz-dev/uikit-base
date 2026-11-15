@@ -7,6 +7,7 @@
 
   This namespace never loads the colour engine (`color`, `brand`, `audit`, `emit`,
   `build`): a host's colours are generated once, committed, and served as a file."
+  (:refer-clojure :exclude [empty time])
   (:require [clojure.string :as str]
             [dev.arkaitz.web-base :as wb]
             [dev.arkaitz.web-base.security :as security]))
@@ -361,6 +362,61 @@
   (let [[attrs body] (split-attrs more)]
     (into [:span (with-attrs {:class (str "ui-badge" (when (not= :neutral kind) (str " ui-badge--" (name kind))))} attrs [])]
           body)))
+
+(defn empty
+  "`(empty attrs? & body)` → what a list says when it has nothing to list: \"No orders
+  yet.\" in the kit's quiet voice."
+  [& more]
+  (let [[attrs body] (split-attrs more)]
+    (into [:p (with-attrs {:class "ui-empty"} attrs [])] body)))
+
+(defn pairs
+  "`(pairs attrs? entries)` → a description list: `entries`, `[[term description] …]`, in
+  order, a term whose description is nil left out — so an optional detail is
+  `[\"Paid\" (when paid? when)]`."
+  [& more]
+  (let [[attrs [entries & extra]] (split-attrs more)]
+    (when (or (seq extra) (not (every? #(and (sequential? %) (= 2 (count %))) entries)))
+      (throw (ex-info "uikit-base: a pairs takes its attrs and one sequence of [term description]" {})))
+    (into [:dl (with-attrs {:class "ui-pairs"} attrs [])]
+          (mapcat (fn [[t d]] (when (some? d) [[:dt t] [:dd d]])) entries))))
+
+(defn- datetime
+  "`t` as the machine-readable form a `<time>` carries, or nil for a value that is no
+  moment or day."
+  [t]
+  (condp instance? t
+    java.time.Instant (str t)
+    java.time.OffsetDateTime (str t)
+    java.time.ZonedDateTime (str (.toOffsetDateTime ^java.time.ZonedDateTime t))
+    java.time.LocalDateTime (str t)
+    java.time.LocalDate (str t)
+    nil))
+
+(defn time
+  "`(time t attrs? & body)` → a `<time>` whose `datetime` is `t` — an `Instant`, an
+  offset or zoned date-time, a local date-time or a date — and whose body is how the page
+  shows it, which is the host's: it knows the reader's language and zone. Anything else
+  is refused; no attribute changes `datetime`."
+  [t & more]
+  (let [dt (or (datetime t) (throw (ex-info "uikit-base: a time is a java.time moment, date-time or date" {:value t})))
+        [attrs body] (split-attrs more)]
+    (when-not (seq body) (throw (ex-info "uikit-base: a time shows something: its body is how the page says it" {})))
+    (into [:time (with-attrs {:datetime dt} attrs [:datetime])] body)))
+
+(defn page-head
+  "`(page-head {:title :subtitle :level :actions :attrs})` → a page's own heading inside
+  `<main>`, never the shell's header: `title` as an `h1` (or the `level`, 1 to 3), a
+  `subtitle` under it, and `actions` — links or buttons — beside it, wrapping under it
+  on a narrow screen."
+  [{:keys [title subtitle level actions attrs] :or {level 1}}]
+  (when (or (nil? title) (false? title) (and (string? title) (str/blank? title)))
+    (throw (ex-info "uikit-base: a page-head has a title" {})))
+  (when-not (#{1 2 3} level) (throw (ex-info "uikit-base: a page-head's level is 1, 2 or 3" {:level level})))
+  (cond-> [:div (with-attrs {:class "ui-page-head"} attrs [])
+           [(keyword (str "h" level)) {:class "ui-page-head__title"} title]]
+    subtitle (conj [:p.ui-page-head__sub subtitle])
+    (seq actions) (conj (into [:div.ui-page-head__actions.ui-cluster] actions))))
 
 (defn card
   "`(card attrs? & body)` → a raised surface holding its body."

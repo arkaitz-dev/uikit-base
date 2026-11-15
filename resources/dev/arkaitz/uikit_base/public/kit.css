@@ -146,6 +146,23 @@
   .ui-badge--warning { color: var(--ui-on-warning); background: var(--ui-warning); }
   .ui-badge--info { color: var(--ui-on-info); background: var(--ui-info); }
 
+  /* Empty states, description lists, page headings. */
+  .ui-empty { margin: 0; padding-block: var(--ui-space-lg); text-align: center; color: var(--ui-text-muted); }
+  .ui-pairs { display: grid; grid-template-columns: fit-content(40%) 1fr; gap: var(--ui-space-xs) var(--ui-space-md); margin: 0; }
+  .ui-pairs > dt { font-weight: 600; }
+  .ui-pairs > dd { margin: 0; }
+  .ui-page-head {
+    display: grid; grid-template-columns: 1fr auto; align-items: baseline;
+    gap: var(--ui-space-xs) var(--ui-space-md); margin-block-end: var(--ui-space-md);
+  }
+  .ui-page-head__title { margin: 0; grid-column: 1; }
+  .ui-page-head__sub { margin: 0; grid-column: 1; color: var(--ui-text-muted); }
+  .ui-page-head__actions { grid-column: 2; grid-row: 1; }
+  @media (max-width: 40rem) {
+    .ui-page-head { grid-template-columns: 1fr; }
+    .ui-page-head__actions { grid-column: 1; grid-row: auto; }
+  }
+
   /* Cards. */
   .ui-card {
     padding: var(--ui-space-md); color: var(--ui-on-surface); background: var(--ui-surface);
