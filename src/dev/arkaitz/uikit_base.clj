@@ -307,6 +307,22 @@
                             true (conj (nth parts (Long/parseLong (.group m 1))))))
           (seq (cond-> out (< at (count said)) (conj (subs said at)))))))))
 
+(defn input-group
+  "`(input-group opts control)` → `control` with what comes `:before` and `:after` it
+  joined to its edges: text — a currency, a unit — drawn as the group's text, anything
+  else (a button) as it is. `:attrs` go on the group. The text is not the control's name:
+  its label says the unit too. `field`'s `:before` and `:after` draw one around its
+  control. A group without a control is refused."
+  [{:keys [before after attrs]} control]
+  (when (nil? control) (throw (ex-info "uikit-base: an input-group holds one control" {})))
+  (let [part (fn [p] (if (or (string? p) (number? p)) [:span.ui-input-group__text p] p))]
+    (cond-> [:div (with-attrs {:class "ui-input-group"} attrs [])]
+      (some? before) (conj (part before))
+      true (conj control)
+      (some? after) (conj (part after)))))
+
+(def ^:private checks #{"checkbox" "switch" "radio" "range"})
+
 (defn field
   "A labelled control, marked and explained when the server refused it. `error` is a word
   of the host's dictionary, or a vector of the word and its arguments, as a handler's
@@ -322,20 +338,45 @@
   value; \"checkbox\" is ticked when `value` is truthy, sends its attrs' `:value` (\"on\"
   unless given) and sits before its label; \"radio\" is a group named by its label, one
   radio per option, the one whose value is `value` checked, as text, and `attrs` on each.
-  `:inline? true` lays label and control on one line, for a field inside a row. `attrs` go
-  on the control, `:class` joined to the kit's."
-  [request {:keys [id label type value error hint required? attrs options inline?] :as opts}]
+  \"switch\" is a checkbox read as an on-off switch (`role=switch`), drawn as one; \"range\"
+  is a slider whose `min`, `max` and `step` are the attrs'.
+  `:inline? true` lays label and control on one line, for a field inside a row. `:size`,
+  `:sm` or `:lg`, sizes a text control, a select or a textarea to sit level with a button
+  of that size. `:before` and `:after` put text or a button against the control's edges,
+  as `input-group` does. `:floating? true` draws the label inside the control, floating up
+  once it is focused or filled — a text control or a textarea, with a `:placeholder` in its
+  attrs, since the label floats when the placeholder is not shown; the label is still the
+  control's `<label for>`. A text control is edged in danger once the person has left it
+  invalid (`:user-invalid`), and in success once a required one is filled validly — never
+  before it was touched — while the server's `aria-invalid` edges it in danger whatever
+  the person does. `attrs` go on the control, `:class` joined to the kit's."
+  [request {:keys [id label type value error hint required? attrs options inline? size before after floating?] :as opts}]
+  (when-not (or (nil? size) (sizes size))
+    (throw (ex-info "uikit-base: a field's :size is :sm or :lg" {:size size})))
+  (when (and size (checks type))
+    (throw (ex-info "uikit-base: a field's :size sizes a text control, a select or a textarea" {:type type})))
+  (when (and (or (some? before) (some? after)) (checks type))
+    (throw (ex-info "uikit-base: an input-group holds a text control, a select or a file" {:type type})))
+  (when floating?
+    (when (#{"select" "file" "checkbox" "switch" "radio" "range"} type)
+      (throw (ex-info "uikit-base: a floating label floats over a text control or a textarea" {:type type})))
+    (when (or (some? before) (some? after))
+      (throw (ex-info "uikit-base: a floating label floats over its control alone, never an input-group" {})))
+    (when (str/blank? (str (:placeholder (normalised attrs))))
+      (throw (ex-info "uikit-base: a floating label needs a placeholder: it floats when the placeholder is not shown" {:id id}))))
   (if (= "radio" type)
     (radio-group request opts)
   (let [attrs    (normalised attrs)
         base     (or (:id attrs) id)
         error-id (str base "-error")
         hint-id  (str base "-hint")
-        check?   (= "checkbox" type)
+        switch?  (= "switch" type)
+        check?   (or switch? (= "checkbox" type))
         described (distinct (concat [(when error error-id) (when hint hint-id)]
                                     (str/split (str/trim (str (:aria-describedby attrs ""))) #"\s+")))
         described (str/join " " (remove str/blank? described))
-        own      (cond-> {:id id :name id :class (if check? "ui-check" "ui-input")}
+        own      (cond-> {:id id :name id :class (cond switch? "ui-check ui-switch" check? "ui-check" (= "range" type) "ui-range"
+                                                       size (str "ui-input ui-input--" (name size)) :else "ui-input")}
                    error (assoc :aria-invalid "true")
                    required? (assoc :required true))
         own      (cond-> (with-attrs own (dissoc attrs :aria-describedby) (cond-> [] error (conj :aria-invalid) required? (conj :required)))
@@ -347,15 +388,18 @@
                    "textarea" [:textarea own value]
                    "file"     [:input (assoc own :type "file")]
                    "checkbox" [:input (cond-> (merge {:value "on"} own {:type "checkbox"}) value (assoc :checked true))]
+                   "switch"   [:input (cond-> (merge {:value "on"} own {:type "checkbox" :role "switch"}) value (assoc :checked true))]
                    [:input (merge {:type (or type "text") :value value} own)])
+        control  (if (or (some? before) (some? after)) (input-group {:before before :after after} control) control)
         label    (cond-> [:label.ui-field__label {:for (:id own)} label]
                    required? (conj [:span.ui-field__req {:aria-hidden "true"} "*"]))]
     ;; A plain field is the very data 0.1.0 answered, so a host test that compares the
     ;; Hiccup, not the HTML, sees no change; a modifier is the wrapper's own class.
     (let [hint (when hint [:span.ui-field__hint {:id hint-id} hint])]
       (-> (cond-> [:div.ui-field]
-            (or check? inline?) (conj {:class (str/join " " (cond-> [] check? (conj "ui-field--check") inline? (conj "ui-field--inline")))}))
-          (into (remove nil? (if check? [control label hint] [label hint control])))
+            (or check? inline? floating?) (conj {:class (str/join " " (cond-> [] check? (conj "ui-field--check") inline? (conj "ui-field--inline")
+                                                                          floating? (conj "ui-field--floating")))}))
+          (into (remove nil? (cond check? [control label hint] floating? [control label hint] :else [label hint control])))
           (conj (when error [:span.ui-field__error {:id error-id} (word request error)])))))))
 
 (def ^:private notice-roles

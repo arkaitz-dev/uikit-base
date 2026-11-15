@@ -433,7 +433,7 @@
     (is (= [0 2 1] (specificity ".ui-pager a:focus-visible")) "witness: the test's specificity")
     (is (= #{".ui-btn--primary:hover" ".ui-btn--primary" ".ui-btn:hover" ".ui-btn"} (set (selectors-implied ".ui-btn--primary:hover")))
         "witness: a variant's hover is also the base's hover")
-    (is (= 150 (count pairs)) (str "witness: every painted pair found — the kit's 104 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one, the close button in two), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
+    (is (= 154 (count pairs)) (str "witness: every painted pair found — the kit's 108 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one, the close button in two; K10's floating label on three canvases and the input group's text), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
     (is (= 21.0 (wcag "#000000" "#ffffff")) "witness: the test's WCAG")
     (doseq [[s bg fg :as p] pairs]
       (testing s
@@ -463,7 +463,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 247 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 175 (0.5.0's 119; K9's 42 outline, 4 link, 5 pressed and 5 close) and the utilities' 72, a count measured once: " (count bearing)))
+    (is (= 260 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 188 (0.5.0's 119; K9's 42 outline, 4 link, 5 pressed and 5 close; K10's 13: touched edges, switch, range, floating label, group text) and the utilities' 72, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -492,7 +492,7 @@
                           [s t]))
         edges (remove dividers found)]
     (is (= dividers (set (filter dividers found))) "every divider named is still drawn")
-    (is (= 47 (count edges)) (str "witness: the edges — the kit's 35 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
+    (is (= 54 (count edges)) (str "witness: the edges — the kit's 42 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
     (doseq [[s t] edges bg [:background :surface :surface-alt]]
       (testing (str s " " t)
         (is (= :ui (audited [bg t])) "an audited non-text pair")
@@ -516,7 +516,7 @@
 (defn- input-states
   "Every combination of the states the kit styles on `.ui-input`, as one compound each."
   []
-  (let [states (distinct (for [[sels] (leaf-rules) s sels :let [[_ st] (re-matches #"\.ui-input((?::[a-z-]+|\[[^\]]*\])+)" s)] :when st
+  (let [states (distinct (for [[sels] (leaf-rules) s sels :let [[_ st] (re-matches #"\.ui-input((?::[a-z-]+(?:\([^)]*\))?|\[[^\]]*\])+)" s)] :when st
                                x (map first (re-seq state-re st))] x))]
     (map #(str ".ui-input" (apply str %)) (reduce (fn [acc st] (concat acc (map #(conj % st) acc))) [[]] states))))
 
@@ -524,7 +524,7 @@
   (doseq [env environments :let [rules (in-env (leaf-rules) env)]]
   (let [
         live  (remove #(str/includes? % ":disabled") (filter #(str/includes? % "[aria-invalid=\"true\"]") (input-states)))]
-    (is (= 8 (count live)) (str "witness: the refused states, a count measured once: " (vec live)))
+    (is (= 64 (count live)) (str "witness: the refused states — every combination of focus, hover, required, touched valid and invalid, read-only — a count measured once: " (vec live)))
     (is (= [] (for [s live :let [t (resolved rules s ["border-color" "border"])] :when (not= :danger-border t)] [s t]))
         (str "hovered, read-only or not, a refused control is edged in danger " env)))))
 
@@ -534,7 +534,7 @@
         look  (fn [s] (mapv #(resolved rules s %) [["color"] backgrounds ["border-color" "border"]]))
         dead  (filter #(str/includes? % ":disabled") (input-states))]
     (is (= [:disabled-fg :disabled-bg :disabled-bg] (look ".ui-input:disabled")) "witness: the disabled look")
-    (is (= 16 (count dead)) (str "witness: the disabled states, a count measured once: " (count dead)))
+    (is (= 128 (count dead)) (str "witness: the disabled states, every combination of the seven others, a count measured once: " (count dead)))
     (is (= [] (for [s dead :let [l (look s)] :when (not= l (look ".ui-input:disabled"))] [s l]))
         (str "no hover, refusal or read-only shows through a disabled control " env)))))
 
@@ -546,7 +546,40 @@
                        (some-> (cascaded rules s ["border-width" "border"]) (str/split #"\s+") first)
                        (cascaded rules s ["height" "min-height"])])]
     (is (= ["var(--ui-font-size-base)" "1.25" "var(--ui-spacing-sm)" "1px" nil] (box ".ui-btn")) "witness: the button's box")
-    (is (= (box ".ui-btn") (box ".ui-input")) (str "an inline input sits level with the button beside it " env)))))
+    (is (= (box ".ui-btn") (box ".ui-input")) (str "an inline input sits level with the button beside it " env))
+    (is (= ["var(--ui-font-size-sm)" "var(--ui-spacing-xs)"] ((juxt first #(nth % 2)) (box ".ui-btn--sm"))) "witness: a small button's box")
+    (doseq [z ["sm" "lg"]]
+      (is (= (box (str ".ui-btn--" z)) (box (str ".ui-input--" z))) (str "and a " z " input with a " z " button " env))))))
+
+(deftest a-control-shows-a-refusal-only-once-touched-or-when-the-server-refused-it
+  ;; :invalid paints an empty required field red before anybody reached it; :user-invalid
+  ;; waits for the person to leave it, and the server's aria-invalid is the other door.
+  (let [edged (fn [t] (set (for [[sels decls] (leaf-rules) s sels :when (str/starts-with? s ".ui-input")
+                                 :when (= t (palette-var (get decls "border-color"))) ] s)))]
+    (is (= #{".ui-input:user-invalid" ".ui-input[aria-invalid=\"true\"]"} (edged :danger-border))
+        "danger: once the person left it invalid, or when the server refused it")
+    (is (= #{".ui-input:where(:required):user-valid"} (edged :success-border))
+        "success: only a required control the person filled validly")
+    (is (= [] (for [[sels] (leaf-rules) s sels :when (re-find #"(?<!user-):(in)?valid\b" s)] s))
+        "never :invalid or :valid, which hold before the person touched anything")))
+
+(def ^:private indicators
+  "Each mark the kit draws on a track of its own, as [track mark]: it must read against the
+  track at 3:1, an audited pair, like an edge against its canvas."
+  [[".ui-switch" ".ui-switch::before"] [".ui-switch:checked" ".ui-switch:checked::before"]])
+
+(deftest every-indicator-reads-against-its-track
+  (let [drawn (set (for [[sels decls] (leaf-rules) s sels :when (str/includes? s "::")
+                         :when (str/starts-with? s ".ui-") :when (palette-var (get decls "background-color"))] s))]
+    (is (= drawn (set (filter drawn (mapcat identity indicators))))
+        (str "every pseudo-element the kit paints a ground on is a track or mark here, so a new one is decided: " (vec (sort drawn))))
+    (doseq [env environments :let [rules (in-env (leaf-rules) env)] [track mark] indicators
+            :let [t (resolved rules track backgrounds) m (resolved rules mark backgrounds)]]
+      (testing (str track " " env)
+        (is (and t m) (str "witness: both resolve to a palette token " [t m]))
+        (is (#{:ui :aa :aaa} (audited [t m])) (str [t m] " is an audited pair"))
+        (doseq [[seed tokens] goldens [scheme i] [[:light 0] [:dark 1]]]
+          (is (>= (wcag (get-in tokens [t i]) (get-in tokens [m i])) 3.0) (str seed " " scheme)))))))
 
 (deftest screen-reader-text-is-hidden-from-the-eye-and-not-from-the-reader
   (let [d (some (fn [[sels decls]] (when (= [".ui-sr-only"] sels) decls)) (leaf-rules))]
@@ -810,7 +843,9 @@
    'thread    [(ui/thread (ui/message {:meta "m"} "x"))]
    'message   [(ui/message {:meta "m"} "x")]
    'post-form [(ui/post-form req "/a" (ui/button "x"))]
-   'field     (for [t [nil "select" "textarea" "file" "checkbox" "radio"]] (ui/field req {:id "f" :label "F" :type t :options [["a" "A"]] :error :e :hint "h" :required? true}))
+   'field     (concat (for [t [nil "select" "textarea" "file" "checkbox" "radio" "switch" "range"]] (ui/field req {:id "f" :label "F" :type t :options [["a" "A"]] :error :e :hint "h" :required? true}))
+                      [(ui/field req {:id "f" :label "F" :floating? true :attrs {:placeholder "p"}}) (ui/field req {:id "f" :label "F" :before "€" :after (ui/button "x")})])
+   'input-group [(ui/input-group {:before "€"} [:input {:class "ui-input"}])]
    'notice    [(ui/notice :ok "x")]
    'table     [(ui/table {:caption "c" :head ["h"] :rows [["a"]] :row-header? true :scroll-label "s"})]
    'rows      [(ui/rows (ui/row "x"))]
@@ -849,7 +884,7 @@
                  [tag classes (first ancestors)])]
     (is (= (set (keys fixtures)) (set (remove '#{words cell} (keys (ns-publics 'dev.arkaitz.uikit-base)))))
         "every public component is drawn here, so a new one needs its fixture")
-    (is (= 28 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
+    (is (= 34 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close, K10's switch, range, floating input, a grouped field's input and button, and the input group's — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
     (is (= [] bare) "each wears the ring, through a class of its own or its kit ancestor's")
     (is (= [] (for [[sels decls] (leaf-rules) :let [v (get decls "outline")] :when v :when (not= :focus-ring (palette-var v))] [sels v]))
         "no rule takes the ring away: an outline is the ring")

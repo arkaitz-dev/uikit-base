@@ -23,7 +23,7 @@
     /* The focus ring, on everything the kit makes focusable. */
     .ui-btn:focus-visible, .ui-input:focus-visible, .ui-check:focus-visible, .ui-pager a:focus-visible, .ui-card a:focus-visible,
     .ui-prose a:focus-visible, .ui-crumbs a:focus-visible, .ui-tabs a:focus-visible,
-    .ui-table-wrap:focus-visible, .ui-close:focus-visible {
+    .ui-table-wrap:focus-visible, .ui-close:focus-visible, .ui-range:focus-visible {
       outline: var(--ui-focus-outline-width) solid var(--ui-focus-ring);
       outline-offset: var(--ui-focus-outline-width);
       box-shadow: 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
@@ -138,11 +138,19 @@
     /* Hover, then a refusal over it, then read-only, then disabled over everything: equal
      * specificity, so the order is the precedence. */
     .ui-input:hover { border-color: var(--ui-primary-border); }
+    /* What the person left: invalid once touched, and a required one filled validly — never
+     * before they reached it, which :invalid would paint on an empty form. Below the server's
+     * refusal, which no edit of theirs undoes. */
+    .ui-input:where(:required):user-valid { border-color: var(--ui-success-border); }
+    .ui-input:user-invalid { border-color: var(--ui-danger-border); }
     .ui-input[aria-invalid="true"] { border-color: var(--ui-danger-border); }
     .ui-input[readonly] { color: var(--ui-on-surface-alt); background: var(--ui-surface-alt); }
     .ui-input:disabled {
       color: var(--ui-disabled-fg); background: var(--ui-disabled-bg); border-color: var(--ui-disabled-bg); cursor: not-allowed;
     }
+    /* Sizes: the same box as a button of that size, so the two sit level. */
+    .ui-input--sm { padding: var(--ui-spacing-xs) var(--ui-spacing-xs); font-size: var(--ui-font-size-sm); }
+    .ui-input--lg { padding: var(--ui-spacing-md) var(--ui-spacing-md); font-size: var(--ui-font-size-lg); }
     .ui-field__error { color: var(--ui-danger-ink); font-size: var(--ui-font-size-sm); }
     .ui-field__hint { color: var(--ui-text-muted); font-size: var(--ui-font-size-sm); }
     .ui-field__req { color: var(--ui-danger-ink); margin-inline-start: var(--ui-spacing-xxs); }
@@ -155,6 +163,46 @@
     .ui-field--group > .ui-field__label { padding: 0; margin-block-end: var(--ui-spacing-xs); }
     .ui-field__choice { display: flex; align-items: baseline; gap: var(--ui-spacing-sm); }
     .ui-check { width: 1rem; height: 1rem; margin: 0; accent-color: var(--ui-primary-border); }
+    /* A switch: a knob on a track, each an audited pair, its edge the control's. */
+    .ui-switch {
+      appearance: none; position: relative; inline-size: 2rem; block-size: 1.125rem; flex-shrink: 0; cursor: pointer;
+      background-color: var(--ui-surface); border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-full);
+    }
+    .ui-switch::before {
+      content: ""; position: absolute; inset-block: 2px; inset-inline-start: 2px; inline-size: 0.75rem;
+      border-radius: var(--ui-radius-full); background-color: var(--ui-border-strong);
+      transition: inset-inline-start var(--ui-duration-normal);
+    }
+    .ui-switch:checked { background-color: var(--ui-primary); border-color: var(--ui-primary-border); }
+    .ui-switch:checked::before { inset-inline-start: calc(100% - 0.75rem - 2px); background-color: var(--ui-on-primary); }
+    .ui-switch:disabled { cursor: not-allowed; opacity: var(--ui-opacity-disabled); }
+    .ui-range { inline-size: 100%; margin: 0; accent-color: var(--ui-primary-border); }
+
+    /* Floating labels: the label over its control, up and small once focused or filled. */
+    .ui-field--floating { position: relative; }
+    .ui-field--floating > .ui-input { padding-block: 1.625rem 0.375rem; }
+    .ui-field--floating > .ui-input::placeholder { opacity: 0; }
+    .ui-field--floating > .ui-input:focus::placeholder { opacity: 1; }
+    .ui-field--floating > .ui-field__label {
+      position: absolute; inset-block-start: 0; inset-inline-start: 0; padding: 1rem calc(var(--ui-spacing-sm) + 1px) 0;
+      font-weight: normal; color: var(--ui-text-muted); pointer-events: none;
+      transition: padding var(--ui-duration-fast), font-size var(--ui-duration-fast);
+    }
+    .ui-field--floating > .ui-input:focus + .ui-field__label, .ui-field--floating > .ui-input:not(:placeholder-shown) + .ui-field__label {
+      padding-block-start: 0.375rem; font-size: var(--ui-font-size-xs);
+    }
+
+    /* Input groups: text or buttons against one control's edges, the edges between joined. */
+    .ui-input-group { display: flex; align-items: stretch; }
+    .ui-input-group > .ui-input { flex: 1 1 auto; min-inline-size: 0; }
+    .ui-input-group__text {
+      display: flex; align-items: center; padding: var(--ui-spacing-sm); white-space: nowrap;
+      color: var(--ui-on-surface-alt); background: var(--ui-surface-alt);
+      border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-md);
+    }
+    .ui-input-group > :not(:first-child) { margin-inline-start: -1px; border-start-start-radius: 0; border-end-start-radius: 0; }
+    .ui-input-group > :not(:last-child) { border-start-end-radius: 0; border-end-end-radius: 0; }
+    .ui-input-group > :hover, .ui-input-group > :focus-visible { position: relative; z-index: var(--ui-z-index-raised); }
 
     /* Notices: what an action answered — status for an outcome, alert for a refusal. */
     .ui-notice {
@@ -273,6 +321,6 @@
     }
     .ui-prose kbd { border: 1px solid var(--ui-border-strong); }
 
-    @media (prefers-reduced-motion: reduce) { .ui-btn { transition: none; } }
+    @media (prefers-reduced-motion: reduce) { .ui-btn, .ui-switch::before, .ui-field--floating > .ui-field__label { transition: none; } }
   }
 }

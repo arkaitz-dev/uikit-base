@@ -230,9 +230,13 @@
                             (for [v [:outline-primary :outline-secondary :outline-success :outline-danger :outline-warning :outline-info :link]] (ui/button {:variant v} "x"))
                             (ui/button {:block? true} "x")
                             (ui/button-group {:label "g"} (ui/button "x"))
-                            (ui/close-button {})))
+                            (ui/close-button {})
+                            (ui/field req {:id "z" :label "Z" :size :sm}) (ui/field req {:id "z" :label "Z" :size :lg})
+                            (ui/field req {:id "w" :label "W" :type "switch"}) (ui/field req {:id "r" :label "R" :type "range"})
+                            (ui/field req {:id "f" :label "F" :floating? true :before nil :attrs {:placeholder "p"}})
+                            (ui/field req {:id "p" :label "P" :before "€"})))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 66 (count classes)) (str "witness: the classes emitted — 0.5.0's 56, then K9's six outlines, link, block, button-group and close — a count measured once: " (sort classes)))
+    (is (= 73 (count classes)) (str "witness: the classes emitted — 0.5.0's 56, then K9's six outlines, link, block, button-group and close, K10's two sizes, switch, range, floating field, input group and its text — a count measured once: " (sort classes)))
     (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{>]")) kit) classes))
         "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
@@ -814,3 +818,67 @@
   (is (= (html (ui/close-button {})) (html (ui/close-button {} {:label " "}))) "a blank label is none")
   (is (= "uikit-base: a close-button takes no formaction: a submitter's own target would send its form, token and all, where the form does not"
          (first (refusal #(ui/close-button {} {"FormAction" "/x"}))))))
+
+;; --- K10: forms -------------------------------------------------------------------------
+
+(deftest a-fields-size-is-a-class-of-its-control-and-only-a-text-control-takes-one
+  (is (= "<div class=\"ui-field\"><label class=\"ui-field__label\" for=\"q\">Q</label><input class=\"ui-input ui-input--sm\" id=\"q\" name=\"q\" type=\"text\" /></div>"
+         (html (ui/field req {:id "q" :label "Q" :size :sm}))))
+  (is (str/includes? (html (ui/field req {:id "s" :label "S" :type "select" :size :lg :options [["a" "A"]] :attrs {:class "x"}}))
+                     "<select class=\"ui-input ui-input--lg x\" id=\"s\" name=\"s\">")
+      "a select too, the caller's class after the kit's")
+  (is (= [:div.ui-field [:label.ui-field__label {:for "a"} "A"] [:input {:type "text" :value nil :id "a" :name "a" :class "ui-input"}] nil]
+         (ui/field req {:id "a" :label "A" :size nil}))
+      "no size, the Hiccup 0.1.0 answered")
+  (doseq [z [:md "sm" 1]]
+    (is (= ["uikit-base: a field's :size is :sm or :lg" {:size z}] (refusal #(ui/field req {:id "q" :label "Q" :size z}))) (pr-str z)))
+  (doseq [t ["checkbox" "switch" "radio" "range"]]
+    (is (= ["uikit-base: a field's :size sizes a text control, a select or a textarea" {:type t}]
+           (refusal #(ui/field req {:id "q" :label "Q" :type t :size :sm :options [["a" "A"]]}))) t)))
+
+(deftest a-switch-is-a-checkbox-read-as-on-or-off
+  (is (= (str "<div class=\"ui-field ui-field--check\"><input checked=\"checked\" class=\"ui-check ui-switch x\" id=\"n\" name=\"n\" role=\"switch\" type=\"checkbox\" value=\"on\" />"
+              "<label class=\"ui-field__label\" for=\"n\">Notify &lt;me&gt;</label></div>")
+         (html (ui/field req {:id "n" :label "Notify <me>" :type "switch" :value true :attrs {:class "x" "ROLE" "checkbox" :type "text"}})))
+      "ticked by its value, a switch and a checkbox whatever the attrs say")
+  (is (= (str "<div class=\"ui-field ui-field--check\"><input aria-describedby=\"n-error\" aria-invalid=\"true\" class=\"ui-check ui-switch\" id=\"n\" name=\"n\" role=\"switch\" type=\"checkbox\" value=\"on\" />"
+              "<label class=\"ui-field__label\" for=\"n\">N</label><span class=\"ui-field__error\" id=\"n-error\">tr::e:[]</span></div>")
+         (html (ui/field req {:id "n" :label "N" :type "switch" :error :e})))
+      "off, refused like any field"))
+
+(deftest a-range-is-a-slider-whose-bounds-are-its-attributes
+  (is (= "<div class=\"ui-field\"><label class=\"ui-field__label\" for=\"v\">Volume</label><input class=\"ui-range\" id=\"v\" max=\"10\" min=\"0\" name=\"v\" step=\"2\" type=\"range\" value=\"4\" /></div>"
+         (html (ui/field req {:id "v" :label "Volume" :type "range" :value 4 :attrs {:min 0 :max 10 :step 2}})))))
+
+(deftest an-input-group-joins-text-and-buttons-to-one-control
+  (is (= "<div class=\"ui-input-group g\" id=\"i\"><span class=\"ui-input-group__text\">€&lt;</span><input name=\"p\" /><button class=\"ui-btn\" type=\"submit\">Go</button></div>"
+         (html (ui/input-group {:before "€<" :after (ui/button "Go") :attrs {:class "g" :id "i"}} [:input {:name "p"}])))
+      "text as the group's text, escaped; a button as it is")
+  (is (= "<div class=\"ui-input-group\"><input /><span class=\"ui-input-group__text\">3</span></div>" (html (ui/input-group {:after 3} [:input])))
+      "a number is text; nothing before, nothing drawn there")
+  (is (= (str "<div class=\"ui-field\"><label class=\"ui-field__label\" for=\"p\">Price</label><div class=\"ui-input-group\"><span class=\"ui-input-group__text\">€</span>"
+              "<input aria-describedby=\"p-error\" aria-invalid=\"true\" class=\"ui-input\" id=\"p\" name=\"p\" type=\"text\" /><span class=\"ui-input-group__text\">.00</span></div>"
+              "<span class=\"ui-field__error\" id=\"p-error\">tr::e:[]</span></div>")
+         (html (ui/field req {:id "p" :label "Price" :before "€" :after ".00" :error :e})))
+      "a field's control inside the group, its label, refusal and error its own")
+  (is (= ["uikit-base: an input-group holds one control" {}] (refusal #(ui/input-group {:before "€"} nil))))
+  (doseq [t ["checkbox" "switch" "radio" "range"]]
+    (is (= ["uikit-base: an input-group holds a text control, a select or a file" {:type t}]
+           (refusal #(ui/field req {:id "p" :label "P" :type t :after "x" :options [["a" "A"]]}))) t)))
+
+(deftest a-floating-label-is-the-controls-label-drawn-after-it
+  (is (= (str "<div class=\"ui-field ui-field--floating\"><input aria-describedby=\"e-hint\" class=\"ui-input\" id=\"e\" name=\"e\" placeholder=\"a@b.test\" type=\"email\" value=\"x&lt;\" />"
+              "<label class=\"ui-field__label\" for=\"e\">Email</label><span class=\"ui-field__hint\" id=\"e-hint\">H</span></div>")
+         (html (ui/field req {:id "e" :label "Email" :type "email" :value "x<" :hint "H" :floating? true :attrs {:placeholder "a@b.test"}})))
+      "control first, so CSS can float the label after it; still its label for")
+  (is (str/starts-with? (html (ui/field req {:id "t" :label "T" :type "textarea" :floating? true :attrs {"PLACEHOLDER" "p"}}))
+                        "<div class=\"ui-field ui-field--floating\"><textarea class=\"ui-input\" id=\"t\" name=\"t\" placeholder=\"p\"></textarea><label")
+      "a textarea too, its placeholder however spelt")
+  (doseq [a [nil {} {:placeholder " "} {:placeholder nil}]]
+    (is (= ["uikit-base: a floating label needs a placeholder: it floats when the placeholder is not shown" {:id "e"}]
+           (refusal #(ui/field req {:id "e" :label "E" :floating? true :attrs a}))) (pr-str a)))
+  (doseq [t ["select" "file" "checkbox" "switch" "radio" "range"]]
+    (is (= ["uikit-base: a floating label floats over a text control or a textarea" {:type t}]
+           (refusal #(ui/field req {:id "e" :label "E" :type t :floating? true :attrs {:placeholder "p"}}))) t))
+  (is (= ["uikit-base: a floating label floats over its control alone, never an input-group" {}]
+         (refusal #(ui/field req {:id "e" :label "E" :floating? true :before "€" :attrs {:placeholder "p"}})))))
