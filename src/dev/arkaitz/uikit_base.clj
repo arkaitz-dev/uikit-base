@@ -940,7 +940,7 @@
               [:h2 {:id title-id :class "ui-dialog__title"} title]
               (close-button request {:commandfor id :command "close"})]
              (into [:div (cond-> {:class "ui-dialog__body"} scrollable? (assoc :tabindex "0"))] body)]
-      (some? footer) (conj [:div.ui-dialog__foot footer]))))
+      (not (or (nothing? footer) (and (coll? footer) (empty? footer)))) (conj [:div.ui-dialog__foot footer]))))
 
 (defn dialog
   "`(dialog request opts & body)` → the platform's modal `<dialog>`, opened by a
@@ -1031,13 +1031,21 @@
   in a `role=tooltip` that the trigger's `aria-describedby` names, before any of the
   trigger's own; a screen reader reads it with or without a script. A tooltip says more
   about a control that is named already; it never names one. `:id` is the text's, one word.
-  Shown by the plugin's `/ui/ui.js`."
+  The trigger must take the focus — a button, a link with an `href`, a form control, a
+  summary, or an element with a `tabindex` — or it is refused. Shown by the plugin's
+  `/ui/ui.js`."
   [{:keys [id text]} trigger]
   (id! "a tooltip" :id id)
   (when (or (not (string? text)) (str/blank? text))
     (throw (ex-info "uikit-base: a tooltip's :text is what it says about its trigger" {:text text})))
   (when-not (and (vector? trigger) (keyword? (first trigger)))
     (throw (ex-info "uikit-base: a tooltip's trigger is one element, which it describes" {})))
+  (let [[tag & more] trigger
+        el (keyword (first (str/split (name tag) #"[.#]")))
+        a  (normalised (first (split-attrs more)))]
+    ;; Shown on focus as well as hover: a trigger the keyboard cannot reach hides it from both.
+    (when-not (or (#{:button :input :select :textarea :summary} el) (and (= :a el) (contains? a :href)) (contains? a :tabindex))
+      (throw (ex-info "uikit-base: a tooltip's trigger takes the focus: a button, a link with an href, a form control, a summary, or an element with a tabindex" {:trigger el}))))
   (let [[tag & more] trigger
         [attrs body] (split-attrs more)
         attrs (normalised attrs)
@@ -1050,9 +1058,12 @@
 
 (defn toasts
   "`(toasts attrs? & toasts)` → where toasts appear: a polite live region in a corner of the
-  screen, at the block end and the inline end, which a screen reader reads as a toast is
-  added to it — so it is on the page before any toast, and htmx adds them into it. `attrs`
-  go on it; that it is live is its own."
+  screen, at the block end and the inline end. A live region announces what changes in it,
+  never what it held when it arrived: a toast is read out only when it is inserted into a
+  region already on the page — by htmx into it, `hx-swap=beforeend` — and neither a swap
+  of `<main>` that brings the region with its toasts nor an out-of-band swap of the region
+  itself announces anything. So it belongs in the page's frame, outside what is swapped.
+  `attrs` go on it; that it is live is its own."
   [& more]
   (let [[attrs body] (split-attrs more)]
     (into [:div (with-attrs {:class "ui-toasts" :aria-live "polite"} attrs [:aria-live])] body)))
@@ -1091,14 +1102,19 @@
   the keyboard too, its buttons hidden, since they would do nothing. With `:interval-ms`,
   a whole number, the slides advance on their own every so many milliseconds, with a
   button first that stops and starts it; the advance waits while the pointer rests on the
-  carousel, stops for good once the focus enters it, and never starts where the reader
+  carousel, stops for good once the focus enters it — from 334 ms, three changes a second
+  (WCAG 2.3.1), to 2147483647, the most a browser's timer holds — and never starts where the reader
   asked for reduced motion. `:attrs` go on the region; its role description and name are
   its own. The buttons and the advance are the plugin's `/ui/ui.js`."
   [request {:keys [label slides interval-ms attrs]}]
   (named! "a carousel" label)
+  (when-not (and (sequential? slides) (not (and (vector? slides) (keyword? (first slides)))))
+    (throw (ex-info "uikit-base: a carousel's :slides is a sequence of slides, never one element or a string" {})))
   (when (empty? slides) (throw (ex-info "uikit-base: a carousel's slides are one or more" {})))
-  (when-not (or (nil? interval-ms) (pos-int? interval-ms))
-    (throw (ex-info "uikit-base: a carousel's :interval-ms is a whole number of milliseconds above zero" {:interval-ms interval-ms})))
+  ;; From 334: WCAG 2.3.1 allows three changes a second. To 2147483647: setInterval takes a
+  ;; WebIDL long, and a larger value wraps and fires every few milliseconds.
+  (when-not (or (nil? interval-ms) (and (int? interval-ms) (<= 334 interval-ms 2147483647)))
+    (throw (ex-info "uikit-base: a carousel's :interval-ms is a whole number of milliseconds from 334 to 2147483647" {:interval-ms interval-ms})))
   (let [w (fn [k] (kit-word request nil k))
         n (count slides)]
     [:section (with-attrs (cond-> {:class "ui-carousel" :aria-roledescription (w :uikit-base/carousel) :aria-label label}

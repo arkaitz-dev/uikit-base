@@ -1119,7 +1119,10 @@
            (refusal #(ui/dialog {} {:id id :title "T"}))) (pr-str id)))
   (doseq [t [nil "" "  "]]
     (is (= ["uikit-base: a dialog has a title, which names it" {:id "d"}] (refusal #(ui/dialog {} {:id "d" :title t}))) (pr-str t)))
-  (is (= ["uikit-base: a dialog's :size is :sm or :lg" {:size :md}] (refusal #(ui/dialog {} {:id "d" :title "T" :size :md})))))
+  (is (= ["uikit-base: a dialog's :size is :sm or :lg" {:size :md}] (refusal #(ui/dialog {} {:id "d" :title "T" :size :md}))))
+  (doseq [f [nil "" " " [] ()]]
+    (is (not (str/includes? (html (ui/dialog {} {:id "d" :title "T" :footer f} "b")) "ui-dialog__foot")) (str "a footer of nothing draws no foot " (pr-str f))))
+  (is (str/includes? (html (ui/dialog {} {:id "d" :title "T" :footer 0} "b")) "<div class=\"ui-dialog__foot\">0</div>") "witness: a footer of something is drawn"))
 
 (deftest a-dialog-button-opens-its-dialog-by-the-platforms-invoker-command
   (is (= "<button class=\"ui-btn ui-btn--primary ui-btn--sm x\" command=\"show-modal\" commandfor=\"edit\" type=\"button\">Open <b>it</b></button>"
@@ -1176,7 +1179,15 @@
          (html (ui/tooltip {:id "tip" :text "T"} [:a {"HREF" "/x"} "x"]))))
   (is (= ["uikit-base: a tooltip's :text is what it says about its trigger" {:text " "}] (refusal #(ui/tooltip {:id "t" :text " "} [:a "x"]))))
   (doseq [t ["x" nil [[:a "x"]]]]
-    (is (= ["uikit-base: a tooltip's trigger is one element, which it describes" {}] (refusal #(ui/tooltip {:id "t" :text "T"} t))) (pr-str t))))
+    (is (= ["uikit-base: a tooltip's trigger is one element, which it describes" {}] (refusal #(ui/tooltip {:id "t" :text "T"} t))) (pr-str t)))
+  (doseq [id [nil "" "a b" "1t" :t]]
+    (is (= ["uikit-base: a tooltip's :id is one word, a letter first, that an element carries as its id" {:id id}]
+           (refusal #(ui/tooltip {:id id :text "T"} [:button "x"]))) (pr-str id)))
+  (doseq [[t el] [[[:a "x"] :a] [[:span "x"] :span] [[:div.icon {:class "y"} "x"] :div] [[:img {:src "/i.png" :alt "i"}] :img]]]
+    (is (= ["uikit-base: a tooltip's trigger takes the focus: a button, a link with an href, a form control, a summary, or an element with a tabindex" {:trigger el}]
+           (refusal #(ui/tooltip {:id "t" :text "T"} t))) (pr-str t)))
+  (doseq [t [[:button "x"] [:a {:href "/x"} "x"] [:input {:type "text"}] [:select] [:textarea] [:summary "s"] [:span {"TABINDEX" "0"} "i"] [:button#b.c "x"]]]
+    (is (str/includes? (html (ui/tooltip {:id "t" :text "T"} t)) "aria-describedby=\"t\"") (str "a trigger that takes the focus is described " (pr-str t)))))
 
 ;; --- K18: toasts and carousels -----------------------------------------------------------
 
@@ -1191,6 +1202,9 @@
               "<span aria-hidden=\"true\">×</span><span class=\"ui-sr-only\">Cerrar</span></button></div>")
          (html (ui/toast {:wb/tr (tr-for :es)} {:heading " "} "B")))
       "no kind, no timeout, no blank heading; its close button in the reader's language")
+  (is (= (str "<div class=\"ui-toast\" id=\"t\"><div class=\"ui-toast__body\">x</div><button class=\"ui-close ui-toast__close\" type=\"button\">" close-en "</div>")
+         (html (ui/toast {} {:attrs {:id "t" :data-timeout-ms 10 "data-TIMEOUT-ms" 20}} "x")))
+      "a host's own data-timeout-ms, without :timeout-ms, gives the toast no timeout")
   (doseq [k [:success "ok" :danger]]
     (is (= ["uikit-base: a toast's :kind is :ok, :info, :warning or :error" {:kind k}] (refusal #(ui/toast {} {:kind k} "x"))) (pr-str k)))
   (doseq [t [0 -1 1.5 "5000" 5000N]]
@@ -1213,15 +1227,24 @@
     (is (not (str/includes? es "data-interval-ms")) "and no interval")
     (doseq [w ["aria-roledescription=\"carrusel\"" "aria-label=\"3 de 3\"" "aria-roledescription=\"diapositiva\"" ">Diapositiva anterior<" ">Diapositiva siguiente<"]]
       (is (str/includes? es w) (str "in Spanish: " w))))
-  (is (str/includes? (html (ui/carousel {:wb/tr (tr-for :es)} {:label "D" :slides ["A"] :interval-ms 1})) ">Detener el pase automático</span><span class=\"ui-carousel__start\">Iniciar el pase automático<")
+  (is (str/includes? (html (ui/carousel {:wb/tr (tr-for :es)} {:label "D" :slides ["A"] :interval-ms 334})) ">Detener el pase automático</span><span class=\"ui-carousel__start\">Iniciar el pase automático<")
       "the rotation's two labels in Spanish")
   (is (str/includes? (html (ui/carousel {:wb/tr (fn [k args] (str "tr:" k ":" (pr-str args)))} {:label "D" :slides ["A" "B"]})) "aria-label=\"tr::uikit-base/slide-of:[2 2]\"")
       "a slide's number goes to the translator as the word's two arguments")
   (doseq [l [nil "" " "]]
     (is (= ["uikit-base: a carousel is named by its label" {:label l}] (refusal #(ui/carousel {} {:label l :slides ["A"]}))) (pr-str l)))
   (is (= ["uikit-base: a carousel's slides are one or more" {}] (refusal #(ui/carousel {} {:label "C" :slides []}))))
-  (doseq [i [0 "5" 2.5]]
-    (is (= ["uikit-base: a carousel's :interval-ms is a whole number of milliseconds above zero" {:interval-ms i}] (refusal #(ui/carousel {} {:label "C" :slides ["A"] :interval-ms i}))) (pr-str i))))
+  (doseq [i [0 333 2147483648 "5" 2.5 400N]]
+    (is (= ["uikit-base: a carousel's :interval-ms is a whole number of milliseconds from 334 to 2147483647" {:interval-ms i}]
+           (refusal #(ui/carousel {} {:label "C" :slides ["A"] :interval-ms i}))) (pr-str i)))
+  (doseq [i [334 2147483647]]
+    (is (str/includes? (html (ui/carousel {} {:label "C" :slides ["A"] :interval-ms i})) (str "data-interval-ms=\"" i "\""))
+        (str "the edge " i " is taken: three changes a second at most, and the most a browser's timer holds")))
+  (doseq [sl ["AB" [:div "x"] [:img {:src "/a.png"}] {:a 1} 7]]
+    (is (= ["uikit-base: a carousel's :slides is a sequence of slides, never one element or a string" {}]
+           (refusal #(ui/carousel {} {:label "C" :slides sl}))) (pr-str sl)))
+  (is (str/includes? (html (ui/carousel {} {:label "C" :slides (list [:div "x"] [:div "y"])})) "aria-label=\"2 of 2\"")
+      "a list of elements is a sequence of slides"))
 
 (deftest every-word-of-the-kit-is-spoken-in-both-its-languages
   (let [ks (fn [l] (set (keys (get-in ui/words [l :uikit-base]))))]
