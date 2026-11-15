@@ -78,6 +78,13 @@ The default colours the kit ships (`resources/…/public/ui-colors.css`, from
 
 and `build_test` reds until they are.
 
+The utilities and the grid (`resources/…/public/ui-utilities.css`) are regenerated, after a
+change to `dev.arkaitz.uikit-base.utilities`, by
+
+    java -cp "$(clojure -Spath -M:test)" clojure.main -e "(require 'dev.arkaitz.uikit-base.utilities) (dev.arkaitz.uikit-base.utilities/write! \"resources/dev/arkaitz/uikit_base/public/ui-utilities.css\")"
+
+and `utilities_test` reds until they are.
+
 The goldens (`test/resources/basaku-goldens.edn`, `basaku-audit-pairs.edn`) are basaku's
 own output, printed by a temporary `src/golden_export.zig` in a scratch clone of basaku
 (never in basaku itself): `zig test src/golden_export.zig --test-filter "export …"`.

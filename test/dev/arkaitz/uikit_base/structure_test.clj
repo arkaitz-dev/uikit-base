@@ -18,7 +18,8 @@
 
 (def ^:private engine
   '#{dev.arkaitz.uikit-base.color dev.arkaitz.uikit-base.brand dev.arkaitz.uikit-base.audit
-     dev.arkaitz.uikit-base.emit dev.arkaitz.uikit-base.build dev.arkaitz.uikit-base.scales})
+     dev.arkaitz.uikit-base.emit dev.arkaitz.uikit-base.build dev.arkaitz.uikit-base.scales
+     dev.arkaitz.uikit-base.utilities})
 
 (def ^:private for-tests
   "Namespaces a host's tests load, never its running code."

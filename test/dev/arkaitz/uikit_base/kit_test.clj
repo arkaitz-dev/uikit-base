@@ -20,6 +20,11 @@
 
 (def ^:private kit (slurp (io/resource "dev/arkaitz/uikit_base/public/kit.css")))
 (def ^:private css (str/replace kit #"(?s)/\*.*?\*/" ""))
+(def ^:private utilities-file (slurp (io/resource "dev/arkaitz/uikit_base/public/ui-utilities.css")))
+(def ^:private utilities-css (str/replace utilities-file #"(?s)/\*.*?\*/" ""))
+(def ^:private both
+  "The two stylesheets in the order the plugin links them: the kit, then its utilities."
+  (str css "\n" utilities-css))
 (def ^:private goldens (:seeds (edn/read-string (slurp (io/file "test/resources/basaku-goldens.edn")))))
 (def ^:private audited (into {} (map (fn [[bg fg rule]] [[bg fg] rule]))
                              (:pairs (edn/read-string (slurp (io/file "test/resources/basaku-audit-pairs.edn"))))))
@@ -51,7 +56,11 @@
   the regex this replaces read one as a selector."
   [text]
   (let [order (atom {}) out (atom [])
-        note! (fn [parent nm] (swap! order update parent #(if (some #{nm} %) % (conj (or % []) nm))))]
+        note1 (fn [parent nm] (swap! order update parent #(if (some #{nm} %) % (conj (or % []) nm))))
+        ;; A dotted name, `uikit.utilities`, is the sub-layer `utilities` of `uikit`: each
+        ;; of its parts is named under the ones before it.
+        parts (fn [nm] (str/split (str/trim nm) #"\."))
+        note! (fn [parent nm] (reduce (fn [p part] (note1 p part) (conj p part)) parent (parts nm)))]
     (letfn [(block-end [t from]
               (loop [i from depth 1]
                 (let [c (.charAt ^String t i)]
@@ -71,7 +80,7 @@
                             body (subs t (inc brace) end) rest (str/trim (subs t (inc end)))]
                         (cond
                           (str/starts-with? prelude "@layer")
-                          (let [nm (str/trim (subs prelude 6))] (note! layer nm) (walk body (conj layer nm) conds))
+                          (let [nm (str/trim (subs prelude 6))] (walk body (note! layer nm) conds))
                           (or (str/starts-with? prelude "@media") (str/starts-with? prelude "@starting-style"))
                           (walk body layer (conj conds prelude))
                           (str/includes? body "{")
@@ -84,7 +93,9 @@
       (walk text [] [])
       {:rules (vec (map-indexed #(assoc %2 :index %1) @out)) :layer-order @order})))
 
-(def ^:private parsed (parse-css css))
+(def ^:private parsed (parse-css both))
+(def ^:private kit-parsed (parse-css css))
+(def ^:private utilities-parsed (parse-css utilities-css))
 
 (defn- rank-key
   "Where a rule's layer stands in the cascade, compared element by element: a later-named
@@ -111,6 +122,8 @@
   [prelude env]
   (cond
     (str/starts-with? prelude "@starting-style") false
+    ;; Every environment here is a screen: what is only for paper never holds in one.
+    (= "@media print" (str/trim prelude)) false
     :else
     (let [q (str/trim (str/replace prelude #"^@media" ""))]
       (every? (fn [part]
@@ -145,11 +158,17 @@
   ;; A rule directly in `uikit` would beat base, components and utilities alike, so a
   ;; utility would lose to it whatever the layers say.
   (is (= ["base" "components" "utilities"] (get (:layer-order parsed) ["uikit"])) "the order the sub-layers are named in")
-  (is (< 100 (count (:rules parsed))) "witness: the rules were read")
+  (is (= ["base" "components" "utilities"] (get (:layer-order utilities-parsed) ["uikit"]))
+      "the utilities file names the same order itself, so it cannot reorder them if linked alone")
+  (is (< 100 (count (:rules kit-parsed))) "witness: the kit's rules were read")
+  (is (< 100 (count (:rules utilities-parsed))) "witness: the utilities' rules were read")
+  (is (= (+ (count (:rules kit-parsed)) (count (:rules utilities-parsed))) (count (:rules parsed))) "witness: the two read as one")
   (is (= [] (for [{:keys [layer selectors]} (:rules parsed) :when (not= 2 (count layer))] [layer selectors]))
       "each in exactly one of them")
-  (is (= #{["uikit" "components"]} (set (map :layer (:rules parsed))))
-      "what the kit draws in components; base holds nothing yet, the scales living with the colours"))
+  (is (= #{["uikit" "components"]} (set (map :layer (:rules kit-parsed))))
+      "what the kit draws in components; base holds nothing yet, the scales living with the colours")
+  (is (= #{["uikit" "utilities"]} (set (map :layer (:rules utilities-parsed))))
+      "and every utility in utilities"))
 
 (declare cascaded specificity)
 
@@ -166,12 +185,18 @@
         "a later sub-layer wins over a more specific rule of an earlier one")
     (is (= "d" (win {:width 360 :scheme :light :motion :reduce} ".d .e"))
         "a rule directly in a layer wins over that layer's sub-layers")
+    (is (= ["k" "base"] (:layer (first (:rules (parse-css "@layer k.base { .a { color: x; } }")))))
+        "a dotted layer name is the sub-layer it names")
+    (is (= {[] ["k"] ["k"] ["base" "components"]} (:layer-order (parse-css "@layer k.base, k.components;")))
+        "and a dotted statement names each part under the ones before it")
     (is (= ["wide" "narrow" "narrow"] (mapv #(win % ".m") [{:width 768 :scheme :dark :motion :reduce} {:width 767 :scheme :dark :motion :reduce} {:width 1024 :scheme :light :motion :reduce}]))
         "a query applies where it holds and nowhere else, its conditions all at once"))
   (is (= [[0 0 0] [0 1 0] [0 2 0] [0 1 1]] (mapv specificity [":where(.a, .b)" ":is(.a, a)" ".x:has(.a)" "a:not(.b)"]))
       "where counts nothing; is, has and not their most specific argument")
   (is (= "kit.css: a rule nested in a rule" (try (parse-css ".a { color: x; .b { color: y; } }") nil (catch clojure.lang.ExceptionInfo e (ex-message e)))))
   (is (= "kit_test: a media condition the model does not know" (try (holds? "@media (hover: hover)" (first environments)) nil (catch clojure.lang.ExceptionInfo e (ex-message e)))))
+  (is (= [] (filter #(holds? "@media print" %) environments)) "print holds in no screen")
+  (is (= [false true true] (mapv #(holds? "@media (min-width:1280px)" {:width %}) [1024 1280 1536])) "a breakpoint written without a space")
   (is (= 24 (count environments)) "witness: six widths, two schemes, two motions"))
 
 (deftest every-rule-sits-in-the-one-layer-and-nothing-is-important
@@ -181,8 +206,15 @@
     (is (not (str/includes? css "!important")) "nothing forced: a layered !important would beat the host's")
     (is (< 40 (count (leaf-rules))) (str "witness: the rules were parsed (" (count (leaf-rules)) ")"))))
 
+(deftest every-utility-sits-in-its-layer-and-nothing-is-important
+  (let [{:keys [items depth rest]} (top-level utilities-css)]
+    (is (= ["@layer uikit.base, uikit.components, uikit.utilities" "@layer uikit.utilities"] items)
+        "the layers' order, then one block: the utilities' layer")
+    (is (and (zero? depth) (str/blank? rest)) "balanced, nothing after it")
+    (is (not (str/includes? utilities-css "!important")) "nothing forced: a utility wins by its layer")))
+
 (deftest every-variable-the-kit-reads-exists
-  (let [read     (set (map (comp keyword second) (re-seq #"var\(--ui-([a-z0-9-]+)" css)))
+  (let [read     (set (map (comp keyword second) (re-seq #"var\(--ui-([a-z0-9-]+)" both)))
         declared scale-names]
     (is (= 72 (count palette)) "witness: the palette's 72 tokens")
     (is (< 30 (count read)) "witness: the references were found")
@@ -258,6 +290,133 @@
     (cond winner (palette-var winner)
           (re-find #"::[a-z-]+$" sel) (resolved rules (str/replace sel #"::[a-z-]+$" "") props)
           (re-find #"[\s>+~]" (str/trim sel)) (resolved rules (str/trim (str/replace (str/trim sel) #"\s*[>+~]?\s*[^\s>+~]+$" "")) props))))
+
+(defn- on-element
+  "The value the cascade gives `prop` on one element, among `rules` (one environment's):
+  of the rules that reach it by one of the three shapes the utilities write — `.c` for a
+  class of its own, `.p>*` for a class of its parent's, `.c:has(>.d)` for its own class
+  over a child's — the one of the highest layer, then specificity, then the last. Nil when
+  none sets it."
+  [rules {:keys [classes parent children]} prop]
+  (let [reaches? (fn [s] (or (when-let [[_ c] (re-matches #"\.([\w-]+)" s)] (contains? classes c))
+                             (when-let [[_ p] (re-matches #"\.([\w-]+)>\*" s)] (contains? (set parent) p))
+                             (when-let [[_ c d] (re-matches #"\.([\w-]+):has\(>\.([\w-]+)\)" s)] (and (contains? classes c) (contains? (set children) d)))))]
+    (some-> (last (sort-by (fn [[s i _ layer]] [(rank-key (:layer-order parsed) layer) (specificity s) i])
+                           (for [[sels decls i layer] rules s sels :when (reaches? s) :when (contains? decls prop)] [s i (get decls prop) layer])))
+            (nth 2))))
+
+(def ^:private breakpoint-px
+  "basaku's breakpoints, by the user's decision for 0.6.0 — a named deviation from
+  Bootstrap's 576/768/992/1200/1400."
+  [["sm" 640] ["md" 768] ["lg" 1024] ["xl" 1280] ["xxl" 1536]])
+
+(def ^:private tiers "The unconditioned tier, then one per breakpoint." (cons [nil 0] breakpoint-px))
+
+(def ^:private spacing-steps
+  "A step's scale: 0..5 read the kit's spacing, so a brand's density scales them."
+  {0 "0" 1 "var(--ui-spacing-xs)" 2 "var(--ui-spacing-sm)" 3 "var(--ui-spacing-md)" 4 "var(--ui-spacing-lg)" 5 "var(--ui-spacing-xl)"})
+
+(defn- cls [prefix bp v] (str "ui-" prefix (when bp (str "-" bp)) (when (some? v) (str "-" v))))
+
+(def ^:private env-rules (delay (into {} (for [env environments] [env (in-env (leaf-rules) env)]))))
+
+(defn- misses
+  "Every case `[env tier value]` whose observed value is not the expected one, and how many
+  cases were checked: `f` answers `[expected observed]` for one."
+  [values f]
+  (let [cases (for [env environments [bp px] tiers v values] [env bp px v])]
+    {:checked (count cases)
+     :misses  (vec (for [[env bp px v] cases :let [[want got] (f (@env-rules env) env bp px v)] :when (not= want got)]
+                     [(:width env) bp v :want want :got got]))}))
+
+(deftest the-breakpoints-are-basakus-own
+  (let [widths (fn [text] (set (map #(Long/parseLong (second %)) (re-seq #"min-width:\s*(\d+)px" text))))]
+    (is (= #{640 768 1024 1280 1536} (widths utilities-css)) "every query of the utilities is one of the five")
+    (is (= #{640 1024} (widths (slurp (io/resource "dev/arkaitz/uikit_base/public/ui-colors.css"))))
+        "witness: the scales grow at two of them, the same numbers")
+    (is (= (set (map :width environments)) (conj (set (map second breakpoint-px)) 360))
+        "and the model reads the page at each, and on a phone below them")))
+
+(deftest a-span-holds-from-its-breakpoint-up-and-a-full-row-below
+  (let [{:keys [checked misses]} (misses (range 1 13) (fn [rules env bp px n]
+                                                         [(if (>= (:width env) px) (str "span " n) "span 12")
+                                                          (on-element rules {:classes #{(cls "col" bp n)} :parent ["ui-layout"]} "grid-column-end")]))]
+    (is (= 1728 checked) "witness: 24 environments, six tiers, twelve spans")
+    (is (= [] misses) "ui-col-[bp-]n spans n tracks of twelve from its breakpoint, the whole row below it")))
+
+(deftest an-offset-holds-from-its-breakpoint-up-and-keeps-the-span-beside-it
+  (let [{:keys [checked misses]} (misses (range 0 12) (fn [rules env bp px n]
+                                                         (if (and (nil? bp) (zero? n))
+                                                           [nil (on-element rules {:classes #{"ui-offset-0"} :parent ["ui-layout"]} "grid-column-start")]
+                                                           [(when (>= (:width env) px) (if (zero? n) "auto" (str (inc n))))
+                                                            (on-element rules {:classes #{(cls "offset" bp n)} :parent ["ui-layout"]} "grid-column-start")])))]
+    (is (= 1728 checked) "witness: 24 environments, six tiers, twelve offsets")
+    (is (= [] misses) "ui-offset-[bp-]n starts after n tracks from its breakpoint; there is no unconditioned offset-0, as in Bootstrap"))
+  (doseq [[env rules] @env-rules :let [el {:classes #{"ui-col-md-6" "ui-offset-2"} :parent ["ui-layout"]}]]
+    (is (= [(if (>= (:width env) 768) "span 6" "span 12") "3"] [(on-element rules el "grid-column-end") (on-element rules el "grid-column-start")])
+        (str "a span from md and an offset from below it hold together " (:width env)))))
+
+(deftest a-container-is-as-wide-as-its-tier-allows
+  (let [want (fn [w tier] (some (fn [[i [_ px]]] (when (and (>= i tier) (>= w px)) (str px "px"))) (reverse (map-indexed vector breakpoint-px))))
+        {:keys [checked misses]} (misses [nil] (fn [rules env bp _ _]
+                                                 (let [c (if bp (cls "container" bp nil) "ui-container")
+                                                       tier (if bp (.indexOf ^java.util.List (mapv first breakpoint-px) bp) 0)]
+                                                   [[(want (:width env) tier) "100%"]
+                                                    [(on-element rules {:classes #{c}} "max-width") (on-element rules {:classes #{c}} "width")]])))]
+    (is (= 144 checked) "witness: 24 environments, the plain container and five tiers")
+    (is (= "1536px" (want 1536 0)) "witness: the test's own reading of a tier")
+    (is (= [] misses) "full width below its tier, then no wider than the largest breakpoint reached")
+    (doseq [[env rules] @env-rules]
+      (is (= [nil "100%"] [(on-element rules {:classes #{"ui-container-fluid"}} "max-width") (on-element rules {:classes #{"ui-container-fluid"}} "width")])
+          (str "the fluid one is never bounded " (:width env))))))
+
+(deftest layout-columns-divide-the-layout-from-their-breakpoint-up
+  (let [twelve "repeat(12,minmax(0,1fr))"
+        {:keys [checked misses]} (misses (range 1 7) (fn [rules env bp px n]
+                                                        (let [layout ["ui-layout" (cls "layout-cols" bp n)] on? (>= (:width env) px)]
+                                                          [[(if on? (str "repeat(" n ",minmax(0,1fr))") twelve) (if on? "span 1" "span 12")]
+                                                           [(on-element rules {:classes (set layout)} "grid-template-columns")
+                                                            (on-element rules {:classes #{"x"} :parent layout} "grid-column-end")]])))]
+    (is (= 864 checked) "witness: 24 environments, six tiers, six counts")
+    (is (= [] misses) "n equal tracks, a child in each, from the breakpoint; twelve and a full row below"))
+  (let [{:keys [misses]} (misses ["auto"] (fn [rules env bp px _]
+                                            (let [layout ["ui-layout" (cls "layout-cols" bp "auto")] on? (>= (:width env) px)]
+                                              [[(if on? "flex" "grid") (when on? "0 0 auto")]
+                                               [(on-element rules {:classes (set layout)} "display") (on-element rules {:classes #{"x"} :parent layout} "flex")]])))]
+    (is (= [] misses) "auto: a wrapping line of content-sized children, from the breakpoint"))
+  (doseq [[env rules] @env-rules]
+    (is (= (if (>= (:width env) 768) "grid" "flex") (on-element rules {:classes #{"ui-layout" "ui-layout-cols-auto" "ui-layout-cols-md-3"}} "display"))
+        (str "a count from md makes a grid again of a layout auto below it " (:width env)))))
+
+(deftest shared-and-content-sized-columns-turn-their-layout-into-a-line
+  (doseq [[kind flex] [[nil "1 0 0"] ["auto" "0 0 auto"]]]
+    (let [{:keys [misses]} (misses [kind] (fn [rules env bp px k]
+                                            (let [c (cls "col" bp k) on? (>= (:width env) px)]
+                                              [[(if on? "flex" "grid") (if on? "wrap" nil) (when on? flex)]
+                                               [(on-element rules {:classes #{"ui-layout"} :children #{c}} "display")
+                                                (on-element rules {:classes #{"ui-layout"} :children #{c}} "flex-wrap")
+                                                (on-element rules {:classes #{c} :parent ["ui-layout"]} "flex")]])))]
+      (is (= [] misses) (str "ui-col" (when kind "-auto") ": from its breakpoint the layout wraps a line, the column " flex))))
+  (doseq [[env rules] @env-rules]
+    (is (= "grid" (on-element rules {:classes #{"ui-layout"} :children #{"ui-col-6"}} "display")) "witness: a span leaves the layout a grid")))
+
+(deftest a-gutter-is-the-layouts-gap-on-the-axes-it-names
+  (let [default ["var(--ui-spacing-lg)" "0"]]
+    (doseq [[prefix axes] [["g" [true true]] ["gx" [true false]] ["gy" [false true]]]]
+      (let [{:keys [checked misses]} (misses (range 6) (fn [rules env bp px n]
+                                                          (let [on? (>= (:width env) px) el {:classes #{"ui-layout" (cls prefix bp n)}}]
+                                                            [(mapv (fn [axis d] (if (and on? axis) (spacing-steps n) d)) axes default)
+                                                             [(on-element rules el "column-gap") (on-element rules el "row-gap")]])))]
+        (is (= 864 checked) (str "witness: " prefix " across 24 environments, six tiers, six steps"))
+        (is (= [] misses) (str "ui-" prefix "-[bp-]n: the kit's spacing step on " ({[true true] "both axes" [true false] "columns" [false true] "rows"} axes)
+                               ", Bootstrap's 1.5rem columns and no rows otherwise"))))))
+
+(deftest order-places-an-item-from-its-breakpoint-up
+  (let [values (into {"first" "-1" "last" "6"} (for [n (range 6)] [(str n) (str n)]))
+        {:keys [checked misses]} (misses (keys values) (fn [rules env bp px v]
+                                                          [(when (>= (:width env) px) (values v)) (on-element rules {:classes #{(cls "order" bp v)}} "order")]))]
+    (is (= 1152 checked) "witness: 24 environments, six tiers, eight places")
+    (is (= [] misses) "first, 0..5 and last, from the breakpoint")))
 
 (def ^:private backgrounds ["background" "background-color"])
 
@@ -496,10 +655,10 @@
         page  (app (mock/request :get "/"))
         bytes (fn [in] (with-open [i (io/input-stream in)] (.readAllBytes i)))]
     (is (= 200 (:status page)) "witness: the page answered")
-    (is (= ["/wb/wb.css" "/ui/ui-colors.css" "/ui/kit.css" "/ui-colors.css" "/app.css"]
+    (is (= ["/wb/wb.css" "/ui/ui-colors.css" "/ui/kit.css" "/ui/ui-utilities.css" "/ui-colors.css" "/app.css"]
            (map second (re-seq #"<link href=\"([^\"]+)\" rel=\"stylesheet\">" (:body page))))
-        "web-base's, the kit's colours and the kit, then the host's colours and its own sheet")
-    (doseq [f ["kit.css" "ui-colors.css"]]
+        "web-base's, the kit's colours, the kit and its utilities, then the host's colours and its own sheet")
+    (doseq [f ["kit.css" "ui-colors.css" "ui-utilities.css"]]
       (let [r (app (mock/request :get (str "/ui/" f))) want (bytes (io/resource (str "dev/arkaitz/uikit_base/public/" f)))]
         (is (= 200 (:status r)) f)
         (is (pos? (alength ^bytes want)) "witness: a file with bytes")
