@@ -209,6 +209,7 @@
                             (ui/button {:size :sm} "x") (ui/button {:size :lg} "x")
                             (ui/field req {:id "a" :label "A" :error :e})
                             (ui/field req {:id "h" :label "H" :hint "h" :required? true})
+                            (ui/field req {:id "g" :label "G" :type "radio" :options [["a" "A"]]})
                             (for [k [:ok :info :warning :error]] (ui/notice k "x"))
                             (ui/table {:caption "c" :head ["h"] :rows [["a" "b"]] :row-header? true})
                             (ui/pager req {:previous "/a" :next "/b"})
@@ -218,7 +219,7 @@
                             (for [k [:neutral :success :danger :warning :info]] (ui/badge k "x"))
                             (ui/card "x")))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 34 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
+    (is (= 36 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
     (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{>]")) kit) classes))
         "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
@@ -396,6 +397,38 @@
 (deftest a-card-is-a-surface-around-its-body
   (is (= "<div class=\"ui-card\"><h2>T</h2>body&lt;</div>" (html (ui/card [:h2 "T"] "body<"))))
   (is (= "<div class=\"ui-card mine\" id=\"c\"><p>x</p></div>" (html (ui/card {:class "mine" :id "c"} [:p "x"])))))
+
+(defn- radio [opts] (html (ui/field req (merge {:id "r" :label "R" :type "radio" :options [[1 "One"] [2 "Two"] ["3" "Three"]]} opts))))
+(defn- R [i v l attrs] (str "<label class=\"ui-field__choice\"><input " attrs "class=\"ui-check\" id=\"r-" i "\" name=\"r\" type=\"radio\" value=\"" v "\" />" l "</label>"))
+
+(deftest a-radio-group-is-a-fieldset-named-by-its-legend-and-every-radio-is-wired
+  (let [w "aria-describedby=\"r-error r-hint\" aria-invalid=\"true\" "]
+    (is (= (str "<fieldset class=\"ui-field ui-field--group\"><legend class=\"ui-field__label\">R<span aria-hidden=\"true\" class=\"ui-field__req\">*</span></legend>"
+                "<span class=\"ui-field__hint\" id=\"r-hint\">H</span>"
+                "<label class=\"ui-field__choice\"><input " w "class=\"ui-check\" id=\"r-0\" name=\"r\" required=\"required\" type=\"radio\" value=\"1\" />One</label>"
+                "<label class=\"ui-field__choice\"><input " w "checked=\"checked\" class=\"ui-check\" id=\"r-1\" name=\"r\" required=\"required\" type=\"radio\" value=\"2\" />Two</label>"
+                "<label class=\"ui-field__choice\"><input " w "class=\"ui-check\" id=\"r-2\" name=\"r\" required=\"required\" type=\"radio\" value=\"3\" />Three</label>"
+                "<span class=\"ui-field__error\" id=\"r-error\">tr::e:[]</span></fieldset>")
+           (radio {:value "2" :error :e :hint "H" :required? true}))
+        "one name, the value's radio checked, each refused, described and required")
+    (is (= (str "<fieldset class=\"ui-field ui-field--group\"><legend class=\"ui-field__label\">R</legend>"
+                (R 0 1 "One" "") (R 1 2 "Two" "") (R 2 3 "Three" "") "</fieldset>")
+           (radio {}))
+        "a plain group")))
+
+(deftest a-radio-is-checked-by-its-value-as-text-and-the-caller-cannot-break-the-group
+  (doseq [[value checked] [["2" "value=\"2\""] [2 "value=\"2\""] [3 "value=\"3\""] ["3" "value=\"3\""]]]
+    (let [h (radio {:value value})]
+      (is (= [checked] (map second (re-seq #"checked=\"checked\" class=\"ui-check\" id=\"r-\d\" name=\"r\" type=\"radio\" (value=\"\d\")" h)))
+          (str (pr-str value) ": exactly one checked, compared as text"))))
+  (is (not (str/includes? (html (ui/field req {:id "r" :label "R" :type "radio" :options [["" "None"] ["a" "A"]] :value nil})) "checked"))
+      "no value, nothing checked: not even the option whose value is empty")
+  (is (= (str "<fieldset class=\"ui-field ui-field--group\"><legend class=\"ui-field__label\">R</legend>"
+              "<label class=\"ui-field__choice\"><input checked=\"checked\" class=\"ui-check k\" id=\"b-0\" name=\"x\" type=\"radio\" value=\"3\" />T</label>"
+              "<label class=\"ui-field__choice\"><input class=\"ui-check k\" id=\"b-1\" name=\"x\" type=\"radio\" value=\"4\" />U</label></fieldset>")
+         (html (ui/field req {:id "r" :label "R" :type "radio" :options [[3 "T"] [4 "U"]] :value "3"
+                              :attrs {:id "b" :value "z" :checked true :type "text" :name "x" :class "k"}})))
+      "the caller's attrs go on each radio; its name names the group, its id their base; never their type, value or checked"))
 
 (deftest a-plain-field-is-the-hiccup-0-1-0-answered
   ;; Hosts compare a field's Hiccup, not only its HTML (the template's views_test does):

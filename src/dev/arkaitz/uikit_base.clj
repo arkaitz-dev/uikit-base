@@ -100,6 +100,32 @@
                (throw (ex-info "uikit-base: a field's error is translated by web-base; the request carries no :wb/tr" {})))]
     (if (vector? w) (tr (first w) (vec (rest w))) (tr w []))))
 
+(defn- radio-group
+  "`field`'s \"radio\": a fieldset named by its legend, one radio per option, each marked
+  and described like any refused control — the group's error, then its hint, then the
+  caller's — since the focus lands on a radio, never on the group."
+  [request {:keys [id label value error hint required? attrs options]}]
+  (let [attrs     (normalised attrs)
+        base      (or (:id attrs) id)
+        error-id  (str base "-error")
+        hint-id   (str base "-hint")
+        described (str/join " " (remove str/blank? (distinct (concat [(when error error-id) (when hint hint-id)]
+                                                                     (str/split (str/trim (str (:aria-describedby attrs ""))) #"\s+")))))
+        theirs    (dissoc attrs :id :value :checked :type :aria-describedby)]
+    (-> [:fieldset {:class "ui-field ui-field--group"}
+         (cond-> [:legend.ui-field__label label] required? (conj [:span.ui-field__req {:aria-hidden "true"} "*"]))]
+        (cond-> hint (conj [:span.ui-field__hint {:id hint-id} hint]))
+        (into (map-indexed (fn [i [v l]]
+                             (let [own (cond-> {:type "radio" :name id :id (str base "-" i) :value v :class "ui-check"}
+                                         (and (some? value) (= (str v) (str value))) (assoc :checked true)
+                                         error (assoc :aria-invalid "true")
+                                         required? (assoc :required true))
+                                   own (cond-> (with-attrs own theirs (cond-> [] error (conj :aria-invalid) required? (conj :required)))
+                                         (seq described) (assoc :aria-describedby described))]
+                               [:label.ui-field__choice [:input own] l]))
+                           options))
+        (conj (when error [:span.ui-field__error {:id error-id} (word request error)])))))
+
 (defn field
   "A labelled control, marked and explained when the server refused it. `error` is a word
   of the host's dictionary, or a vector of the word and its arguments, as a handler's
@@ -113,9 +139,13 @@
   label] …]`, the one whose value is `value` selected — compared as text, since a refused
   form comes back as strings; \"textarea\" holds `value` as its text; \"file\" takes no
   value; \"checkbox\" is ticked when `value` is truthy, sends its attrs' `:value` (\"on\"
-  unless given) and sits before its label. `:inline? true` lays label and control on one
-  line, for a field inside a row. `attrs` go on the control, `:class` joined to the kit's."
-  [request {:keys [id label type value error hint required? attrs options inline?]}]
+  unless given) and sits before its label; \"radio\" is a group named by its label, one
+  radio per option, the one whose value is `value` checked, as text, and `attrs` on each.
+  `:inline? true` lays label and control on one line, for a field inside a row. `attrs` go
+  on the control, `:class` joined to the kit's."
+  [request {:keys [id label type value error hint required? attrs options inline?] :as opts}]
+  (if (= "radio" type)
+    (radio-group request opts)
   (let [attrs    (normalised attrs)
         base     (or (:id attrs) id)
         error-id (str base "-error")
@@ -145,7 +175,7 @@
       (-> (cond-> [:div.ui-field]
             (or check? inline?) (conj {:class (str/join " " (cond-> [] check? (conj "ui-field--check") inline? (conj "ui-field--inline")))}))
           (into (remove nil? (if check? [control label hint] [label hint control])))
-          (conj (when error [:span.ui-field__error {:id error-id} (word request error)]))))))
+          (conj (when error [:span.ui-field__error {:id error-id} (word request error)])))))))
 
 (def ^:private notice-roles
   "A refusal is an alert, read out at once; an outcome or a note waits its turn."

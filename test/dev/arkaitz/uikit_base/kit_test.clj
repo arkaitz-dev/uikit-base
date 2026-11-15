@@ -171,7 +171,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 104 (count bearing)) (str "witness: the colour-bearing declarations, a count measured once: " (count bearing)))
+    (is (= 105 (count bearing)) (str "witness: the colour-bearing declarations, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -269,7 +269,7 @@
   "Every component, drawn with everything it can make focusable."
   {'button    [(ui/button "x") (ui/button {:variant :primary} "x")]
    'post-form [(ui/post-form req "/a" (ui/button "x"))]
-   'field     (for [t [nil "select" "textarea" "file" "checkbox"]] (ui/field req {:id "f" :label "F" :type t :options [["a" "A"]] :error :e :hint "h" :required? true}))
+   'field     (for [t [nil "select" "textarea" "file" "checkbox" "radio"]] (ui/field req {:id "f" :label "F" :type t :options [["a" "A"]] :error :e :hint "h" :required? true}))
    'notice    [(ui/notice :ok "x")]
    'table     [(ui/table {:caption "c" :head ["h"] :rows [["a"]] :row-header? true})]
    'rows      [(ui/rows (ui/row "x"))]
@@ -308,7 +308,7 @@
                  [tag classes (first ancestors)])]
     (is (= (set (keys fixtures)) (set (remove '#{words cell} (keys (ns-publics 'dev.arkaitz.uikit-base)))))
         "every public component is drawn here, so a new one needs its fixture")
-    (is (= 10 (count found)) (str "witness: the focusables, a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
+    (is (= 11 (count found)) (str "witness: the focusables, a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
     (is (= [] bare) "each wears the ring, through a class of its own or its kit ancestor's")
     (is (= [] (for [[sels decls] (leaf-rules) :let [v (get decls "outline")] :when v :when (not= :focus-ring (palette-var v))] [sels v]))
         "no rule takes the ring away: an outline is the ring")))
