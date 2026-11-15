@@ -530,6 +530,9 @@
     .ui-carousel__viewport {
       position: relative; display: flex; overflow-x: auto; overscroll-behavior-inline: contain; scroll-snap-type: inline mandatory;
     }
+    /* Once the script shows its buttons they move it, and the viewport's own scrollbar would
+     * flash at every slide (measured in Chrome); without them the bar says the row scrolls. */
+    .ui-carousel:has(> .ui-carousel__controls:not([hidden])) > .ui-carousel__viewport { scrollbar-width: none; }
     .ui-carousel__slide { flex: 0 0 100%; min-inline-size: 0; scroll-snap-align: start; }
     .ui-carousel[data-ui-rotating] .ui-carousel__start, .ui-carousel:not([data-ui-rotating]) .ui-carousel__stop { display: none; }
 

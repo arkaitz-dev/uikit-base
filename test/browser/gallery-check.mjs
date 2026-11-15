@@ -115,6 +115,16 @@ for (const [mode, init] of Object.entries(modes)) {
     const focus = await popOpen('g-tip'); await p.keyboard.press('Escape');
     return { hover, above: Math.round(tb.y - (t.y + t.height)), reachable, leaves, focus, esc: !(await popOpen('g-tip')) };
   }, s => s.hover && s.above >= 0 && s.above <= 8 && s.reachable && s.leaves && s.focus && s.esc);
+  await check('carousel: no scrollbar of its own once its buttons drive it, one without them', async () => {
+    // Measured in the user's Chrome: the viewport's overlay scrollbar flashed at every slide.
+    // Without the script the row is scrolled by hand, and the bar says it scrolls.
+    const bar = (label) => p.locator(`section.ui-carousel[aria-label=${label}] .ui-carousel__viewport`).evaluate(v => getComputedStyle(v).scrollbarWidth);
+    const driven = await bar('Featured');
+    await p.evaluate(() => { document.querySelector('section.ui-carousel[aria-label=Still] .ui-carousel__controls').hidden = true; });
+    const bare = await bar('Still');
+    await p.evaluate(() => { document.querySelector('section.ui-carousel[aria-label=Still] .ui-carousel__controls').hidden = false; });
+    return { driven, bare };
+  }, s => s.driven === 'none' && s.bare !== 'none');
   await check('carousel: rotating until the focus enters it, then two quick Next presses move two slides', async () => {
     const c = p.locator('section.ui-carousel[aria-label=Featured]');
     await c.scrollIntoViewIfNeeded(); await p.mouse.move(5, 5);
