@@ -215,6 +215,8 @@
                             (ui/empty "x") (ui/pairs [["a" "b"]])
                             (ui/crumbs req {:items [["/a" "A"] [nil "B"]]})
                             (ui/card {:title "t" :footer "f"} "b")
+                            (ui/secret req {:id "s" :label "S" :value "v"})
+                            (ui/thread (ui/message {:meta "m"} "x"))
                             (ui/tabs-nav req {:label "S" :items [["/a" "A"]] :current "/a"})
                             (ui/page-head {:title "t" :subtitle "s" :actions [(ui/link-button "/a" "x")]})
                             (for [k [:ok :info :warning :error]] (ui/notice k "x"))
@@ -226,7 +228,7 @@
                             (for [k [:neutral :success :danger :warning :info]] (ui/badge k "x"))
                             (ui/card "x")))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 52 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
+    (is (= 56 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
     (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{>]")) kit) classes))
         "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
@@ -405,6 +407,31 @@
   (doseq [l [1 5 "2"]]
     (is (= ["uikit-base: a card's level is 2, 3 or 4" {:level l}] (refusal #(ui/card {:title "T" :level l} "b"))) (pr-str l))))
 
+(deftest a-secret-is-shown-once-in-a-labelled-field-it-is-never-sent-from
+  (is (= (str "<div class=\"ui-field\"><label class=\"ui-field__label\" for=\"tok\">Token</label>"
+              "<input aria-describedby=\"tok-once\" autocomplete=\"off\" class=\"ui-input ui-input--code\" id=\"tok\" readonly=\"readonly\" spellcheck=\"false\" type=\"text\" value=\"ab&lt;c\" />"
+              "<span class=\"ui-field__hint\" id=\"tok-once\">Copy it now: it will not be shown again.</span></div>")
+         (html (ui/secret {} {:id "tok" :label "Token" :value "ab<c"}))))
+  (is (= (str "<div class=\"ui-field\"><label class=\"ui-field__label\" for=\"tok\">Token</label>"
+              "<input aria-describedby=\"tok-once mine\" autocomplete=\"off\" class=\"ui-input ui-input--code w\" id=\"tok\" readonly=\"readonly\" spellcheck=\"false\" type=\"text\" value=\"v\" />"
+              "<span class=\"ui-field__hint\" id=\"tok-once\">Copy it now: it will not be shown again.</span></div>")
+         (html (ui/secret {} {:id "tok" :label "Token" :value "v"
+                              :attrs {:class "w" "READONLY" false "NAME" "x" :name "y" "Value" "z" :type "password" "ID" "other" :disabled true :aria-describedby "mine"}})))
+      "read-only, its value, its id and its type its own; no name, so no form sends it; never disabled, or it could not be copied; the caller's description after its own")
+  (let [[_ [_ {f :for}] [_ {i :id d :aria-describedby}] [_ {o :id}]] (ui/secret {} {:id "k" :label "K" :value "v"})]
+    (is (and (= f i) (= (first (str/split d #" ")) o)) "the label names the field, and the field is described by the note beside it"))
+  (is (str/includes? (html (ui/secret {:wb/tr (fn [k _] (str "tr:" k))} {:id "k" :label "K" :value "v"})) "tr::uikit-base/shown-once")
+      "the note is the kit's word in the reader's language")
+  (doseq [o [{:id nil} {:id " "} {:id "a b"} {:id :k} {:label nil} {:label ""} {:value nil} {:value " "}]]
+    (is (= ["uikit-base: a secret has an id (one word), a label and a value" {:id (:id (merge {:id "k"} o))}]
+           (refusal #(ui/secret {} (merge {:id "k" :label "K" :value "v"} o)))) (pr-str o))))
+
+(deftest a-thread-is-its-messages-in-order-each-headed-by-who-and-when
+  (is (= (str "<ol class=\"ui-thread t\"><li><article class=\"ui-message m\" id=\"m1\"><header class=\"ui-message__meta\"><span>Ada · 10:00</span></header><p>Hi&lt;</p></article></li>"
+              "<li><article class=\"ui-message\">b</article></li><li><article class=\"ui-message\">c</article></li></ol>")
+         (html (ui/thread {:class "t"} (ui/message {:meta [:span "Ada · 10:00"] :attrs {:id "m1" :class "m"}} [:p "Hi<"]) (ui/message {} "b") (ui/message {:meta " "} "c")))))
+  (is (= "<ol class=\"ui-thread\"></ol>" (html (ui/thread)))))
+
 (deftest a-table-heads-its-columns-and-captions-what-it-lists
   (is (= (str "<table class=\"ui-table\"><caption>C&lt;</caption><thead><tr><th scope=\"col\">A</th><th scope=\"col\">B&amp;</th></tr></thead>"
               "<tbody><tr><td>a1</td><td>b1</td></tr><tr><td>a2</td><td><b>x&lt;</b></td></tr></tbody></table>")
@@ -514,6 +541,11 @@
                                     (mock/request :get "/"))))
                        "<nav aria-label=\"Ruta de navegación\" class=\"ui-crumbs\">")
         "and the crumbs' name")
+    (is (str/includes? (str (:body ((wb/handler {:routes [["/" {:wb/layouts [shell/page] :get (fn [q] {:status 200 :body (ui/secret q {:id "k" :label "K" :value "v"})})}]]
+                                                 :session {:key KEY} :plugins [(web/plugin)] :i18n {:default-locale :es}})
+                                    (mock/request :get "/"))))
+                       "Cópialo ahora: no se volverá a mostrar.")
+        "and the secret's note")
     (is (str/includes? (str (main ((app {:default-locale :es :dict {:es {:uikit-base {:next "Más"}}}}) (mock/request :get "/"))))
                        (str (L "/b" "next" "Más") "</nav>"))
         "a host's own word wins over the kit's")

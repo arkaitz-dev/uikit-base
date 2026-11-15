@@ -336,8 +336,10 @@
   "The kit's own words, for the languages the set's hosts speak. The plugin brings them as
   a dictionary, which a host's own overrides; a language the kit does not speak falls back
   to the English here, so no word of the kit is ever missing from a page."
-  {:en {:uikit-base {:previous "Previous" :next "Next" :pages "Pages" :breadcrumbs "Breadcrumbs"}}
-   :es {:uikit-base {:previous "Anterior" :next "Siguiente" :pages "Páginas" :breadcrumbs "Ruta de navegación"}}})
+  {:en {:uikit-base {:previous "Previous" :next "Next" :pages "Pages" :breadcrumbs "Breadcrumbs"
+                     :shown-once "Copy it now: it will not be shown again."}}
+   :es {:uikit-base {:previous "Anterior" :next "Siguiente" :pages "Páginas" :breadcrumbs "Ruta de navegación"
+                     :shown-once "Cópialo ahora: no se volverá a mostrar."}}})
 
 (defn- kit-word [request given k]
   (or given
@@ -398,6 +400,41 @@
     (throw (ex-info "uikit-base: a tabs-nav's current is one of its items' paths" {:current current})))
   [:nav (with-attrs {:class "ui-tabs" :aria-label label} attrs [:aria-label])
    (into [:ul] (for [[p l] items] [:li (wb/link p (when (= p current) {:aria-current "page"}) l)]))])
+
+(defn secret
+  "`(secret request {:id :label :value :attrs})` → a value shown once — a token, a feed's
+  address — in a labelled, read-only field the reader selects and copies, in figures of
+  one width, described by the kit's word `:uikit-base/shown-once` in the reader's
+  language, then by the caller's own `aria-describedby`. It is never sent: it has no
+  name. `attrs` go on the field, never its `id`, `readonly`, `value`, `type`, `name` or
+  `disabled`, which would stop it being copied."
+  [request {:keys [id label value attrs]}]
+  (when (or (not (string? id)) (str/blank? id) (re-find #"\s" id)
+            (nil? label) (and (string? label) (str/blank? label)) (str/blank? (str value)))
+    (throw (ex-info "uikit-base: a secret has an id (one word), a label and a value" {:id id})))
+  (let [attrs (normalised attrs)
+        once  (str id "-once")
+        desc  (str/join " " (remove str/blank? (distinct (cons once (str/split (str/trim (str (:aria-describedby attrs ""))) #"\s+")))))]
+    [:div.ui-field
+     [:label.ui-field__label {:for id} label]
+     [:input (with-attrs {:id id :type "text" :class "ui-input ui-input--code" :readonly true :value value
+                          :spellcheck "false" :autocomplete "off" :aria-describedby desc}
+                         (dissoc attrs :name :disabled :aria-describedby) [:id :readonly :value :type])]
+     [:span.ui-field__hint {:id once} (kit-word request nil :uikit-base/shown-once)]]))
+
+(defn thread
+  "`(thread attrs? & messages)` → a conversation read top to bottom, each a `message`."
+  [& more]
+  (let [[attrs body] (split-attrs more)]
+    (into [:ol (with-attrs {:class "ui-thread"} attrs [])] body)))
+
+(defn message
+  "`(message {:meta :attrs} & body)` → one message of a `thread`: `meta` — who, when — in
+  its header, then its body. `attrs` go on the message."
+  [{:keys [meta attrs]} & body]
+  [:li (into (cond-> [:article (with-attrs {:class "ui-message"} attrs [])]
+               (not (or (nil? meta) (false? meta) (and (string? meta) (str/blank? meta)))) (conj [:header.ui-message__meta meta]))
+             body)])
 
 (def ^:private badge-kinds #{:neutral :success :danger :warning :info})
 

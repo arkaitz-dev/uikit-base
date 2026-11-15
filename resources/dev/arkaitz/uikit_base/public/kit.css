@@ -185,6 +185,12 @@
     .ui-page-head__actions { grid-column: 1; grid-row: auto; }
   }
 
+  /* A value shown once, in figures of one width; a thread of messages. */
+  .ui-input--code { font-family: ui-monospace, monospace; }
+  .ui-thread { display: grid; gap: var(--ui-space-md); list-style: none; padding: 0; margin: 0; }
+  .ui-message { padding: var(--ui-space-sm) var(--ui-space-md); color: var(--ui-on-surface-alt); background: var(--ui-surface-alt); border-radius: var(--ui-radius-md); }
+  .ui-message__meta { font-size: var(--ui-font-sm); color: var(--ui-text-muted); margin-block-end: var(--ui-space-xs); }
+
   /* Cards. */
   .ui-card {
     padding: var(--ui-space-md); color: var(--ui-on-surface); background: var(--ui-surface);
