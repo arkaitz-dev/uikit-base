@@ -24,7 +24,10 @@
    :es {:gallery {:due "Vence el %1" :saved "Guardado."}}})
 
 (defn- fixtures [r]
-  [["buttons"
+  [["contents"
+    (ui/scrollspy {:label "On this page" :items [["#buttons" "Buttons"] ["#forms" "Forms"] ["#feedback" "Feedback"] ["#lists" "Lists"] ["#tables" "Tables"]
+                                                 ["#navigation" "Navigation"] ["#cards" "Cards"] ["#overlays" "Overlays"] ["#motion" "Motion"] ["#text" "Text"]]})]
+   ["buttons"
     (into [:div.ui-cluster]
           (concat (for [v [:primary :secondary :success :danger :warning :info :link]] (ui/button {:variant v :type "button"} (name v)))
                   (for [v [:outline-primary :outline-danger]] (ui/button {:variant v :type "button"} (name v)))

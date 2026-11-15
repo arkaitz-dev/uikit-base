@@ -131,6 +131,25 @@
     else go(carousel, button.classList.contains("ui-carousel__next") ? 1 : -1);
   });
 
+  // Scrollspies: the link whose section is in view is aria-current=location.
+  var spies = [];
+  function spy(nav) {
+    var links = Array.from(nav.querySelectorAll("a[href^='#']")), seen = new Set();
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { seen[e.isIntersecting ? "add" : "delete"](e.target.id); });
+      var here = links.find(function (a) { return seen.has(a.hash.slice(1)); });
+      links.forEach(function (a) { if (here) a.toggleAttribute("aria-current", a === here); });
+      if (here) here.setAttribute("aria-current", "location");
+    }, { rootMargin: "0px 0px -50% 0px" });
+    var sections = links.map(function (a) { return document.getElementById(a.hash.slice(1)); });
+    sections.forEach(function (section) { if (section) observer.observe(section); });
+    return observer;
+  }
+  inits.push(function () {
+    spies.forEach(function (observer) { observer.disconnect(); });
+    spies = Array.from(document.querySelectorAll(".ui-scrollspy"), spy);
+  });
+
   function init() { inits.forEach(function (f) { f(); }); }
   on("htmx:after:swap", init);
   init();

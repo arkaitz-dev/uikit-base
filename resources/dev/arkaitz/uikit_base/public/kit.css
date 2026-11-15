@@ -25,7 +25,8 @@
     .ui-prose a:focus-visible, .ui-crumbs a:focus-visible, .ui-tabs a:focus-visible,
     .ui-table-wrap:focus-visible, .ui-close:focus-visible, .ui-range:focus-visible, .ui-list-group__action:focus-visible,
     .ui-collapse__summary:focus-visible, .ui-accordion__summary:focus-visible, .ui-scroller:focus-visible, .ui-dialog__body:focus-visible,
-    .ui-dropdown__item:focus-visible, .ui-carousel__viewport:focus-visible {
+    .ui-dropdown__item:focus-visible, .ui-carousel__viewport:focus-visible,
+    .ui-scrollspy a:focus-visible {
       outline: var(--ui-focus-outline-width) solid var(--ui-focus-ring);
       outline-offset: var(--ui-focus-outline-width);
       box-shadow: 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
@@ -531,6 +532,15 @@
     }
     .ui-carousel__slide { flex: 0 0 100%; min-inline-size: 0; scroll-snap-align: start; }
     .ui-carousel[data-ui-rotating] .ui-carousel__start, .ui-carousel:not([data-ui-rotating]) .ui-carousel__stop { display: none; }
+
+    /* Scrollspies: the sections of a page, the one in view marked by a thicker, coloured edge
+     * as well as its weight, so the mark is never colour alone. */
+    .ui-scrollspy ul { display: grid; gap: var(--ui-spacing-xxs); list-style: none; margin: 0; padding: 0; }
+    .ui-scrollspy a {
+      display: block; padding: var(--ui-spacing-xs) var(--ui-spacing-sm); color: var(--ui-link); text-decoration: none;
+      border-inline-start: 2px solid var(--ui-border);
+    }
+    .ui-scrollspy a[aria-current="location"] { font-weight: 600; border-inline-start: 4px solid var(--ui-primary-border); }
 
     /* Layout: a stack of blocks, a cluster that wraps, a grid of as many columns as fit. */
     .ui-stack { display: grid; gap: var(--ui-spacing-md); align-content: start; }

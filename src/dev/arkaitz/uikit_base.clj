@@ -1113,3 +1113,21 @@
            (map-indexed (fn [i s] [:div {:class "ui-carousel__slide" :role "group" :aria-roledescription (w :uikit-base/slide)
                                          :aria-label (kit-said request :uikit-base/slide-of [(inc i) n])} s])
                         slides))]))
+
+(defn scrollspy
+  "`(scrollspy opts)` → links to the sections of this page, `:items` `[[\"#id\" label] …]`,
+  each id one word and each once, in a nav named by `:label`, which is required — a page
+  holds the shell's nav beside it. The link whose section is in view is marked
+  `aria-current=location` as the reader scrolls, by the plugin's `/ui/ui.js`, which watches
+  the sections anew after htmx swaps `<main>`; without it the links still go there.
+  `:attrs` go on the nav; its name is its own."
+  [{:keys [label items attrs]}]
+  (named! "a scrollspy" label)
+  (when (empty? items) (throw (ex-info "uikit-base: a scrollspy's items are one or more" {})))
+  (named-items! "scrollspy" items)
+  (when-let [bad (seq (remove #(and (string? %) (re-matches #"#[A-Za-z][\w-]*" %)) (map first items)))]
+    (throw (ex-info "uikit-base: a scrollspy's items are #fragments of this page, each one word, a letter first" {:items (vec bad)})))
+  (when-not (apply distinct? (map first items))
+    (throw (ex-info "uikit-base: a scrollspy's items are each its own section" {})))
+  [:nav (with-attrs {:class "ui-scrollspy" :aria-label label} attrs [:aria-label])
+   (into [:ul] (for [[f l] items] [:li [:a {:href f} l]]))])

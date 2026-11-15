@@ -1227,3 +1227,18 @@
   (let [ks (fn [l] (set (keys (get-in ui/words [l :uikit-base]))))]
     (is (= 14 (count (ks :en))) "witness: the kit's words, a count measured once")
     (is (= (ks :en) (ks :es)) "a word missing in Spanish would fall back to English mid-page")))
+
+;; --- K19: scrollspy ------------------------------------------------------------------------
+
+(deftest a-scrollspy-is-a-named-nav-of-this-pages-sections
+  (is (= "<nav aria-label=\"On this page &lt;x&gt;\" class=\"ui-scrollspy x\"><ul><li><a href=\"#intro\">Intro &lt;1&gt;</a></li><li><a href=\"#usage\">Usage</a></li></ul></nav>"
+         (html (ui/scrollspy {:label "On this page <x>" :items [["#intro" "Intro <1>"] ["#usage" "Usage"]] :attrs {:class "x" "ARIA-LABEL" "o"}})))
+      "plain fragment links, which work without a script; its name its own; nothing marked current until the script sees a section")
+  (doseq [l [nil "" " "]]
+    (is (= ["uikit-base: a scrollspy is named by its label" {:label l}] (refusal #(ui/scrollspy {:label l :items [["#a" "A"]]}))) (pr-str l)))
+  (is (= ["uikit-base: a scrollspy's items are one or more" {}] (refusal #(ui/scrollspy {:label "S" :items []}))))
+  (is (= ["uikit-base: every item of a scrollspy has a label" {}] (refusal #(ui/scrollspy {:label "S" :items [["#a" " "]]}))))
+  (doseq [f ["/page#a" "a" "#" "#1a" "#a b" "#a\"" nil]]
+    (is (= ["uikit-base: a scrollspy's items are #fragments of this page, each one word, a letter first" {:items [f]}]
+           (refusal #(ui/scrollspy {:label "S" :items [["#ok" "OK"] [f "X"]]}))) (pr-str f)))
+  (is (= ["uikit-base: a scrollspy's items are each its own section" {}] (refusal #(ui/scrollspy {:label "S" :items [["#a" "A"] ["#a" "B"]]})))))
