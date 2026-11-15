@@ -89,10 +89,13 @@
     color: var(--ui-disabled-fg); background: var(--ui-disabled-bg); border-color: var(--ui-disabled-bg); cursor: not-allowed;
   }
   .ui-field__error { color: var(--ui-danger-ink); font-size: var(--ui-font-sm); }
+  .ui-field__hint { color: var(--ui-text-muted); font-size: var(--ui-font-sm); }
+  .ui-field__req { color: var(--ui-danger-ink); margin-inline-start: var(--ui-space-xxs); }
   .ui-field--inline { grid-auto-flow: column; justify-content: start; align-items: baseline; gap: var(--ui-space-sm); }
   .ui-field--check { grid-template-columns: auto 1fr; align-items: baseline; gap: var(--ui-space-sm); }
   .ui-field--check .ui-field__label { font-weight: normal; }
   .ui-field--check .ui-field__error { grid-column: 1 / -1; }
+  .ui-field--check .ui-field__hint { grid-column: 2; }
   .ui-check { width: 1rem; height: 1rem; margin: 0; accent-color: var(--ui-primary-border); }
 
   /* Notices: what an action answered — status for an outcome, alert for a refusal. */

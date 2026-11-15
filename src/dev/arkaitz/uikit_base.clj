@@ -105,22 +105,29 @@
   of the host's dictionary, or a vector of the word and its arguments, as a handler's
   refusal names it; the control is then `aria-invalid` and described by the error, which
   no attribute of the caller's undoes — a caller's own `aria-describedby` is kept after
-  it, never in its place. `type` is an input's, \"text\" unless given, or one
-  of four that are not inputs alike: \"select\" draws `options`, `[[value label] …]`, the
-  one whose value is `value` selected — compared as text, since a refused form comes back
-  as strings; \"textarea\" holds `value` as its text; \"file\" takes no value; \"checkbox\"
-  is ticked when `value` is truthy, sends its attrs' `:value` (\"on\" unless given) and
-  sits before its label. `:inline? true` lays label and control on one line, for a field
-  inside a row. `attrs` go on the control, `:class` joined to the kit's."
-  [request {:keys [id label type value error attrs options inline?]}]
+  it, never in its place. `hint`, the view's own text, says what the field wants; the
+  control is described by it too, after the error. `:required? true` makes the control
+  `required`, whatever the attrs say, and marks the label with an asterisk a screen reader
+  skips: it reads the control's own `required`. `type` is an input's, \"text\" unless
+  given, or one of four that are not inputs alike: \"select\" draws `options`, `[[value
+  label] …]`, the one whose value is `value` selected — compared as text, since a refused
+  form comes back as strings; \"textarea\" holds `value` as its text; \"file\" takes no
+  value; \"checkbox\" is ticked when `value` is truthy, sends its attrs' `:value` (\"on\"
+  unless given) and sits before its label. `:inline? true` lays label and control on one
+  line, for a field inside a row. `attrs` go on the control, `:class` joined to the kit's."
+  [request {:keys [id label type value error hint required? attrs options inline?]}]
   (let [attrs    (normalised attrs)
-        error-id (str (or (:id attrs) id) "-error")
+        base     (or (:id attrs) id)
+        error-id (str base "-error")
+        hint-id  (str base "-hint")
         check?   (= "checkbox" type)
-        described (distinct (cons (when error error-id) (str/split (str/trim (str (:aria-describedby attrs ""))) #"\s+")))
+        described (distinct (concat [(when error error-id) (when hint hint-id)]
+                                    (str/split (str/trim (str (:aria-describedby attrs ""))) #"\s+")))
         described (str/join " " (remove str/blank? described))
         own      (cond-> {:id id :name id :class (if check? "ui-check" "ui-input")}
-                   error (assoc :aria-invalid "true"))
-        own      (cond-> (with-attrs own (dissoc attrs :aria-describedby) (if error [:aria-invalid] []))
+                   error (assoc :aria-invalid "true")
+                   required? (assoc :required true))
+        own      (cond-> (with-attrs own (dissoc attrs :aria-describedby) (cond-> [] error (conj :aria-invalid) required? (conj :required)))
                    (seq described) (assoc :aria-describedby described))
         control  (case (or type "text")
                    "select"   (into [:select own]
@@ -130,14 +137,15 @@
                    "file"     [:input (assoc own :type "file")]
                    "checkbox" [:input (cond-> (merge {:value "on"} own {:type "checkbox"}) value (assoc :checked true))]
                    [:input (merge {:type (or type "text") :value value} own)])
-        label    [:label.ui-field__label {:for (:id own)} label]]
+        label    (cond-> [:label.ui-field__label {:for (:id own)} label]
+                   required? (conj [:span.ui-field__req {:aria-hidden "true"} "*"]))]
     ;; A plain field is the very data 0.1.0 answered, so a host test that compares the
     ;; Hiccup, not the HTML, sees no change; a modifier is the wrapper's own class.
-    (conj (cond-> [:div.ui-field]
+    (let [hint (when hint [:span.ui-field__hint {:id hint-id} hint])]
+      (-> (cond-> [:div.ui-field]
             (or check? inline?) (conj {:class (str/join " " (cond-> [] check? (conj "ui-field--check") inline? (conj "ui-field--inline")))}))
-          (if check? control label)
-          (if check? label control)
-          (when error [:span.ui-field__error {:id error-id} (word request error)]))))
+          (into (remove nil? (if check? [control label hint] [label hint control])))
+          (conj (when error [:span.ui-field__error {:id error-id} (word request error)]))))))
 
 (def ^:private notice-roles
   "A refusal is an alert, read out at once; an outcome or a note waits its turn."

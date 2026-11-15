@@ -208,6 +208,7 @@
         markup  (html (list (ui/button "x") (for [v [:primary :secondary :success :danger :warning :info]] (ui/button {:variant v} "x"))
                             (ui/button {:size :sm} "x") (ui/button {:size :lg} "x")
                             (ui/field req {:id "a" :label "A" :error :e})
+                            (ui/field req {:id "h" :label "H" :hint "h" :required? true})
                             (for [k [:ok :info :warning :error]] (ui/notice k "x"))
                             (ui/table {:caption "c" :head ["h"] :rows [["a" "b"]] :row-header? true})
                             (ui/pager req {:previous "/a" :next "/b"})
@@ -217,7 +218,7 @@
                             (for [k [:neutral :success :danger :warning :info]] (ui/badge k "x"))
                             (ui/card "x")))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 32 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
+    (is (= 34 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
     (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{>]")) kit) classes))
         "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
@@ -398,6 +399,35 @@
 
 (deftest a-plain-field-is-the-hiccup-0-1-0-answered
   ;; Hosts compare a field's Hiccup, not only its HTML (the template's views_test does):
-  ;; a plain one keeps 0.1.0's data, the wrapper's class in its tag.
+  ;; a plain one keeps 0.1.0's data, the wrapper's class in its tag. Each literal was
+  ;; printed by v0.1.0 itself (459d683), run from a worktree, never by this code.
   (is (= [:div.ui-field [:label.ui-field__label {:for "a"} "A"] [:input {:type "text" :value nil :id "a" :name "a" :class "ui-input"}] nil]
-         (ui/field req {:id "a" :label "A"}))))
+         (ui/field req {:id "a" :label "A"})))
+  (is (= [:div.ui-field [:label.ui-field__label {:for "a"} "A"] [:input {:type "text", :value nil, :id "a", :name "a", :class "ui-input", :aria-invalid "true", :aria-describedby "a-error"}] [:span.ui-field__error {:id "a-error"} "tr::e:[]"]]
+         (ui/field req {:id "a" :label "A" :error :e})))
+  (is (= [:div.ui-field [:label.ui-field__label {:for "s"} "S"] [:select {:id "s", :name "s", :class "ui-input"} [:option {:value "1"} "One"] [:option {:value "2", :selected true} "Two"]] nil]
+         (ui/field req {:id "s" :label "S" :type "select" :value "2" :options [["1" "One"] ["2" "Two"]]})))
+  (is (= [:div.ui-field [:label.ui-field__label {:for "t"} "T"] [:textarea {:id "t", :name "t", :class "ui-input"} "x"] nil]
+         (ui/field req {:id "t" :label "T" :type "textarea" :value "x"}))))
+
+(deftest a-hint-describes-its-control-and-a-required-one-says-so-twice
+  (is (= (str "<div class=\"ui-field\"><label class=\"ui-field__label\" for=\"e\">E<span aria-hidden=\"true\" class=\"ui-field__req\">*</span></label>"
+              "<span class=\"ui-field__hint\" id=\"e-hint\">H</span>"
+              "<input aria-describedby=\"e-error e-hint other\" aria-invalid=\"true\" class=\"ui-input\" id=\"e\" name=\"e\" required=\"required\" type=\"text\" />"
+              "<span class=\"ui-field__error\" id=\"e-error\">tr::e:[]</span></div>")
+         (html (ui/field req {:id "e" :label "E" :error :e :hint "H" :required? true :attrs {:aria-describedby "other"}})))
+      "the error, then the hint, then the caller's; required on the control, the asterisk hidden from a reader")
+  (is (= (str "<div class=\"ui-field\"><label class=\"ui-field__label\" for=\"b\">A</label><span class=\"ui-field__hint\" id=\"b-hint\"><em>a&lt;b</em></span>"
+              "<input aria-describedby=\"b-hint\" class=\"ui-input\" id=\"b\" name=\"a\" type=\"text\" /></div>")
+         (html (ui/field req {:id "a" :label "A" :hint [:em "a<b"] :attrs {:id "b"}})))
+      "a hint is the view's markup, escaped, and named after the control it describes")
+  (is (= (str "<div class=\"ui-field ui-field--check\"><input aria-describedby=\"c-error c-hint\" aria-invalid=\"true\" class=\"ui-check\" id=\"c\" name=\"c\" required=\"required\" type=\"checkbox\" value=\"on\" />"
+              "<label class=\"ui-field__label\" for=\"c\">C<span aria-hidden=\"true\" class=\"ui-field__req\">*</span></label>"
+              "<span class=\"ui-field__hint\" id=\"c-hint\">H</span><span class=\"ui-field__error\" id=\"c-error\">tr::e:[]</span></div>")
+         (html (ui/field req {:id "c" :label "C" :type "checkbox" :hint "H" :required? true :error :e})))
+      "a box: the box, its label, the hint, the error")
+  (is (= (str "<div class=\"ui-field\"><label class=\"ui-field__label\" for=\"r\">R<span aria-hidden=\"true\" class=\"ui-field__req\">*</span></label>"
+              "<input class=\"ui-input\" id=\"r\" name=\"r\" required=\"required\" type=\"text\" /></div>")
+         (html (ui/field req {:id "r" :label "R" :required? true :attrs {:required false}})))
+      "no attribute makes a required field optional")
+  (is (= "e-error" (get-in (ui/field req {:id "e" :label "E" :error :e}) [2 1 :aria-describedby])) "no hint, no hint id"))
