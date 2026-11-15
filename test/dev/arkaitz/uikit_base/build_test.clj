@@ -32,6 +32,9 @@
                          ["{:primary \"#2563eb\" :tertiary \"teal\"}" "gives :tertiary as no #rrggbb colour"]
                          ["{:primary \"#2563eb\" :presence :loud}" "gives :presence as none of [:balanced :calm :vivid]"]
                          ["{:primary \"#2563eb\" :elevation \"flat\"}" "gives :elevation as none of [:flat :normal :raised]"]
+                         ["{:primary \"#2563eb\" :density :tight}" "gives :density as none of [:comfortable :compact :cozy]"]
+                         ["{:primary \"#2563eb\" :roundness :pill}" "gives :roundness as none of [:round :sharp :soft]"]
+                         ["{:primary \"#2563eb\" :typography :display}" "gives :typography as none of [:mono :sans :serif]"]
                          ["[1]" "must hold one map, {:primary \"#rrggbb\"} and its options"]
                          ["{:primary" "is not EDN"]
                          ["" "must hold one map, {:primary \"#rrggbb\"} and its options"]]]
@@ -50,7 +53,13 @@
     (is (not= (get-in (brand/theme {:primary "#2563eb" :presence :vivid}) [:surface 0]) (get-in (brand/theme {:primary "#2563eb"}) [:surface 0]))
         "witness: vivid moves the canvas")
     (is (= (second (str/split plain #"\n" 2)) (second (str/split (build/expected (brand-file "{:primary \"#2563eb\" :presence :calm :elevation :normal}")) #"\n" 2)))
-        "the defaults spelt out are the same palette as none given, the header aside")))
+        "the defaults spelt out are the same palette as none given, the header aside")
+    (let [shaped (build/expected (brand-file "{:primary \"#2563eb\" :density :comfortable :roundness :round :typography :serif}"))]
+      (is (str/includes? shaped "from #2563eb density comfortable roundness round typography serif.") "the header names the personality")
+      (is (str/includes? shaped "--ui-radius-md:0.75rem;") "round radii")
+      (is (str/includes? shaped "--ui-font-family-body:var(--ui-font-family-serif);") "a serif voice")
+      (is (str/includes? shaped "--ui-spacing-md:1.062rem;") "comfortable spacing, printed as basaku prints it")
+      (is (str/includes? plain "--ui-spacing-md:0.85rem;") "witness: the default spacing"))))
 
 (deftest a-palette-that-breaks-the-audit-is-refused-and-nothing-is-written
   (let [theme brand/theme

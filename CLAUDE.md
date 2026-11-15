@@ -14,8 +14,9 @@ the set, like db-base and auth-base.
 The colour engine is a port of the user's own, in `../../zig/basaku` (`src/css/brand.zig`,
 `color_space.zig`, `state_colors.zig`, `boundary.zig`, `cvd.zig`, `wcag_audit.zig`).
 Their lesson, which this library exists to keep: **a colour system and a well-designed
-kit beat a theme system.** Colour is the only knob; everything else is decided once;
-hand CSS can always fine-tune anything.
+kit beat a theme system.** The knobs are basaku's own and closed — the colours, a
+presence, and four personality axes (since 0.6.0) — everything else is decided once; hand
+CSS can always fine-tune anything.
 
 The plan this repository was built from is the last section of
 `~/.claude/plans/snazzy-imagining-sketch.md` ("uikit-base").
@@ -38,8 +39,20 @@ no specificity to match. The one exception is deliberate: the bridge that maps w
 `--wb-*` onto the palette is **unlayered**, in the generated colours file, because
 `wb.css` is unlayered and an unlayered rule beats every layered one.
 
-**4 · Colour is the only knob.** Spacing, radius, type, shadows and the focus ring are
-decided in `kit.css`. A new option needs the user's decision and a paper trail.
+**4 · The knobs are basaku's, closed, and nothing else.** A brand names up to three
+seeds, a `:presence`, and the four personality axes `:density`, `:roundness`,
+`:typography` and `:elevation`, each one of basaku's levels; `read-brand` refuses
+anything else. The scales they shape (spacing, radius, type, shadows, motion) are basaku's
+own, generated into the host's file beside the colours, and held to basaku's output by
+`scales_test`. Changed from "colour is the only knob" by the user's decision of 2026-11-15
+(the 0.6.0 plan, "Adoptar las escalas de basaku"). A new option needs the user's decision
+and a paper trail.
+
+**5 · Layers decide, not specificity.** `@layer uikit` names `base`, `components` and
+`utilities`, in that order, and every rule sits in one of them: a utility wins over a
+component by its layer, with no `!important`, and the host's unlayered CSS still wins over
+all three. `kit_test`'s cascade model ranks by layer first; a rule left directly in
+`uikit` is refused.
 
 ## Traps already identified
 

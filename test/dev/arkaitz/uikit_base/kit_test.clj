@@ -24,6 +24,10 @@
 (def ^:private audited (into {} (map (fn [[bg fg rule]] [[bg fg] rule]))
                              (:pairs (edn/read-string (slurp (io/file "test/resources/basaku-audit-pairs.edn"))))))
 (def ^:private palette (set (keys (brand/theme {:primary "#2563eb"}))))
+(def ^:private scale-names
+  "Every scale the generated file publishes — spacing, radius, type, shadows, motion — by
+  its name without `--ui-`, as the kit's own default colours file holds them."
+  (set (remove palette (map (comp keyword second) (re-seq #"--ui-([a-z0-9-]+)\s*:" (slurp (io/resource "dev/arkaitz/uikit_base/public/ui-colors.css")))))))
 
 (defn- top-level
   "The top-level items of a stylesheet: each block's prelude, each statement's text."
@@ -144,8 +148,8 @@
   (is (< 100 (count (:rules parsed))) "witness: the rules were read")
   (is (= [] (for [{:keys [layer selectors]} (:rules parsed) :when (not= 2 (count layer))] [layer selectors]))
       "each in exactly one of them")
-  (is (= #{["uikit" "base"] ["uikit" "components"]} (set (map :layer (:rules parsed))))
-      "and the scales in base, what the kit draws in components"))
+  (is (= #{["uikit" "components"]} (set (map :layer (:rules parsed))))
+      "what the kit draws in components; base holds nothing yet, the scales living with the colours"))
 
 (declare cascaded specificity)
 
@@ -179,11 +183,12 @@
 
 (deftest every-variable-the-kit-reads-exists
   (let [read     (set (map (comp keyword second) (re-seq #"var\(--ui-([a-z0-9-]+)" css)))
-        declared (set (map (comp keyword second) (re-seq #"--ui-([a-z0-9-]+)\s*:" css)))]
+        declared scale-names]
     (is (= 72 (count palette)) "witness: the palette's 72 tokens")
     (is (< 30 (count read)) "witness: the references were found")
-    (is (= [] (remove (some-fn palette declared) read)) "every variable read is the palette's or a scale the kit declares")
-    (is (= [] (filter palette declared)) "the kit redeclares no palette token, which would be dead under the unlayered colours")))
+    (is (= 70 (count declared)) "witness: the seventy scales basaku writes, a count measured once")
+    (is (= [] (remove (some-fn palette declared) read)) "every variable read is the palette's or a scale the generated file publishes")
+    (is (= [] (filter palette declared)) "no scale shadows a palette token")))
 
 (def ^:private compound-re #"[^\s>+~]+")
 (def ^:private state-re #"(::?[a-z-]+(\([^)]*\))?|\[[^\]]*\])")
@@ -284,14 +289,14 @@
   #"^(color|background(-color)?|border(-(top|right|bottom|left|block|inline)(-(start|end))?)?(-color)?|outline(-color)?|accent-color|caret-color|fill|stroke|box-shadow|text-decoration-color)$")
 
 (def ^:private shadows
-  "The kit's own properties that hold a colour literal: a shadow's, which no palette token
-  is, read only by `box-shadow`."
-  #{"--ui-shadow-sm"})
+  "The scales that hold a colour literal: the shadows', which no palette token is, read only
+  by `box-shadow`."
+  #{:shadow-sm :shadow-md :shadow-lg :shadow-xl})
 
 (deftest every-colour-comes-from-the-palette
   (let [rules    (leaf-rules)
         decls    (for [[sels ds] rules [k v] ds] [sels k v])
-        scales   (set (map (comp keyword second) (re-seq #"--ui-([a-z0-9-]+)\s*:" css)))
+        scales   scale-names
         token-ok (fn [t] (or (re-matches #"-?[\d.]+(px|rem|em|%)?" t)
                              (#{"solid" "dashed" "dotted" "none" "inset" "inherit" "currentcolor" ","} t)
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
@@ -304,10 +309,13 @@
         "a colour and a background read one")
     (is (= [] (for [[sels k v] decls :when (not (str/starts-with? k "--")) :when (re-find #"#[0-9a-fA-F]{3,8}\b|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix)\(" v)] [sels k v]))
         "no other property holds a colour literal either")
-    (is (= shadows (set (for [[_ k v] decls :when (str/starts-with? k "--") :when (re-find #"#[0-9a-fA-F]{3,8}\b|\(" v)] k)))
-        "the kit's own properties holding a colour are the shadows, and only those")
-    (is (= #{"box-shadow"} (set (for [[_ k v] decls :when (some #(str/includes? v (str "var(" % ")")) shadows)] k)))
-        "and only a shadow reads them")))
+    (is (= [] (for [[sels k] decls :when (str/starts-with? k "--")] [sels k]))
+        "the kit declares no property of its own: a colour smuggled through one would escape this test")
+    (let [colour-scales (set (for [[_ n v] (re-seq #"--ui-([a-z0-9-]+)\s*:([^;]*);" (slurp (io/resource "dev/arkaitz/uikit_base/public/ui-colors.css")))
+                                   :when (not (palette (keyword n))) :when (re-find #"#[0-9a-fA-F]{3,8}\b|rgba?\(" v)] (keyword n)))]
+      (is (= shadows colour-scales) "the scales holding a colour are the shadows, and only those")
+      (is (= #{"box-shadow"} (set (for [[_ k v] decls :when (some #(str/includes? v (str "var(--ui-" (name %) ")")) shadows)] k)))
+          "and only a shadow reads them"))))
 
 (def ^:private dividers
   "Lines that separate, not edges that bound a control: drawn in `border`, which is no
@@ -376,7 +384,7 @@
                        (some-> (cascaded rules s ["padding-block" "padding"]) (str/split #"\s+") first)
                        (some-> (cascaded rules s ["border-width" "border"]) (str/split #"\s+") first)
                        (cascaded rules s ["height" "min-height"])])]
-    (is (= ["var(--ui-font-base)" "1.25" "var(--ui-space-sm)" "1px" nil] (box ".ui-btn")) "witness: the button's box")
+    (is (= ["var(--ui-font-size-base)" "1.25" "var(--ui-spacing-sm)" "1px" nil] (box ".ui-btn")) "witness: the button's box")
     (is (= (box ".ui-btn") (box ".ui-input")) (str "an inline input sits level with the button beside it " env)))))
 
 (deftest screen-reader-text-is-hidden-from-the-eye-and-not-from-the-reader
