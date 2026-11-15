@@ -1,0 +1,78 @@
+;; What test/browser/gallery-check.mjs saw, engine by engine, against the gallery of this
+;; tree: the kit's behaviour no JVM test can see. browser_checks_test holds that every check
+;; passed and that the files below are the bytes they were run against, so a change to any of
+;; them reds until the checks are run again and this file regenerated.
+{:checked "2026-11-15"
+ :files {"kit.css" "75465bc7554a1569b79a6a4e15ee83095787a320672f49bb551fb04c135c947f"
+         "ui-utilities.css" "a13d081a7dacf810293c7e730b1e6da87d36c89af1336f9bb5dda55fc6f981e6"
+         "ui.js" "878114b96d396c64e6f22a94926abab1e6e042334bbf97947ea25d956c275daa"
+         "gallery-check.mjs" "35fd6bc8f422b4ffc997077b2304cc2fa21de9dea3cba60827f4357cc337783a"}
+ :runs [
+  {:engine "webkit" :version "26.4"
+   :modes {
+    "native" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
+     "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
+     "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
+     "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
+     "offcanvas: the end sheet at the inline end, full height" true
+     "dropdown: below its button at the inline start, closed by Esc" true
+     "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
+     "carousel: rotating until the focus enters it, then two quick Next presses move two slides" true
+     "toasts: the timed one goes after its time, the x removes the other" true
+     "scrollspy: the section in view is aria-current=location" true
+     "forced: native invoker commands were cancelled, so the script acted" true
+     "no CSP violation, no script error" true}
+    "older-floor" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
+     "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
+     "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
+     "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
+     "offcanvas: the end sheet at the inline end, full height" true
+     "dropdown: below its button at the inline start, closed by Esc" true
+     "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
+     "carousel: rotating until the focus enters it, then two quick Next presses move two slides" true
+     "toasts: the timed one goes after its time, the x removes the other" true
+     "scrollspy: the section in view is aria-current=location" true
+     "forced: native invoker commands were cancelled, so the script acted" true
+     "no CSP violation, no script error" true}}}
+  {:engine "chromium" :version "145.0.7632.6"
+   :modes {
+    "native" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
+     "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
+     "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
+     "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
+     "offcanvas: the end sheet at the inline end, full height" true
+     "dropdown: below its button at the inline start, closed by Esc" true
+     "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
+     "carousel: rotating until the focus enters it, then two quick Next presses move two slides" true
+     "toasts: the timed one goes after its time, the x removes the other" true
+     "scrollspy: the section in view is aria-current=location" true
+     "forced: native invoker commands were cancelled, so the script acted" true
+     "no CSP violation, no script error" true}
+    "older-floor" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
+     "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
+     "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
+     "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
+     "offcanvas: the end sheet at the inline end, full height" true
+     "dropdown: below its button at the inline start, closed by Esc" true
+     "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
+     "carousel: rotating until the focus enters it, then two quick Next presses move two slides" true
+     "toasts: the timed one goes after its time, the x removes the other" true
+     "scrollspy: the section in view is aria-current=location" true
+     "forced: native invoker commands were cancelled, so the script acted" true
+     "no CSP violation, no script error" true}
+    "anchor-without-scope" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
+     "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
+     "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
+     "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
+     "offcanvas: the end sheet at the inline end, full height" true
+     "dropdown: below its button at the inline start, closed by Esc" true
+     "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
+     "carousel: rotating until the focus enters it, then two quick Next presses move two slides" true
+     "toasts: the timed one goes after its time, the x removes the other" true
+     "scrollspy: the section in view is aria-current=location" true
+     "forced: native invoker commands were cancelled, so the script acted" true
+     "no CSP violation, no script error" true}}}]
+ :not-verified ["a dialog's closedby shim in a Chromium without it (131-133): Chromium's own closedby cannot be switched off; the shim's Esc decision is read from defaultPrevented, and WebKit 26.4, which lacks closedby, runs the shim for real"
+                "Firefox: no engine of it on this machine"
+                "a real Safari 18.x: its gaps are forced in WebKit 26.4 and Chromium, never run"]
+ :platform ["WebKit, a dialog opened by a mouse click: Esc returns the focus to <main>, not the button, since a click does not focus a button there; by keyboard it returns to the button (measured)"]}
