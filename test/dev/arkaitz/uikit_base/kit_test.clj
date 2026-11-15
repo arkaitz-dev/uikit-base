@@ -52,10 +52,11 @@
   "The stylesheet as its rules, in order: each `{:selectors :decls :index :layer :conditions}`,
   `:layer` the path of named layers it sits in (`[\"uikit\" \"components\"]`), `:conditions`
   the preludes of the `@media` and `@starting-style` blocks around it, and the order the
-  layers were named in, per parent, as `:layer-order`. A rule nested in a rule is refused:
-  the regex this replaces read one as a selector."
+  layers were named in, per parent, as `:layer-order`. A `@keyframes` block is no rule: its
+  name is kept, in `:keyframes`, and its steps are not read as selectors. A rule nested in
+  a rule is refused: the regex this replaces read one as a selector."
   [text]
-  (let [order (atom {}) out (atom [])
+  (let [order (atom {}) out (atom []) frames (atom #{})
         note1 (fn [parent nm] (swap! order update parent #(if (some #{nm} %) % (conj (or % []) nm))))
         ;; A dotted name, `uikit.utilities`, is the sub-layer `utilities` of `uikit`: each
         ;; of its parts is named under the ones before it.
@@ -83,6 +84,8 @@
                           (let [nm (str/trim (subs prelude 6))] (walk body (note! layer nm) conds))
                           (or (str/starts-with? prelude "@media") (str/starts-with? prelude "@starting-style"))
                           (walk body layer (conj conds prelude))
+                          (str/starts-with? prelude "@keyframes")
+                          (swap! frames conj (str/trim (subs prelude 10)))
                           (str/includes? body "{")
                           (throw (ex-info "kit.css: a rule nested in a rule" {:selector prelude}))
                           :else
@@ -91,7 +94,7 @@
                                            :layer layer :conditions conds}))
                         (recur rest)))))))]
       (walk text [] [])
-      {:rules (vec (map-indexed #(assoc %2 :index %1) @out)) :layer-order @order})))
+      {:rules (vec (map-indexed #(assoc %2 :index %1) @out)) :layer-order @order :keyframes @frames})))
 
 (def ^:private parsed (parse-css both))
 (def ^:private kit-parsed (parse-css css))
@@ -195,6 +198,10 @@
       "a modifier of more than one word implies its base, as a one-word modifier does")
   (is (= [[0 0 0] [0 1 0] [0 2 0] [0 1 1]] (mapv specificity [":where(.a, .b)" ":is(.a, a)" ".x:has(.a)" "a:not(.b)"]))
       "where counts nothing; is, has and not their most specific argument")
+  (is (= {:rules [".a"] :keyframes #{"spin"}}
+         (let [p (parse-css "@layer k { @keyframes spin { from { opacity: 0; } to { opacity: 1; } } .a { animation: spin 1s; } }")]
+           {:rules (mapcat :selectors (:rules p)) :keyframes (:keyframes p)}))
+      "a keyframes block is a name, never rules named from and to")
   (is (= "kit.css: a rule nested in a rule" (try (parse-css ".a { color: x; .b { color: y; } }") nil (catch clojure.lang.ExceptionInfo e (ex-message e)))))
   (is (= "kit_test: a media condition the model does not know" (try (holds? "@media (hover: hover)" (first environments)) nil (catch clojure.lang.ExceptionInfo e (ex-message e)))))
   (is (= [] (filter #(holds? "@media print" %) environments)) "print holds in no screen")
@@ -463,7 +470,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 260 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 188 (0.5.0's 119; K9's 42 outline, 4 link, 5 pressed and 5 close; K10's 13: touched edges, switch, range, floating label, group text) and the utilities' 72, a count measured once: " (count bearing)))
+    (is (= 279 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 207 (0.5.0's 119; K9's 42 outline, 4 link, 5 pressed and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1) and the utilities' 72, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -492,7 +499,7 @@
                           [s t]))
         edges (remove dividers found)]
     (is (= dividers (set (filter dividers found))) "every divider named is still drawn")
-    (is (= 54 (count edges)) (str "witness: the edges — the kit's 42 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
+    (is (= 57 (count edges)) (str "witness: the edges — the kit's 45 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text; K11's progress accent and the spinner's two), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
     (doseq [[s t] edges bg [:background :surface :surface-alt]]
       (testing (str s " " t)
         (is (= :ui (audited [bg t])) "an audited non-text pair")
@@ -565,8 +572,36 @@
 
 (def ^:private indicators
   "Each mark the kit draws on a track of its own, as [track mark]: it must read against the
-  track at 3:1, an audited pair, like an edge against its canvas."
-  [[".ui-switch" ".ui-switch::before"] [".ui-switch:checked" ".ui-switch:checked::before"]])
+  track at 3:1, an audited pair, like an edge against its canvas. Chromium and WebKit draw a
+  progress or meter's track as a pseudo-element; Gecko draws it as the element."
+  [[".ui-switch" ".ui-switch::before"] [".ui-switch:checked" ".ui-switch:checked::before"]
+   [".ui-progress--striped::-webkit-progress-bar" ".ui-progress--striped::-webkit-progress-value"]
+   [".ui-progress--striped" ".ui-progress--striped::-moz-progress-bar"]
+   [".ui-meter::-webkit-meter-bar" ".ui-meter::-webkit-meter-optimum-value"]
+   [".ui-meter::-webkit-meter-bar" ".ui-meter::-webkit-meter-suboptimum-value"]
+   [".ui-meter::-webkit-meter-bar" ".ui-meter::-webkit-meter-even-less-good-value"]
+   [".ui-meter" ".ui-meter:-moz-meter-optimum::-moz-meter-bar"]
+   [".ui-meter" ".ui-meter:-moz-meter-sub-optimum::-moz-meter-bar"]
+   [".ui-meter" ".ui-meter:-moz-meter-sub-sub-optimum::-moz-meter-bar"]])
+
+(def ^:private motion-props #{"transition" "transition-property" "animation" "animation-name"})
+
+(deftest every-motion-stops-where-the-reader-asked-for-none
+  ;; WCAG 2.3.3: what moves on its own, or as it changes, keeps still for a reader who said
+  ;; so. Read per selector, through the cascade, in every width and scheme with reduce.
+  (let [moving (distinct (for [[sels decls _ _ conds] (leaf-rules)
+                               :when (not-any? #(str/includes? % "prefers-reduced-motion") conds)
+                               s sels [k v] decls :when (motion-props k) :when (not= "none" v)] [s k]))]
+    (is (= 8 (count moving)) (str "witness: what moves — the button, the switch's knob, the floating label, the icon link's arrow, the progress stripes twice, the spinner and the placeholder; a count measured once: " (vec moving)))
+    (doseq [env environments :when (= :reduce (:motion env)) :let [rules (in-env (leaf-rules) env)] [s k] moving]
+      (is (= "none" (cascaded rules s [k])) (str s " still has " k " where reduced motion was asked for, " (:width env) " " (:scheme env))))))
+
+(deftest every-animation-names-keyframes-the-kit-defines
+  (let [frames (into (:keyframes kit-parsed) (:keyframes utilities-parsed))
+        named  (distinct (for [[_ decls] (leaf-rules) [k v] decls :when (#{"animation" "animation-name"} k) :when (not= "none" v)]
+                           (first (str/split v #"\s+"))))]
+    (is (= #{"ui-stripes" "ui-spin" "ui-glow"} frames) "witness: the kit's keyframes")
+    (is (= [] (remove frames named)) "an animation naming nothing defined runs nothing, and says nothing")))
 
 (deftest every-indicator-reads-against-its-track
   (let [drawn (set (for [[sels decls] (leaf-rules) s sels :when (str/includes? s "::")
@@ -852,7 +887,12 @@
    'row       [(ui/row "x")]
    'pager     [(ui/pager req {:previous "/a" :next "/b" :where "w"})]
    'badge     [(ui/badge :info "x")]
-   'card      [(ui/card "x")]})
+   'card      [(ui/card "x")]
+   'alert     [(ui/alert req :ok {:heading "h" :dismiss-href "/a"} "x")]
+   'progress  [(ui/progress {:label "p" :value 1})]
+   'meter     [(ui/meter {:label "m" :value 0.5})]
+   'spinner   [(ui/spinner req)]
+   'placeholder [(ui/placeholder req)]})
 
 (defn- elements
   "Every element of a Hiccup tree as [tag attrs classes ancestors' classes]."
@@ -884,7 +924,7 @@
                  [tag classes (first ancestors)])]
     (is (= (set (keys fixtures)) (set (remove '#{words cell} (keys (ns-publics 'dev.arkaitz.uikit-base)))))
         "every public component is drawn here, so a new one needs its fixture")
-    (is (= 34 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close, K10's switch, range, floating input, a grouped field's input and button, and the input group's — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
+    (is (= 35 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close, K10's switch, range, floating input, a grouped field's input and button, and the input group's, K11's alert dismiss link — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
     (is (= [] bare) "each wears the ring, through a class of its own or its kit ancestor's")
     (is (= [] (for [[sels decls] (leaf-rules) :let [v (get decls "outline")] :when v :when (not= :focus-ring (palette-var v))] [sels v]))
         "no rule takes the ring away: an outline is the ring")

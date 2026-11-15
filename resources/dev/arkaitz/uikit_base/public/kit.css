@@ -213,6 +213,11 @@
     .ui-notice--error { border-inline-start-color: var(--ui-danger-border); color: var(--ui-danger-ink); }
     .ui-notice--info { border-inline-start-color: var(--ui-info-border); color: var(--ui-info-ink); }
     .ui-notice--warning { border-inline-start-color: var(--ui-warning-border); color: var(--ui-warning-ink); }
+    /* Alerts: a notice with a heading and a way out — a link back to the page without it. */
+    .ui-alert { display: flex; align-items: flex-start; gap: var(--ui-spacing-sm); margin-block: 0; }
+    .ui-alert__body { flex: 1 1 auto; min-inline-size: 0; }
+    .ui-alert__heading { margin: 0 0 var(--ui-spacing-xs); font-weight: 600; }
+    .ui-alert__dismiss { margin-block: calc(-1 * var(--ui-spacing-xs)); }
 
     /* Tables, and the region that scrolls a wide one on a narrow screen. */
     .ui-table-wrap { position: relative; overflow-x: auto; }
@@ -262,6 +267,55 @@
     .ui-badge--danger { color: var(--ui-on-danger); background: var(--ui-danger); }
     .ui-badge--warning { color: var(--ui-on-warning); background: var(--ui-warning); }
     .ui-badge--info { color: var(--ui-on-info); background: var(--ui-info); }
+    .ui-badge--corner { position: absolute; inset-block-start: -0.5em; inset-inline-end: -0.5em; z-index: var(--ui-z-index-raised); }
+
+    /* Progress and meters: the platform's own elements; each bar an audited edge on its
+     * track. A vendor pseudo-element is a rule of its own: a browser drops a whole selector
+     * list for one pseudo-element it does not know. */
+    .ui-progress { inline-size: 100%; accent-color: var(--ui-primary-border); }
+    .ui-progress--striped, .ui-progress--animated {
+      appearance: none; block-size: 1rem; border: 0; border-radius: var(--ui-radius-full); overflow: hidden;
+      background-color: var(--ui-surface-alt);
+    }
+    .ui-progress--striped::-webkit-progress-bar { background-color: var(--ui-surface-alt); }
+    .ui-progress--striped::-webkit-progress-value {
+      background-color: var(--ui-primary-border); background-size: 1rem 1rem;
+      background-image: linear-gradient(45deg, var(--ui-primary-active) 25%, var(--ui-primary-border) 25% 50%, var(--ui-primary-active) 50% 75%, var(--ui-primary-border) 75%);
+    }
+    .ui-progress--striped::-moz-progress-bar {
+      background-color: var(--ui-primary-border); background-size: 1rem 1rem;
+      background-image: linear-gradient(45deg, var(--ui-primary-active) 25%, var(--ui-primary-border) 25% 50%, var(--ui-primary-active) 50% 75%, var(--ui-primary-border) 75%);
+    }
+    .ui-progress--animated::-webkit-progress-value { animation: ui-stripes 1s linear infinite; }
+    .ui-progress--animated::-moz-progress-bar { animation: ui-stripes 1s linear infinite; }
+    @keyframes ui-stripes { from { background-position: 1rem 0; } to { background-position: 0 0; } }
+    .ui-meter {
+      appearance: none; inline-size: 100%; block-size: 1rem; border: 0; border-radius: var(--ui-radius-full); overflow: hidden;
+      background-color: var(--ui-surface-alt);
+    }
+    .ui-meter::-webkit-meter-bar { background-color: var(--ui-surface-alt); border: 0; border-radius: inherit; }
+    .ui-meter::-webkit-meter-optimum-value { background-color: var(--ui-success-border); }
+    .ui-meter::-webkit-meter-suboptimum-value { background-color: var(--ui-warning-border); }
+    .ui-meter::-webkit-meter-even-less-good-value { background-color: var(--ui-danger-border); }
+    .ui-meter:-moz-meter-optimum::-moz-meter-bar { background-color: var(--ui-success-border); }
+    .ui-meter:-moz-meter-sub-optimum::-moz-meter-bar { background-color: var(--ui-warning-border); }
+    .ui-meter:-moz-meter-sub-sub-optimum::-moz-meter-bar { background-color: var(--ui-danger-border); }
+
+    /* Loading: a turning ring, and bars standing in for text; neither moves where the reader
+     * asked for reduced motion, and both say so to a screen reader in words. */
+    .ui-spinner {
+      position: relative; display: inline-block; inline-size: 1.5rem; block-size: 1.5rem; vertical-align: middle;
+      border: 0.2em solid var(--ui-border-strong); border-block-start-color: var(--ui-primary-border);
+      border-radius: var(--ui-radius-full); animation: ui-spin 0.75s linear infinite;
+    }
+    @keyframes ui-spin { to { transform: rotate(1turn); } }
+    .ui-placeholders { position: relative; display: grid; gap: var(--ui-spacing-xs); }
+    .ui-placeholder {
+      display: block; block-size: 1em; border-radius: var(--ui-radius-sm); background-color: var(--ui-border);
+      animation: ui-glow 2s ease-in-out infinite;
+    }
+    .ui-placeholder:last-child { inline-size: 60%; }
+    @keyframes ui-glow { 50% { opacity: var(--ui-opacity-muted); } }
 
     /* Empty states, description lists, page headings. */
     .ui-empty { margin: 0; padding-block: var(--ui-spacing-lg); text-align: center; color: var(--ui-text-muted); }
@@ -321,6 +375,11 @@
     }
     .ui-prose kbd { border: 1px solid var(--ui-border-strong); }
 
-    @media (prefers-reduced-motion: reduce) { .ui-btn, .ui-switch::before, .ui-field--floating > .ui-field__label { transition: none; } }
+    @media (prefers-reduced-motion: reduce) {
+      .ui-btn, .ui-switch::before, .ui-field--floating > .ui-field__label { transition: none; }
+      .ui-progress--animated::-webkit-progress-value { animation: none; }
+      .ui-progress--animated::-moz-progress-bar { animation: none; }
+      .ui-spinner, .ui-placeholder { animation: none; }
+    }
   }
 }

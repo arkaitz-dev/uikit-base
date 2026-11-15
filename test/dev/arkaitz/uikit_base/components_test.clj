@@ -234,9 +234,13 @@
                             (ui/field req {:id "z" :label "Z" :size :sm}) (ui/field req {:id "z" :label "Z" :size :lg})
                             (ui/field req {:id "w" :label "W" :type "switch"}) (ui/field req {:id "r" :label "R" :type "range"})
                             (ui/field req {:id "f" :label "F" :floating? true :before nil :attrs {:placeholder "p"}})
-                            (ui/field req {:id "p" :label "P" :before "€"})))
+                            (ui/field req {:id "p" :label "P" :before "€"})
+                            (ui/alert req :ok {:heading "h" :dismiss-href "/a"} "x")
+                            (ui/badge :info {:corner? true} "1")
+                            (ui/progress {:label "p" :animated? true}) (ui/meter {:label "m" :value 1})
+                            (ui/spinner req) (ui/placeholder req)))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 73 (count classes)) (str "witness: the classes emitted — 0.5.0's 56, then K9's six outlines, link, block, button-group and close, K10's two sizes, switch, range, floating field, input group and its text — a count measured once: " (sort classes)))
+    (is (= 85 (count classes)) (str "witness: the classes emitted — 0.5.0's 56, then K9's six outlines, link, block, button-group and close, K10's two sizes, switch, range, floating field, input group and its text, K11's alert and its three parts, corner badge, progress and its two, meter, spinner, placeholders and placeholder — a count measured once: " (sort classes)))
     (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{>]")) kit) classes))
         "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
@@ -623,7 +627,8 @@
                                     (mock/request :get "/"))))
                        "Cópialo ahora: no se volverá a mostrar.")
         "and the secret's note")
-    (doseq [[component spanish] [[#(ui/close-button %) "<span class=\"ui-sr-only\">Cerrar</span>"]]]
+    (doseq [[component spanish] [[#(ui/close-button %) "<span class=\"ui-sr-only\">Cerrar</span>"]
+                                 [#(ui/spinner %) "<span class=\"ui-sr-only\">Cargando…</span>"]]]
       (is (str/includes? (str (:body ((wb/handler {:routes [["/" {:wb/layouts [shell/page] :get (fn [q] {:status 200 :body (component q)})}]]
                                                    :session {:key KEY} :plugins [(web/plugin)] :i18n {:default-locale :es}})
                                       (mock/request :get "/"))))
@@ -882,3 +887,75 @@
            (refusal #(ui/field req {:id "e" :label "E" :type t :floating? true :attrs {:placeholder "p"}}))) t))
   (is (= ["uikit-base: a floating label floats over its control alone, never an input-group" {}]
          (refusal #(ui/field req {:id "e" :label "E" :floating? true :before "€" :attrs {:placeholder "p"}})))))
+
+;; --- K11: feedback ----------------------------------------------------------------------
+
+(defn- dismiss [href word] (str/replace (L href nil (str "<span aria-hidden=\"true\">×</span><span class=\"ui-sr-only\">" word "</span>"))
+                                        "<a href" "<a class=\"ui-close ui-alert__dismiss\" href"))
+
+(deftest an-alert-is-a-notice-with-a-heading-and-a-link-back-to-the-page-without-it
+  (is (= (str "<div class=\"ui-notice ui-notice--ok ui-alert x\" id=\"flash\" role=\"status\"><div class=\"ui-alert__body\"><p class=\"ui-alert__heading\">Saved &lt;1&gt;</p>"
+              "The order <b>A1</b></div>" (dismiss "/orders" "Close") "</div>")
+         (html (ui/alert {} :ok {:heading "Saved <1>" :dismiss-href "/orders" :class "x" :id "flash" :role "none"} "The order " [:b "A1"])))
+      "heading, body and the way out; the caller's id and class kept, its role not")
+  (is (= "<div class=\"ui-notice ui-notice--error ui-alert\" role=\"alert\"><div class=\"ui-alert__body\">No</div></div>"
+         (html (ui/alert {} :error "No")))
+      "a refusal is an alert; no heading, no way out, none drawn")
+  (is (= (str "<div class=\"ui-notice ui-notice--info ui-alert\" role=\"status\"><div class=\"ui-alert__body\">x</div>" (dismiss "/o?tab=a&amp;b=1" "Cerrar") "</div>")
+         (html (ui/alert {:wb/tr (tr-for :es)} :info {:dismiss-href "/o?tab=a&b=1"} "x")))
+      "named in the reader's language")
+  (is (str/includes? (html (ui/alert {} :warning {:dismiss-href "/o" :dismiss-label "Hide &"} "x")) "<span class=\"ui-sr-only\">Hide &amp;</span>"))
+  (is (str/includes? (html (ui/alert {} :warning {:dismiss-href "/o" :dismiss-label " "} "x")) "<span class=\"ui-sr-only\">Close</span>") "a blank label is none")
+  (is (= ["web-base: link's href must be a path on this origin" {:wb/link :href}] (refusal #(ui/alert {} :ok {:dismiss-href "https://evil.test/"} "x"))))
+  (is (= ["uikit-base: an alert is :ok, :info, :warning or :error" {:kind :success}] (refusal #(ui/alert {} :success "x")))))
+
+(deftest a-count-says-what-it-counts-and-a-corner-badge-sits-at-the-inline-end
+  (is (= "<span class=\"ui-badge ui-badge--info\">3<span class=\"ui-sr-only\"> unread &lt;msgs&gt;</span></span>" (html (ui/badge :info {:label "unread <msgs>"} 3))))
+  (is (= "<span class=\"ui-badge ui-badge--danger ui-badge--corner x\" id=\"b\">9+</span>" (html (ui/badge :danger {:corner? true :class "x" :id "b" :label " "} "9+")))
+      "a corner badge; a blank label is none, and neither option is an attribute")
+  (is (= [:span {:class "ui-badge"} "Open"] (ui/badge :neutral "Open")) "without a label, the Hiccup it was"))
+
+(deftest a-progress-is-the-platforms-own-named-bar
+  (is (= "<progress aria-label=\"Upload &lt;a&gt;\" class=\"ui-progress x\" id=\"p\" max=\"10\" value=\"4\"></progress>"
+         (html (ui/progress {:label "Upload <a>" :value 4 :max 10 :attrs {:class "x" :id "p" :max 99 "VALUE" 9 :aria-label "o"}})))
+      "its value, max and name are its own")
+  (is (= "<progress aria-label=\"Sync\" class=\"ui-progress\" max=\"1\"></progress>" (html (ui/progress {:label "Sync" :attrs {:value 0.5}})))
+      "no value, under way — and no caller's value makes it say how far")
+  (is (= "<progress aria-label=\"S\" class=\"ui-progress ui-progress--striped\" max=\"1\" value=\"0.5\"></progress>" (html (ui/progress {:label "S" :value 0.5 :striped? true}))))
+  (is (= "<progress aria-label=\"S\" class=\"ui-progress ui-progress--striped ui-progress--animated\" max=\"1\" value=\"1\"></progress>"
+         (html (ui/progress {:label "S" :value 1 :animated? true})))
+      "moving stripes are stripes")
+  (doseq [l [nil "" " " :x]]
+    (is (= ["uikit-base: a progress is named by its label" {:label l}] (refusal #(ui/progress {:label l :value 0}))) (pr-str l)))
+  (doseq [m [0 -1 "10" ##Inf 1/2]]
+    (is (= ["uikit-base: a progress's :max is a number above zero" {:max m}] (refusal #(ui/progress {:label "P" :max m}))) (pr-str m)))
+  (doseq [v [-1 11 "4" ##NaN 1/3]]
+    (is (= ["uikit-base: a progress's :value is a number from 0 to its :max" {:value v}] (refusal #(ui/progress {:label "P" :max 10 :value v}))) (pr-str v))))
+
+(deftest a-meter-is-a-named-measure-within-its-range
+  (is (= "<meter aria-label=\"Places &lt;taken&gt;\" class=\"ui-meter x\" high=\"18\" low=\"5\" max=\"20\" min=\"0\" optimum=\"2\" value=\"17\"></meter>"
+         (html (ui/meter {:label "Places <taken>" :value 17 :max 20 :low 5 :high 18 :optimum 2 :attrs {:class "x" :high 1 "MIN" 3 :value 0}})))
+      "its range, its value and its name are its own")
+  (is (= "<meter aria-label=\"M\" class=\"ui-meter\" max=\"1\" min=\"0\" value=\"0.2\"></meter>" (html (ui/meter {:label "M" :value 0.2})))
+      "0 to 1 unless told, and no low, high or optimum unless given")
+  (is (= ["uikit-base: a meter is named by its label" {:label nil}] (refusal #(ui/meter {:value 1}))))
+  (doseq [[mn mx] [[1 1] [2 1] ["0" 1] [0 ##Inf]]]
+    (is (= ["uikit-base: a meter's :min is a number below its :max" {:min mn :max mx}] (refusal #(ui/meter {:label "M" :value 1 :min mn :max mx}))) (pr-str [mn mx])))
+  (doseq [o [{:value nil} {:value 2} {:value -0.1} {:low 3} {:high -1} {:optimum "1"}]]
+    (is (= "uikit-base: a meter's :value, :low, :high and :optimum are numbers from its :min to its :max"
+           (first (refusal #(ui/meter (merge {:label "M" :value 0.5} o))))) (pr-str o)))
+  (is (= ["uikit-base: a meter's :low is not above its :high" {:low 0.8 :high 0.2}] (refusal #(ui/meter {:label "M" :value 0.5 :low 0.8 :high 0.2})))))
+
+(deftest a-spinner-and-a-placeholder-say-loading-in-words
+  (is (= "<span class=\"ui-spinner x\" role=\"status\"><span class=\"ui-sr-only\">Loading…</span></span>" (html (ui/spinner {} {:class "x" :role "img"}))))
+  (is (= "<span class=\"ui-spinner\" role=\"status\"><span class=\"ui-sr-only\">Cargando…</span></span>" (html (ui/spinner {:wb/tr (tr-for :es)}))))
+  (is (= "<span class=\"ui-spinner\" role=\"status\"><span class=\"ui-sr-only\">Saving &lt;x&gt;</span></span>" (html (ui/spinner {} {:label "Saving <x>"}))))
+  (is (= (html (ui/spinner {})) (html (ui/spinner {} {:label ""}))) "a blank label is none")
+  (is (= (str "<div aria-busy=\"true\" class=\"ui-placeholders x\" id=\"p\"><span class=\"ui-sr-only\">Loading…</span>"
+              "<span aria-hidden=\"true\" class=\"ui-placeholder\"></span><span aria-hidden=\"true\" class=\"ui-placeholder\"></span></div>")
+         (html (ui/placeholder {} {:lines 2 :class "x" :id "p" :aria-busy "false"})))
+      "bars hidden from a screen reader, which hears the word; busy whatever the caller says")
+  (is (= 3 (count (re-seq #"ui-placeholder\"" (html (ui/placeholder {:wb/tr (tr-for :es)}))))) "three bars unless told")
+  (is (str/includes? (html (ui/placeholder {:wb/tr (tr-for :es)})) "<span class=\"ui-sr-only\">Cargando…</span>"))
+  (doseq [n [0 -1 1.5 "2" nil]]
+    (is (= ["uikit-base: a placeholder's :lines is a whole number from 1" {:lines n}] (refusal #(ui/placeholder {} {:lines n}))) (pr-str n))))

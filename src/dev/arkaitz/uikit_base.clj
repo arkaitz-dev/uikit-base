@@ -232,6 +232,11 @@
 
 (declare kit-word)
 
+(defn- given
+  "The caller's own word, or nil when it gave a blank one, so the kit's stands."
+  [l]
+  (when-not (and (string? l) (str/blank? l)) l))
+
 (defn close-button
   "`(close-button request opts?)` → a button that closes something: a mark the eye reads,
   hidden from a screen reader, which reads its name — the kit's word `:uikit-base/close` in
@@ -244,7 +249,7 @@
                    "a submitter's own target would send its form, token and all, where the form does not")
     [:button (with-attrs {:type "button" :class "ui-close"} attrs [])
      [:span {:aria-hidden "true"} "\u00d7"]
-     [:span.ui-sr-only (kit-word request (when-not (and (string? label) (str/blank? label)) label) :uikit-base/close)]]))
+     [:span.ui-sr-only (kit-word request (given label) :uikit-base/close)]]))
 
 (defn- word
   "A word of the host's dictionary: a key, or a vector of the key and its arguments,
@@ -417,6 +422,25 @@
     (into [:p (with-attrs {:class (str "ui-notice ui-notice--" (name kind)) :role (notice-roles kind)} attrs [:role])]
           body)))
 
+(defn alert
+  "`(alert request kind opts? & body)` → a `notice` that may carry a heading and a way out.
+  `:heading` is drawn above the body; `:dismiss-href` is a `wb/link` back to the page
+  without the `?outcome=` that drew the alert, so it goes and a reload does not bring it
+  back — named by the kit's word `:uikit-base/close` in the reader's language, or by
+  `:dismiss-label`. Its kind and role are `notice`'s, and no attribute changes the role;
+  the rest of `opts` are its attributes."
+  [request kind & more]
+  (when-not (notice-roles kind)
+    (throw (ex-info "uikit-base: an alert is :ok, :info, :warning or :error" {:kind kind})))
+  (let [[opts body] (split-attrs more)
+        {:keys [heading dismiss-href dismiss-label]} opts]
+    (cond-> [:div (with-attrs {:class (str "ui-notice ui-notice--" (name kind) " ui-alert") :role (notice-roles kind)}
+                    (dissoc opts :heading :dismiss-href :dismiss-label) [:role])
+             (into (cond-> [:div.ui-alert__body] (some? heading) (conj [:p.ui-alert__heading heading])) body)]
+      (some? dismiss-href) (conj (wb/link dismiss-href {:class "ui-close ui-alert__dismiss"}
+                                          [:span {:aria-hidden "true"} "\u00d7"]
+                                          [:span.ui-sr-only (kit-word request (given dismiss-label) :uikit-base/close)])))))
+
 (defn cell
   "`(cell attrs & body)` → a table cell with attributes of its own: in `table`'s `head` a
   column header, in a row its `<td>` (or the row's header `<th>`), `:class` joined to
@@ -485,9 +509,9 @@
   a dictionary, which a host's own overrides; a language the kit does not speak falls back
   to the English here, so no word of the kit is ever missing from a page."
   {:en {:uikit-base {:previous "Previous" :next "Next" :pages "Pages" :breadcrumbs "Breadcrumbs"
-                     :shown-once "Copy it now: it will not be shown again." :close "Close"}}
+                     :shown-once "Copy it now: it will not be shown again." :close "Close" :loading "Loading…"}}
    :es {:uikit-base {:previous "Anterior" :next "Siguiente" :pages "Páginas" :breadcrumbs "Ruta de navegación"
-                     :shown-once "Cópialo ahora: no se volverá a mostrar." :close "Cerrar"}}})
+                     :shown-once "Cópialo ahora: no se volverá a mostrar." :close "Cerrar" :loading "Cargando…"}}})
 
 (defn- kit-word [request given k]
   (or given
@@ -590,13 +614,88 @@
 (defn badge
   "`(badge kind attrs? & body)` → a status as a small filled label: `kind` is `:neutral`,
   `:success`, `:danger`, `:warning` or `:info`. The colour is the kind's, never the only
-  sign: the body names it."
+  sign: the body names it. A count says what it counts through `:label`, read after it by
+  a screen reader and never shown — `(badge :info {:label \"unread\"} 3)` is \"3 unread\".
+  `:corner? true` sets it on the corner of its container, at the inline end, which must be
+  positioned (`ui-position-relative`)."
   [kind & more]
   (when-not (badge-kinds kind)
     (throw (ex-info "uikit-base: a badge is :neutral, :success, :danger, :warning or :info" {:kind kind})))
-  (let [[attrs body] (split-attrs more)]
-    (into [:span (with-attrs {:class (str "ui-badge" (when (not= :neutral kind) (str " ui-badge--" (name kind))))} attrs [])]
-          body)))
+  (let [[attrs body] (split-attrs more)
+        {:keys [label corner?]} attrs]
+    (cond-> (into [:span (with-attrs {:class (str "ui-badge" (when (not= :neutral kind) (str " ui-badge--" (name kind))) (when corner? " ui-badge--corner"))}
+                           (dissoc attrs :label :corner?) [])]
+                  body)
+      (subject-of label) (conj (subject-of label)))))
+
+(defn- finite? [x] (and (number? x) (not (ratio? x)) (Double/isFinite (double x))))
+
+(defn progress
+  "`(progress {:value :max :label :striped? :animated? :attrs})` → the platform's
+  `<progress>`, named by `:label`, which is required: a bar nobody names is read as a
+  number about nothing. `:value` runs from 0 to `:max` (1 unless given); without one it
+  says only that something is under way. `:striped? true` stripes its bar and
+  `:animated? true` moves the stripes, which stop where the reader asked for reduced
+  motion. Its value, max and name are its own; `attrs` are the rest."
+  [{:keys [value max label striped? animated? attrs]}]
+  (when-not (and (string? label) (not (str/blank? label)))
+    (throw (ex-info "uikit-base: a progress is named by its label" {:label label})))
+  (let [mx (if (nil? max) 1 max)]
+    (when-not (and (finite? mx) (pos? mx))
+      (throw (ex-info "uikit-base: a progress's :max is a number above zero" {:max max})))
+    (when-not (or (nil? value) (and (finite? value) (<= 0 value mx)))
+      (throw (ex-info "uikit-base: a progress's :value is a number from 0 to its :max" {:value value})))
+    [:progress (with-attrs (cond-> {:class (str/join " " (cond-> ["ui-progress"] (or striped? animated?) (conj "ui-progress--striped")
+                                                           animated? (conj "ui-progress--animated")))
+                                    :max mx :aria-label label}
+                             (some? value) (assoc :value value))
+                           (dissoc (normalised attrs) :value) [:max :aria-label])]))
+
+(defn meter
+  "`(meter {:value :min :max :low :high :optimum :label :attrs})` → the platform's
+  `<meter>`: a measure within a known range — places taken, a score — named by `:label`,
+  which is required. `:min` is 0 and `:max` 1 unless given; `:low`, `:high` and
+  `:optimum` say which part of the range is good, and the bar is drawn in success,
+  warning or danger by the browser's reading of them. The value and each of the three
+  lie within the range, and a low is never above a high. They and the name are its own;
+  `attrs` are the rest."
+  [{:keys [value min max low high optimum label attrs]}]
+  (when-not (and (string? label) (not (str/blank? label)))
+    (throw (ex-info "uikit-base: a meter is named by its label" {:label label})))
+  (let [mn (if (nil? min) 0 min) mx (if (nil? max) 1 max)]
+    (when-not (and (finite? mn) (finite? mx) (< mn mx))
+      (throw (ex-info "uikit-base: a meter's :min is a number below its :max" {:min min :max max})))
+    (when-not (and (finite? value) (every? #(or (nil? %) (and (finite? %) (<= mn % mx))) [value low high optimum]))
+      (throw (ex-info "uikit-base: a meter's :value, :low, :high and :optimum are numbers from its :min to its :max"
+                      {:value value :low low :high high :optimum optimum})))
+    (when (and (some? low) (some? high) (> low high))
+      (throw (ex-info "uikit-base: a meter's :low is not above its :high" {:low low :high high})))
+    (let [own (into {:class "ui-meter" :value value :min mn :max mx :aria-label label}
+                    (filter (comp some? val)) {:low low :high high :optimum optimum})]
+      [:meter (with-attrs own (dissoc (normalised attrs) :low :high :optimum) (vec (keys own)))])))
+
+(defn spinner
+  "`(spinner request opts?)` → a turning ring that says something is loading: a `status`
+  whose text, the kit's word `:uikit-base/loading` in the reader's language or `:label`,
+  a screen reader reads and the eye does not. It stops turning where the reader asked for
+  reduced motion. The rest of `opts` are its attributes; its role is its own."
+  [request & [opts]]
+  [:span (with-attrs {:class "ui-spinner" :role "status"} (dissoc opts :label) [:role])
+   [:span.ui-sr-only (kit-word request (given (:label opts)) :uikit-base/loading)]])
+
+(defn placeholder
+  "`(placeholder request opts?)` → what stands in for content still loading: `:lines`
+  bars (three unless given), hidden from a screen reader, in a container that is
+  `aria-busy` and says the kit's word `:uikit-base/loading` (or `:label`) to it instead.
+  The bars glow, except where the reader asked for reduced motion. The rest of `opts` are
+  the container's attributes; that it is busy is its own."
+  [request & [opts]]
+  (let [n (get opts :lines 3)]
+    (when-not (and (int? n) (pos? n))
+      (throw (ex-info "uikit-base: a placeholder's :lines is a whole number from 1" {:lines n})))
+    (into [:div (with-attrs {:class "ui-placeholders" :aria-busy "true"} (dissoc opts :lines :label) [:aria-busy])
+           [:span.ui-sr-only (kit-word request (given (:label opts)) :uikit-base/loading)]]
+          (repeat n [:span {:class "ui-placeholder" :aria-hidden "true"}]))))
 
 (defn empty
   "`(empty attrs? & body)` → what a list says when it has nothing to list: \"No orders
