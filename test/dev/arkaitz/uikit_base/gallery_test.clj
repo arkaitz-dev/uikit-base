@@ -35,7 +35,7 @@
       (is (nil? (re-find #"\sstyle=" body)) "no inline style, which style-src 'self' refuses")
       (is (nil? (re-find #"\son[a-z]+=" body)) "no inline handler, which script-src refuses")
       (is (every? #(str/includes? % (str "nonce=\"" nonce "\"")) (re-seq #"<script[^>]*>" body)) "every script under the nonce")
-      (doseq [id ["buttons" "forms" "feedback" "lists" "tables" "navigation" "cards" "text"]]
+      (doseq [id ["buttons" "forms" "feedback" "lists" "tables" "navigation" "cards" "overlays" "text"]]
         (is (str/includes? body (str "<section class=\"ui-stack\" id=\"" id "\">")) (str "the " id " section"))))))
 
 (deftest the-gallery-in-spanish-says-the-kits-words-in-spanish

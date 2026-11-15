@@ -913,3 +913,61 @@
   (named! "a scroller" label)
   [:div (with-attrs {:class "ui-scroller" :role "region" :tabindex "0" :aria-label label} attrs [:role :tabindex :aria-label])
    (into [:ul.ui-scroller__list] (for [i items] [:li.ui-scroller__item i]))])
+
+(defn- id!
+  "`id` when it is one word an element can carry and a button can name, refused otherwise."
+  [component k id]
+  (when-not (and (string? id) (re-matches #"[A-Za-z][\w-]*" id))
+    (throw (ex-info (str "uikit-base: " component "'s " k " is one word, a letter first, that an element carries as its id") {k id})))
+  id)
+
+(def ^:private dialog-sizes #{:sm :lg})
+
+(defn- sheet
+  "The `<dialog>` a `dialog` and an `offcanvas` share: `class` its look, named by its title."
+  [request component class {:keys [id title static? scrollable? footer attrs]} body]
+  (id! component :id id)
+  (when (nothing? title)
+    (throw (ex-info (str "uikit-base: " component " has a title, which names it") {:id id})))
+  (let [title-id (str id "-title")]
+    (cond-> [:dialog (with-attrs {:id id :class class :aria-labelledby title-id :closedby (if static? "none" "any")}
+                                 (dissoc (normalised attrs) :open) [:id :aria-labelledby :closedby])
+             [:div.ui-dialog__head
+              [:h2 {:id title-id :class "ui-dialog__title"} title]
+              (close-button request {:commandfor id :command "close"})]
+             (into [:div (cond-> {:class "ui-dialog__body"} scrollable? (assoc :tabindex "0"))] body)]
+      (some? footer) (conj [:div.ui-dialog__foot footer]))))
+
+(defn dialog
+  "`(dialog request opts & body)` → the platform's modal `<dialog>`, opened by a
+  `dialog-button` naming its `:id` — one word — and named by its `:title`, required, drawn
+  as its `h2` beside a `close-button` that closes it. Esc closes it, and so does a click on
+  the backdrop, unless `:static? true`, for a dialog that must be answered: then only its
+  own buttons do. The focus goes into it when it opens and back to the button that opened
+  it when it closes. `:size`, `:sm` or `:lg`, narrows or widens it; `:fullscreen? true`
+  fills the screen; `:scrollable? true` keeps its head and foot in view and scrolls its
+  body, which the keyboard then reaches. `:footer` is drawn under the body — its buttons.
+  A form inside is a `post-form`, whose token holds as on any page; a button that only
+  closes it is `(button {:type \"button\" :commandfor id :command \"close\"} …)`. `:attrs`
+  go on the dialog, never `open`: a dialog is opened by its button, modal. It needs the
+  plugin's `/ui/ui.js` where the browser has no invoker commands or no `closedby`."
+  [request {:keys [id size fullscreen?] :as opts} & body]
+  (when-not (or (nil? size) (dialog-sizes size))
+    (throw (ex-info "uikit-base: a dialog's :size is :sm or :lg" {:size size})))
+  (sheet request "a dialog"
+         (str/join " " (cond-> ["ui-dialog"] size (conj (str "ui-dialog--" (name size)))
+                         fullscreen? (conj "ui-dialog--fullscreen") (:scrollable? opts) (conj "ui-dialog--scrollable")))
+         opts body))
+
+(defn dialog-button
+  "`(dialog-button opts & body)` → a button that opens the `dialog` whose id is
+  `:dialog`, by the platform's invoker command (`commandfor`, `command=show-modal`). Its
+  `:variant`, `:size` and `:block?` are `button`'s, refused alike; the rest of `opts` are
+  its attributes. Its type, target and command are its own."
+  [& more]
+  (let [[opts body] (split-attrs more)
+        {:keys [dialog variant size block?]} opts]
+    (id! "a dialog-button" :dialog dialog)
+    (into [:button (with-attrs {:type "button" :class (btn-class variant size block?) :commandfor dialog :command "show-modal"}
+                               (dissoc opts :dialog :variant :size :block?) [:type :commandfor :command])]
+          body)))

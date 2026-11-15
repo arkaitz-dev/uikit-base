@@ -81,6 +81,14 @@
     (ui/collapse {:summary "More"} "Hidden until opened.")
     (ui/accordion {:name "faq" :open 0 :items [["First" "One."] ["Second" "Two."]]})
     (ui/scroller {:label "Cards"} "One" "Two" "Three")]
+   ["overlays"
+    [:div.ui-cluster
+     (ui/dialog-button {:dialog "g-dialog" :variant :primary} "Open a dialog")
+     (ui/dialog-button {:dialog "g-static"} "Open a static dialog")]
+    (ui/dialog r {:id "g-dialog" :title "Rename" :footer (ui/button {:type "button" :commandfor "g-dialog" :command "close"} "Cancel")}
+      (ui/post-form r "/do" {:class "ui-form"} (ui/field r {:id "g-name" :label "Name"}) (ui/button {:variant :primary} "Save")))
+    (ui/dialog r {:id "g-static" :title "Answer first" :static? true :scrollable? true :size :sm}
+      (for [i (range 1 13)] [:p "Paragraph " i "."]))]
    ["text"
     [:p (ui/sentence r :gallery/due (ui/time 1763200000000 "15 Nov"))]
     (ui/action r "/do" {:label "Archive" :subject "order 1" :hidden {:id "1"}})

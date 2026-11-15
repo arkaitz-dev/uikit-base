@@ -14,6 +14,43 @@
   var nativeClosedBy = "closedBy" in HTMLDialogElement.prototype;
   var stillMotion = matchMedia("(prefers-reduced-motion: reduce)");
 
+  // Invoker commands, where the browser has none: a button's commandfor opens or closes its
+  // dialog, and the focus goes back to that button when the dialog closes, as it does natively.
+  var invokers = new WeakMap();
+  if (!nativeCommand) {
+    document.addEventListener("click", function (event) {
+      var button = event.target.closest("button[commandfor]");
+      var dialog = button && document.getElementById(button.getAttribute("commandfor"));
+      if (!(dialog instanceof HTMLDialogElement)) return;
+      var command = button.getAttribute("command");
+      if (command === "show-modal" && !dialog.open) { invokers.set(dialog, button); dialog.showModal(); }
+      if ((command === "close" || command === "request-close") && dialog.open) dialog.close();
+    });
+    document.addEventListener("close", function (event) {
+      var button = invokers.get(event.target);
+      invokers.delete(event.target);
+      if (button && button.isConnected) button.focus();
+    }, true);
+  }
+
+  // A dialog's closedby, where the browser has none: "none" keeps Esc from closing it, and
+  // "any" lets a click on the backdrop, outside the dialog's box, close it.
+  if (!nativeClosedBy) {
+    document.addEventListener("cancel", function (event) {
+      if (event.target instanceof HTMLDialogElement && event.target.getAttribute("closedby") === "none") {
+        event.preventDefault();
+      }
+    }, true);
+    document.addEventListener("click", function (event) {
+      var dialog = event.target;
+      if (!(dialog instanceof HTMLDialogElement) || !dialog.open || dialog.getAttribute("closedby") !== "any") return;
+      var box = dialog.getBoundingClientRect();
+      var outside = event.clientX < box.left || event.clientX > box.right ||
+        event.clientY < box.top || event.clientY > box.bottom;
+      if (outside) dialog.close();
+    });
+  }
+
   var inits = [];
   function init() { inits.forEach(function (f) { f(); }); }
 

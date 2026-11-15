@@ -432,18 +432,26 @@
 
 (def ^:private backgrounds ["background" "background-color"])
 
+(def ^:private backdrops
+  "What dims the page behind the top layer: a `::backdrop` has no content, so it paints no
+  text and marks nothing on a track. Named one by one, so a new one is decided."
+  #{".ui-dialog::backdrop"})
+
 (deftest every-text-the-kit-paints-is-an-audited-pair-and-reads-at-4-5
   (let [pairs  (distinct (for [env environments :let [rules (in-env (leaf-rules) env)] [sels decls] rules s sels
                                :when (some #(contains? decls %) (cons "color" backgrounds))
+                               :when (not (backdrops s))
                                :let [fg (resolved rules s ["color"]) bg (resolved rules s backgrounds)]
                                :when fg
                                bg (if bg [bg] [:background :surface :surface-alt])]
                            [s bg fg]))
         disabled? (fn [[s]] (or (str/includes? s ":disabled") (str/includes? s "aria-disabled")))]
+    (is (= backdrops (set (for [[sels decls] (leaf-rules) s sels :when (backdrops s) :when (palette-var (get decls "background-color"))] s)))
+        "every backdrop named is still drawn, on a palette token")
     (is (= [0 2 1] (specificity ".ui-pager a:focus-visible")) "witness: the test's specificity")
     (is (= #{".ui-btn--primary:hover" ".ui-btn--primary" ".ui-btn:hover" ".ui-btn"} (set (selectors-implied ".ui-btn--primary:hover")))
         "witness: a variant's hover is also the base's hover")
-    (is (= 173 (count pairs)) (str "witness: every painted pair found — the kit's 127 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one, the close button in two; K10's floating label on three canvases and the input group's text; K12's stripe, hovered row, current page, current pill, the list group, its link on three canvases, hovered and current; K13's card nav, the figure's caption and the collapse's summary on three canvases each, the accordion and its open summary), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
+    (is (= 174 (count pairs)) (str "witness: every painted pair found — the kit's 128 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one, the close button in two; K10's floating label on three canvases and the input group's text; K12's stripe, hovered row, current page, current pill, the list group, its link on three canvases, hovered and current; K13's card nav, the figure's caption and the collapse's summary on three canvases each, the accordion and its open summary; K16's dialog), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
     (is (= 21.0 (wcag "#000000" "#ffffff")) "witness: the test's WCAG")
     (doseq [[s bg fg :as p] pairs]
       (testing s
@@ -473,7 +481,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 312 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 240 (0.5.0's 119; K9's 42 outline, 4 link, 5 pressed and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6) and the utilities' 72, a count measured once: " (count bearing)))
+    (is (= 319 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 247 (0.5.0's 119; K9's 42 outline, 4 link, 5 pressed and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6; K16's 7: dialog 4, backdrop 1, head and foot lines 2) and the utilities' 72, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -494,7 +502,8 @@
   #{[".ui-table th" :border] [".ui-table td" :border] [".ui-row" :border] [".ui-card" :border] [".ui-tabs ul" :border] [".ui-card__foot" :border]
     [".ui-table--bordered" :border] [".ui-table--bordered > * > tr > *" :border]
     [".ui-list-group" :border] [".ui-list-group__item + .ui-list-group__item" :border]
-    [".ui-card__nav" :border] [".ui-accordion" :border] [".ui-accordion__item + .ui-accordion__item" :border]})
+    [".ui-card__nav" :border] [".ui-accordion" :border] [".ui-accordion__item + .ui-accordion__item" :border]
+    [".ui-dialog" :border] [".ui-dialog__head" :border] [".ui-dialog__foot" :border]})
 
 (deftest every-control-edge-is-visible
   (let [found (distinct (for [[sels decls] (leaf-rules) s sels
@@ -505,7 +514,7 @@
                           [s t]))
         edges (remove dividers found)]
     (is (= dividers (set (filter dividers found))) "every divider named is still drawn")
-    (is (= 61 (count edges)) (str "witness: the edges — the kit's 49 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text; K11's progress accent and the spinner's two; K12's list link's ring, its lines named dividers; K13's rings on the collapse's and the accordion's summaries and the scroller), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
+    (is (= 62 (count edges)) (str "witness: the edges — the kit's 50 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text; K11's progress accent and the spinner's two; K12's list link's ring, its lines named dividers; K13's rings on the collapse's and the accordion's summaries and the scroller; K16's ring on a scrollable dialog's body, its lines named dividers), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
     (doseq [[s t] edges bg [:background :surface :surface-alt]]
       (testing (str s " " t)
         (is (= :ui (audited [bg t])) "an audited non-text pair")
@@ -598,7 +607,7 @@
   (let [moving (distinct (for [[sels decls _ _ conds] (leaf-rules)
                                :when (not-any? #(str/includes? % "prefers-reduced-motion") conds)
                                s sels [k v] decls :when (motion-props k) :when (not= "none" v)] [s k]))]
-    (is (= 8 (count moving)) (str "witness: what moves — the button, the switch's knob, the floating label, the icon link's arrow, the progress stripes twice, the spinner and the placeholder; a count measured once: " (vec moving)))
+    (is (= 9 (count moving)) (str "witness: what moves — the button, the dialog's fade, the switch's knob, the floating label, the icon link's arrow, the progress stripes twice, the spinner and the placeholder; a count measured once: " (vec moving)))
     (doseq [env environments :when (= :reduce (:motion env)) :let [rules (in-env (leaf-rules) env)] [s k] moving]
       (is (= "none" (cascaded rules s [k])) (str s " still has " k " where reduced motion was asked for, " (:width env) " " (:scheme env))))))
 
@@ -610,7 +619,7 @@
     (is (= [] (remove frames named)) "an animation naming nothing defined runs nothing, and says nothing")))
 
 (deftest every-indicator-reads-against-its-track
-  (let [drawn (set (for [[sels decls] (leaf-rules) s sels :when (str/includes? s "::")
+  (let [drawn (set (for [[sels decls] (leaf-rules) s sels :when (str/includes? s "::") :when (not (backdrops s))
                          :when (str/starts-with? s ".ui-") :when (palette-var (get decls "background-color"))] s))]
     (is (= drawn (set (filter drawn (mapcat identity indicators))))
         (str "every pseudo-element the kit paints a ground on is a track or mark here, so a new one is decided: " (vec (sort drawn))))
@@ -904,7 +913,9 @@
    'progress  [(ui/progress {:label "p" :value 1})]
    'meter     [(ui/meter {:label "m" :value 0.5})]
    'spinner   [(ui/spinner req)]
-   'placeholder [(ui/placeholder req)]})
+   'placeholder [(ui/placeholder req)]
+   'dialog    [(ui/dialog req {:id "d" :title "t" :scrollable? true :footer (ui/button "x")} "x")]
+   'dialog-button [(ui/dialog-button {:dialog "d"} "x")]})
 
 (defn- elements
   "Every element of a Hiccup tree as [tag attrs classes ancestors' classes]."
@@ -936,7 +947,7 @@
                  [tag classes (first ancestors)])]
     (is (= (set (keys fixtures)) (set (remove '#{words cell} (keys (ns-publics 'dev.arkaitz.uikit-base)))))
         "every public component is drawn here, so a new one needs its fixture")
-    (is (= 45 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close, K10's switch, range, floating input, a grouped field's input and button, and the input group's, K11's alert dismiss link, K12's pill, two list links and two numbered pages, K13's card nav link, a collapse's summary, an accordion's two and the scroller — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
+    (is (= 49 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close, K10's switch, range, floating input, a grouped field's input and button, and the input group's, K11's alert dismiss link, K12's pill, two list links and two numbered pages, K13's card nav link, a collapse's summary, an accordion's two and the scroller, K16's dialog close, scrollable body and footer button and its dialog-button — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
     (is (= [] bare) "each wears the ring, through a class of its own or its kit ancestor's")
     (is (= [] (for [[sels decls] (leaf-rules) :let [v (get decls "outline")] :when v :when (not= :focus-ring (palette-var v))] [sels v]))
         "no rule takes the ring away: an outline is the ring")
@@ -953,6 +964,16 @@
       (is (= [] (for [s shaded :let [v (cascaded rules (str s ":focus-visible") ["box-shadow"])]
                       :when (not (str/includes? (str v) "var(--ui-focus-ring-halo)"))] [s v]))
           "and its shadow never takes the ring's halo away: the ring is two bands"))))
+
+(deftest every-top-layer-element-paints-its-own-colours
+  ;; The user agent paints a dialog and a popover Canvas and CanvasText, which no palette
+  ;; is: one that set neither would be white on a dark page.
+  (let [top (distinct (for [[tag attrs classes] (mapcat #(elements % ()) (vals fixtures))
+                            :when (or (= "dialog" tag) (contains? attrs :popover))] classes))]
+    (is (= 1 (count top)) (str "witness: the top-layer elements the kit draws, a count measured once: " (vec top)))
+    (doseq [[env rules] @env-rules classes top]
+      (let [own (fn [props] (some #(palette-var (on-element rules {:classes classes} %)) props))]
+        (is (and (own ["color"]) (own backgrounds)) (str (vec (sort classes)) " sets both its ink and its ground " (:width env) " " (:scheme env)))))))
 
 (deftest the-disabled-look-wins-over-every-variant-by-coming-last
   (let [rules (leaf-rules)

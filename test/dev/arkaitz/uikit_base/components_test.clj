@@ -1094,3 +1094,37 @@
     (is (str/includes? pager ">tr::uikit-base/previous</a>") "the previous link reads the kit's word")
     (is (str/includes? pager ">tr::uikit-base/next</a>") "the next link reads the kit's word")
     (is (str/includes? crumbs "aria-label=\"tr::uikit-base/breadcrumbs\"") "the crumbs' name is the kit's word")))
+
+;; --- K16: dialogs -----------------------------------------------------------------------
+
+(def ^:private close-en "<span aria-hidden=\"true\">×</span><span class=\"ui-sr-only\">Close</span></button>")
+
+(deftest a-dialog-is-a-modal-named-by-its-title-that-its-close-button-closes
+  (is (= (str "<dialog aria-labelledby=\"edit-title\" class=\"ui-dialog x\" closedby=\"any\" id=\"edit\"><div class=\"ui-dialog__head\">"
+              "<h2 class=\"ui-dialog__title\" id=\"edit-title\">Edit &lt;it&gt;</h2>"
+              "<button class=\"ui-close\" command=\"close\" commandfor=\"edit\" type=\"button\">" close-en "</div>"
+              "<div class=\"ui-dialog__body\"><p>body</p></div><div class=\"ui-dialog__foot\"><b>f</b></div></dialog>")
+         (html (ui/dialog {} {:id "edit" :title "Edit <it>" :footer [:b "f"] :attrs {:class "x" :open true "ID" "o" :aria-labelledby "o"}} [:p "body"])))
+      "named by its heading, closed by its button, Esc or the backdrop; never drawn open, its id and name its own")
+  (is (= (str "<dialog aria-labelledby=\"d-title\" class=\"ui-dialog ui-dialog--lg ui-dialog--fullscreen ui-dialog--scrollable\" closedby=\"none\" id=\"d\">"
+              "<div class=\"ui-dialog__head\"><h2 class=\"ui-dialog__title\" id=\"d-title\">T</h2>"
+              "<button class=\"ui-close\" command=\"close\" commandfor=\"d\" type=\"button\">" close-en "</div>"
+              "<div class=\"ui-dialog__body\" tabindex=\"0\">b</div></dialog>")
+         (html (ui/dialog {} {:id "d" :title "T" :size :lg :fullscreen? true :scrollable? true :static? true :attrs {:closedby "any"}} "b")))
+      "static: neither Esc nor the backdrop closes it, whatever the attrs say; a scrolling body the keyboard reaches")
+  (is (str/includes? (html (ui/dialog {:wb/tr (tr-for :es)} {:id "d" :title "T"})) "<span class=\"ui-sr-only\">Cerrar</span>")
+      "its close button speaks the reader's language")
+  (doseq [id [nil "" "two words" "1d" :d "a\"b"]]
+    (is (= ["uikit-base: a dialog's :id is one word, a letter first, that an element carries as its id" {:id id}]
+           (refusal #(ui/dialog {} {:id id :title "T"}))) (pr-str id)))
+  (doseq [t [nil "" "  "]]
+    (is (= ["uikit-base: a dialog has a title, which names it" {:id "d"}] (refusal #(ui/dialog {} {:id "d" :title t}))) (pr-str t)))
+  (is (= ["uikit-base: a dialog's :size is :sm or :lg" {:size :md}] (refusal #(ui/dialog {} {:id "d" :title "T" :size :md})))))
+
+(deftest a-dialog-button-opens-its-dialog-by-the-platforms-invoker-command
+  (is (= "<button class=\"ui-btn ui-btn--primary ui-btn--sm x\" command=\"show-modal\" commandfor=\"edit\" type=\"button\">Open <b>it</b></button>"
+         (html (ui/dialog-button {:dialog "edit" :variant :primary :size :sm :class "x" :command "close" "COMMANDFOR" "other" :type "submit"} "Open " [:b "it"])))
+      "its target, command and type are its own")
+  (is (= ["uikit-base: a dialog-button's :dialog is one word, a letter first, that an element carries as its id" {:dialog nil}]
+         (refusal #(ui/dialog-button {} "Open"))))
+  (is (= ["uikit-base: a button's :variant is one of the kit's" {:variant :huge}] (refusal #(ui/dialog-button {:dialog "d" :variant :huge} "x")))))

@@ -24,7 +24,7 @@
     .ui-btn:focus-visible, .ui-input:focus-visible, .ui-check:focus-visible, .ui-pager a:focus-visible, .ui-card a:focus-visible,
     .ui-prose a:focus-visible, .ui-crumbs a:focus-visible, .ui-tabs a:focus-visible,
     .ui-table-wrap:focus-visible, .ui-close:focus-visible, .ui-range:focus-visible, .ui-list-group__action:focus-visible,
-    .ui-collapse__summary:focus-visible, .ui-accordion__summary:focus-visible, .ui-scroller:focus-visible {
+    .ui-collapse__summary:focus-visible, .ui-accordion__summary:focus-visible, .ui-scroller:focus-visible, .ui-dialog__body:focus-visible {
       outline: var(--ui-focus-outline-width) solid var(--ui-focus-ring);
       outline-offset: var(--ui-focus-outline-width);
       box-shadow: 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
@@ -427,6 +427,37 @@
     .ui-scroller__list { display: flex; gap: var(--ui-spacing-md); list-style: none; padding: 0; margin: 0; }
     .ui-scroller__item { flex: 0 0 auto; scroll-snap-align: start; }
 
+    /* Dialogs: the platform's modal <dialog>, in the top layer, where the user agent paints
+     * Canvas and CanvasText: it sets its own palette. It fades in as it opens; its backdrop
+     * dims the page, and holds nothing. */
+    .ui-dialog {
+      inline-size: min(32rem, calc(100% - 2 * var(--ui-spacing-md))); max-block-size: calc(100% - 2 * var(--ui-spacing-md));
+      padding: 0; color: var(--ui-on-surface); background: var(--ui-surface);
+      border: 1px solid var(--ui-border); border-radius: var(--ui-radius-lg); box-shadow: var(--ui-shadow-lg);
+      transition: opacity var(--ui-duration-normal);
+    }
+    @starting-style { .ui-dialog[open] { opacity: 0; } }
+    .ui-dialog::backdrop { background-color: var(--ui-overlay); opacity: var(--ui-opacity-scrim-medium); }
+    .ui-dialog--sm { inline-size: min(20rem, calc(100% - 2 * var(--ui-spacing-md))); }
+    .ui-dialog--lg { inline-size: min(50rem, calc(100% - 2 * var(--ui-spacing-md))); }
+    .ui-dialog--fullscreen {
+      inline-size: 100%; block-size: 100%; max-inline-size: none; max-block-size: none; margin: 0; border-width: 0; border-radius: 0;
+    }
+    .ui-dialog__head {
+      display: flex; align-items: center; justify-content: space-between; gap: var(--ui-spacing-sm);
+      padding: var(--ui-spacing-sm) var(--ui-spacing-md); border-block-end: 1px solid var(--ui-border);
+    }
+    .ui-dialog__title { margin: 0; font-size: var(--ui-font-size-lg); line-height: 1.25; }
+    .ui-dialog__body { padding: var(--ui-spacing-md); }
+    .ui-dialog__foot {
+      display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--ui-spacing-sm);
+      padding: var(--ui-spacing-sm) var(--ui-spacing-md); border-block-start: 1px solid var(--ui-border);
+    }
+    /* Scrollable: head and foot stay, the body scrolls — shown as a column only while open,
+     * or the rule would show a closed dialog. */
+    .ui-dialog--scrollable[open] { display: flex; flex-direction: column; }
+    .ui-dialog--scrollable > .ui-dialog__body { position: relative; flex: 1 1 auto; min-block-size: 0; overflow-y: auto; }
+
     /* Layout: a stack of blocks, a cluster that wraps, a grid of as many columns as fit. */
     .ui-stack { display: grid; gap: var(--ui-spacing-md); align-content: start; }
     .ui-stack > * { margin-block: 0; }
@@ -455,7 +486,7 @@
     .ui-prose kbd { border: 1px solid var(--ui-border-strong); }
 
     @media (prefers-reduced-motion: reduce) {
-      .ui-btn, .ui-switch::before, .ui-field--floating > .ui-field__label { transition: none; }
+      .ui-btn, .ui-switch::before, .ui-field--floating > .ui-field__label, .ui-dialog { transition: none; }
       .ui-progress--animated::-webkit-progress-value { animation: none; }
       .ui-progress--animated::-moz-progress-bar { animation: none; }
       .ui-spinner, .ui-placeholder { animation: none; }
