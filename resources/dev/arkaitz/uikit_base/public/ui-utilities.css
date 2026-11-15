@@ -412,13 +412,10 @@
 .ui-link-underline-warning{text-decoration-color:var(--ui-warning-ink)}
 .ui-link-underline-danger{text-decoration-color:var(--ui-danger-ink)}
 .ui-bg-body{background-color:var(--ui-background)}
-.ui-bg-body-secondary{background-color:var(--ui-surface-mid)}
-.ui-bg-body-tertiary{background-color:var(--ui-surface-low)}
+.ui-bg-body-secondary{background-color:var(--ui-surface-alt)}
+.ui-bg-body-tertiary{background-color:var(--ui-surface)}
 .ui-bg-surface{background-color:var(--ui-surface)}
 .ui-bg-surface-alt{background-color:var(--ui-surface-alt)}
-.ui-bg-surface-low{background-color:var(--ui-surface-low)}
-.ui-bg-surface-mid{background-color:var(--ui-surface-mid)}
-.ui-bg-surface-high{background-color:var(--ui-surface-high)}
 .ui-user-select-all{user-select:all}
 .ui-user-select-auto{user-select:auto}
 .ui-user-select-none{user-select:none}

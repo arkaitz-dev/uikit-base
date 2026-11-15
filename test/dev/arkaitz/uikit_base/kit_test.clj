@@ -461,7 +461,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 194 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 119 and the utilities' 75, a count measured once: " (count bearing)))
+    (is (= 191 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 119 and the utilities' 75, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -623,8 +623,8 @@
      [#{"text-decoration-color"} (into {"rgba(var(--bs-link-color-rgb), var(--bs-link-opacity, 0.5))" "currentcolor"}
                                        (for [[k ink] [["primary" "link"] ["success" "success-ink"] ["info" "info-ink"] ["warning" "warning-ink"] ["danger" "danger-ink"]]]
                                          [(rgba k "link-underline-opacity") (str "var(--ui-" ink ")")]))]
-     [#{"background-color"} {(rgba "body-bg" "bg-opacity") "var(--ui-background)" (rgba "secondary-bg" "bg-opacity") "var(--ui-surface-mid)"
-                             (rgba "tertiary-bg" "bg-opacity") "var(--ui-surface-low)"}]
+     [#{"background-color"} {(rgba "body-bg" "bg-opacity") "var(--ui-background)" (rgba "secondary-bg" "bg-opacity") "var(--ui-surface-alt)"
+                             (rgba "tertiary-bg" "bg-opacity") "var(--ui-surface)"}]
      [#{"border-color"} (into {} (for [k ["primary" "secondary" "success" "info" "warning" "danger"]] [(rgba k "border-opacity") (str "var(--ui-" k "-border)")]))]]))
 
 (defn- canonical-condition [c] (str/replace (str/trim c) #":\s+" ":"))
@@ -716,7 +716,7 @@
 (def ^:private extras
   "Every class the utilities generate that Bootstrap has not, with no Bootstrap name to take:
   the neutral canvases past Bootstrap's three, so a background utility reaches each."
-  #{"ui-bg-surface" "ui-bg-surface-alt" "ui-bg-surface-low" "ui-bg-surface-mid" "ui-bg-surface-high"})
+  #{"ui-bg-surface" "ui-bg-surface-alt"})
 
 (deftest every-bootstrap-utility-is-the-kits-or-a-named-deviation
   (let [bv (bootstrap-view) kv (kit-view)
@@ -754,19 +754,35 @@
         canvases (remove (fn [[s]] (= ".ui-vr" s)) grounds)
         pairs   (distinct (concat (for [[_ ink] inks [_ bg] canvases] [bg ink]) (map second fills)))
         palettes (concat (vals goldens) option-palettes)]
-    (is (= [13 9 7] (mapv count [inks grounds fills])) "witness: thirteen text utilities, nine backgrounds, seven fills")
+    (is (= [13 6 7] (mapv count [inks grounds fills])) "witness: thirteen text utilities, six backgrounds, seven fills")
     (is (= [".ui-vr"] (remove #(str/starts-with? % ".ui-bg-") (map first grounds)))
         "the one background that is no canvas: a rule, which paints no text")
-    (is (= #{:background :surface :surface-alt :surface-low :surface-mid :surface-high} (set (map second canvases)))
-        "the canvases are the six neutral surfaces, and only those")
-    (is (= 104 (* (count inks) (count canvases))) "witness: the class combinations a host can write")
-    (is (= 49 (count pairs)) "witness: seven inks on six canvases, and seven fills")
+    (is (= #{:background :surface :surface-alt} (set (map second canvases)))
+        "the canvases are the three neutral surfaces every edge is audited on, and only those")
+    (is (= 65 (* (count inks) (count canvases))) "witness: the class combinations a host can write")
+    (is (= 28 (count pairs)) "witness: seven inks on three canvases, and seven fills")
     (is (= 220 (count palettes)) "witness: the nineteen seeds and the 201 option cases")
     (is (= [] (remove #(#{:aa :aaa} (audited %)) pairs)) "each an audited text pair")
     (is (= [] (for [[bg fg] pairs t palettes [scheme i] [[:light 0] [:dark 1]]
                     :let [r (wcag (get-in t [bg i]) (get-in t [fg i]))] :when (< r 4.5)]
                 [bg fg scheme r]))
         "and each reads at 4.5 in every palette, light and dark")))
+
+(deftest every-border-utility-is-a-visible-edge-on-every-background-utility
+  ;; A border a host writes beside a background a host writes, on one element: the edge
+  ;; must read at 3:1 there, or the box it draws is not seen.
+  (let [single (for [{:keys [selectors decls conditions]} (:rules utilities-parsed) s selectors
+                     :when (empty? conditions) :when (re-matches #"\.ui-[\w-]+" s)] [s decls])
+        edge   (fn [d] (some #(palette-var (get d %)) ["border-color" "border" "border-top" "border-inline-start" "border-bottom" "border-inline-end"]))
+        borders (distinct (for [[s d] single :when (str/starts-with? s ".ui-border") :let [t (edge d)] :when t] t))
+        grounds (distinct (for [[s d] single :when (str/starts-with? s ".ui-bg-") :let [t (palette-var (get d "background-color"))] :when t] t))
+        palettes (concat (vals goldens) option-palettes)]
+    (is (seq borders) "witness: border colours were found")
+    (is (= #{:background :surface :surface-alt} (set grounds)) "witness: the backgrounds")
+    (is (= [] (for [b borders g grounds :when (not= :ui (audited [g b]))] [g b])) "each an audited edge pair")
+    (is (= [] (for [b borders g grounds t palettes [scheme i] [[:light 0] [:dark 1]]
+                    :let [r (wcag (get-in t [g i]) (get-in t [b i]))] :when (< r 3.0)] [g b scheme r]))
+        "and each at 3:1 in every palette, light and dark")))
 
 (def ^:private req
   {::security/csrf-stored true :anti-forgery-token "T" ::security/csrf-used (volatile! false)

@@ -99,9 +99,11 @@
    ["muted" "text-muted"] ["body-secondary" "text-muted"] ["body-emphasis" "text-muted-strong"]])
 
 (def ^:private canvases
-  "Each canvas a background utility paints, by the name it takes: the neutral surfaces alone."
-  [["body" "background"] ["body-secondary" "surface-mid"] ["body-tertiary" "surface-low"] ["surface" "surface"]
-   ["surface-alt" "surface-alt"] ["surface-low" "surface-low"] ["surface-mid" "surface-mid"] ["surface-high" "surface-high"]])
+  "Each canvas a background utility paints, by the name it takes: the three neutral
+  surfaces every edge and ink is audited on. The tonal tiers are left out: border-strong
+  falls to 1.97:1 on them, so a bordered tier would be a weak edge."
+  [["body" "background"] ["body-secondary" "surface-alt"] ["body-tertiary" "surface"] ["surface" "surface"]
+   ["surface-alt" "surface-alt"]])
 
 (def ^:private edges
   "Each edge colour a border utility draws: the audited non-text edges of each kind."

@@ -48,7 +48,7 @@
 (deftest unaudited-pairs-names-every-colour-combination-basaku-never-audited
   (let [{:keys [inks bgs fills]} colour-classes
         p (fn [cls] (str "<div><p class=\"" cls "\">x</p></div>"))]
-    (is (= [13 8 7] (mapv count [inks bgs fills])) "witness: thirteen text utilities, eight canvases, seven fills")
+    (is (= [13 5 7] (mapv count [inks bgs fills])) "witness: thirteen text utilities, eight canvases, seven fills")
     (is (= [] (for [[i] inks [b] bgs :let [r (ut/unaudited-pairs (p (str i " " b)))] :when (seq r)] [i b r]))
         "a text utility on a background utility is an audited pair, every one of the 104")
     (is (= [] (for [[f] fills :let [r (ut/unaudited-pairs (p (str "ui-p-2 " f)))] :when (seq r)] [f r]))
