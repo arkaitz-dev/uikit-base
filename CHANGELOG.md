@@ -5,6 +5,31 @@ changes what a working host sees. A **minor** adds, and may break: when it does,
 opens with **Breaking** and says what a host must change. Every release is on Clojars as
 `dev.arkaitz/uikit-base` and tagged `vX.Y.Z`.
 
+## 0.4.0 — 2026-11-15
+
+More components, and better ones, adopted by every host of the set.
+- **A fix you will see:** a variant button kept its own text colour only at rest; hovered
+  or pressed it painted the surface's text on its own fill (1.01:1 at worst). Every
+  variant now keeps its `on-` colour on hover and press. In every release since 0.1.0.
+- **Behaviour change:** a refused field is described by its error *and* by your own
+  `aria-describedby`, joined, the error first; it used to drop yours. With no error yours
+  stands, and a blank one is no attribute.
+- **Markup change:** the pager's "page 2 of 5" is `span.ui-pager__where`.
+- `field`: `:hint`, `:required? true`, and `:type "radio"`, a fieldset its legend names,
+  each radio refused and described like any control.
+- New components: `link-button`, `action` and `confirm` (a two-step action with no
+  script), `empty`, `pairs`, `time`, `page-head`, `crumbs` (kit word
+  `:uikit-base/breadcrumbs`), `tabs-nav`, `secret` (kit word `:uikit-base/shown-once`),
+  `thread` and `message`.
+- `table` `:scroll-label` (a region the keyboard scrolls) and the `ui-num` cell; `card`
+  `:title` and `:footer`.
+- kit.css: control states (hover, placeholder, read-only, disabled over all), an input
+  the height of a button, a pressed and a busy button, `ui-stack`, `ui-cluster`,
+  `ui-grid`, `ui-sr-only`, `ui-prose`; every side a logical one, so a right-to-left page
+  mirrors.
+- The kit's own tests now model the cascade, refuse a colour that is not the palette's
+  and a focusable without the two-band ring; the defect above is what they found first.
+
 ## 0.3.0 — 2026-11-15
 
 Additive; nothing a 0.2.0 host does changes.

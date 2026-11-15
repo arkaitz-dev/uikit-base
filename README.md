@@ -10,7 +10,7 @@ shadows and the focus ring are decided in the kit. Anything else you want differ
 write in your own stylesheet, and it overrides the kit without a fight.
 
 ```clojure
-dev.arkaitz/uikit-base {:mvn/version "0.3.0"}
+dev.arkaitz/uikit-base {:mvn/version "0.4.0"}
 ```
 
 ## In a host
@@ -72,17 +72,27 @@ auth-base's pages wear the brand too.
 
 | Class | What it is |
 |---|---|
-| `ui-btn`, `ui-btn--primary` `--secondary` `--success` `--danger` `--warning` `--info`, `ui-btn--sm` `--lg` | buttons |
+| `ui-btn`, `ui-btn--primary` `--secondary` `--success` `--danger` `--warning` `--info`, `ui-btn--sm` `--lg` | buttons, and links that look like them |
+| `ui-action`, `ui-confirm` | a row's one-button form; the same that asks first |
 | `ui-form` | a form's stacked layout |
-| `ui-field`, `ui-field__label`, `ui-input`, `ui-field__error` | a field, its label, control and error |
+| `ui-field`, `ui-field__label`, `ui-input`, `ui-field__hint`, `ui-field__req`, `ui-field__error` | a field, its label, control, hint, required mark and error |
 | `ui-field--inline`, `ui-field--check`, `ui-check` | a field on one line; a checkbox field and its box |
+| `ui-field--group`, `ui-field__choice` | a radio group and each of its choices |
+| `ui-input--code` | a control in figures of one width (a secret) |
 | `ui-notice`, `ui-notice--ok` `--info` `--warning` `--error` | what an action answered |
-| `ui-table` | a table |
-| `ui-rows`, `ui-row` | a list of rows that wrap, each addressed by its own attributes |
-| `ui-rows--plain` | a list of rows with no line, padding or border |
-| `ui-pager` | the links to the page before and after |
+| `ui-page-head`, `ui-page-head__title` `__sub` `__actions` | a page's own heading |
+| `ui-crumbs`, `ui-tabs` | where a page sits; the views of one list |
+| `ui-table`, `ui-table-wrap`, `ui-num` | a table, the region that scrolls a wide one, a number's cell |
+| `ui-rows`, `ui-row`, `ui-rows--plain` | a list of rows that wrap; one with no line, padding or border |
+| `ui-pairs` | a description list |
+| `ui-empty` | what a list says when it has nothing |
+| `ui-thread`, `ui-message`, `ui-message__meta` | a conversation, a message and who wrote it when |
+| `ui-pager`, `ui-pager__where` | the links to the page before and after, and where the reader is |
 | `ui-badge`, `ui-badge--success` `--danger` `--warning` `--info` | a status as a label |
-| `ui-card` | a raised surface |
+| `ui-card`, `ui-card__head`, `ui-card__foot` | a raised surface, its heading and its footer |
+| `ui-stack`, `ui-cluster`, `ui-grid` | blocks one under another; items that wrap; as many columns as fit |
+| `ui-sr-only` | text a screen reader reads and the eye does not see |
+| `ui-prose` | text you write: headings, links, code |
 
 Scales you can use in your own CSS: `--ui-space-xxs` … `--ui-space-xl`, `--ui-radius-sm`
 … `--ui-radius-full`, `--ui-font-xs` … `--ui-font-xl`, `--ui-shadow-sm`.
@@ -106,7 +116,21 @@ Scales you can use in your own CSS: `--ui-space-xxs` … `--ui-space-xl`, `--ui-
 (ui/field request {:id "qty" :label "Qty" :type "number" :value 2 :inline? true})
 (ui/pager request {:previous p :next n :where "page 2 of 5"})
 (ui/badge :success "Paid")
-(ui/card [:h2 "Totals"] …)
+(ui/card {:title "Totals" :footer (ui/link-button "/orders" "All orders")} …)
+(ui/field request {:id "kind" :label "Kind" :type "radio" :options [["bug" "Bug"] ["idea" "Idea"]]
+                   :hint "What it is" :required? true :value kind :error (:kind errors)})
+(ui/link-button "/things/new" {:variant :primary} "New thing")
+(ui/action request "/lines/7/remove" {:label "Remove" :subject "Algebra" :hidden {:back here}})
+(ui/confirm request "/lessons/7/delete" {:label "Delete" :confirm-label "Yes, delete" :subject "Week 1"})
+(ui/page-head {:title "Orders" :subtitle "Placed today" :actions [(ui/link-button "/new" "New")]})
+(ui/crumbs request {:items [["/courses" "Courses"] ["/courses/1" "Algebra"] [nil "Week 1"]]})
+(ui/tabs-nav request {:label "Status" :items [["/o" "All"] ["/o?s=open" "Open"]] :current here})
+(ui/table {:rows rows :scroll-label "Orders"})                            ; a wide one scrolls
+(ui/pairs [["Ref" ref] ["Paid" (when paid? (ui/time paid-at shown))]])
+(ui/time instant "15 Jan, 20:00")                                       ; datetime for machines
+(ui/empty "No orders yet.")
+(ui/thread (for [m messages] (ui/message {:meta [:span (:who m) " · " (:when m)]} (:text m))))
+(ui/secret request {:id "token" :label "Your token" :value token})
 ```
 
 Every component takes its own attributes. A `:class` is added to the kit's, and anything
@@ -116,7 +140,15 @@ else wins, except what correctness needs, which no attribute changes:
   attributes that would send it another way (`hx-get`, `hx-method`, `hx-action`,
   `hx-config`, with any modifier). `button` refuses `formaction`, `formmethod` and `form`.
 - `field` marks a refused control `aria-invalid` and describes it by its error, which is
-  a word of your dictionary (`:error/taken` or `[:error/long 80]`).
+  a word of your dictionary (`:error/taken` or `[:error/long 80]`), then by its hint,
+  then by your own `aria-describedby`, joined. A `:required?` one stays required.
+- `action` and `confirm` are `post-form`s; a `:subject` names what a repeated "Remove"
+  acts on for a screen reader. `confirm` posts only from its second step, and its two
+  labels differ. Neither stops a second submit: make the handler harmless to repeat.
+- `link-button`, `crumbs` and `tabs-nav` link through `wb/link`, so every path is
+  web-base's to refuse. `tabs-nav` is named by your label; `crumbs` by the kit's word.
+- `table`'s `:scroll-label` names a region the keyboard reaches; `time`'s `datetime` is
+  its value's; a `secret` has no name, so no form sends it, and is never disabled.
 - `notice` speaks an error as an alert, and everything else as a status.
 - `pager` names its links and itself in the reader's language (the kit's words, or yours,
   or English), so a link never goes unnamed; a label you give wins.
