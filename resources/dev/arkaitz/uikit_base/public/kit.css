@@ -11,220 +11,229 @@
  * restyle them from its own stylesheet.
  */
 @layer uikit {
-  :root {
-    --ui-space-xxs: 0.125rem; --ui-space-xs: 0.25rem; --ui-space-sm: 0.5rem; --ui-space-md: 1rem;
-    --ui-space-lg: 1.5rem; --ui-space-xl: 2.5rem;
-    --ui-radius-sm: 0.125rem; --ui-radius-md: 0.375rem; --ui-radius-lg: 0.5rem; --ui-radius-full: 9999px;
-    --ui-font-xs: 0.75rem; --ui-font-sm: 0.875rem; --ui-font-base: 1rem; --ui-font-lg: 1.2rem; --ui-font-xl: 1.44rem;
-    --ui-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-    --ui-duration: 150ms;
-    --ui-ring: 2px;
-  }
-  :root.dark { --ui-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35); }
-  @media (prefers-color-scheme: dark) { :root:not(.light) { --ui-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35); } }
+  /* Base: the scales; components: what the kit draws; utilities: what wins over both,
+   * by layer rather than specificity. Every rule sits in one of them: a rule left directly
+   * in uikit would beat all three. */
+  @layer base, components, utilities;
 
-  /* The focus ring, on everything the kit makes focusable. */
-  .ui-btn:focus-visible, .ui-input:focus-visible, .ui-check:focus-visible, .ui-pager a:focus-visible, .ui-card a:focus-visible,
-  .ui-prose a:focus-visible, .ui-crumbs a:focus-visible, .ui-tabs a:focus-visible,
-  .ui-table-wrap:focus-visible {
-    outline: var(--ui-ring) solid var(--ui-focus-ring);
-    outline-offset: var(--ui-ring);
-    box-shadow: 0 0 0 var(--ui-ring) var(--ui-focus-ring-halo);
+  @layer base {
+    :root {
+      --ui-space-xxs: 0.125rem; --ui-space-xs: 0.25rem; --ui-space-sm: 0.5rem; --ui-space-md: 1rem;
+      --ui-space-lg: 1.5rem; --ui-space-xl: 2.5rem;
+      --ui-radius-sm: 0.125rem; --ui-radius-md: 0.375rem; --ui-radius-lg: 0.5rem; --ui-radius-full: 9999px;
+      --ui-font-xs: 0.75rem; --ui-font-sm: 0.875rem; --ui-font-base: 1rem; --ui-font-lg: 1.2rem; --ui-font-xl: 1.44rem;
+      --ui-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+      --ui-duration: 150ms;
+      --ui-ring: 2px;
+    }
+    :root.dark { --ui-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35); }
+    @media (prefers-color-scheme: dark) { :root:not(.light) { --ui-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.35); } }
   }
 
-  /* Buttons: a plain one on the surface, or a filled variant; three sizes. */
-  .ui-btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: var(--ui-space-xs);
-    padding: var(--ui-space-sm) var(--ui-space-md);
-    font: inherit; font-size: var(--ui-font-base); line-height: 1.25;
-    color: var(--ui-on-surface-alt); background: var(--ui-surface-alt);
-    border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-md);
-    cursor: pointer; text-decoration: none;
-    transition: background-color var(--ui-duration), border-color var(--ui-duration);
+  @layer components {
+    /* The focus ring, on everything the kit makes focusable. */
+    .ui-btn:focus-visible, .ui-input:focus-visible, .ui-check:focus-visible, .ui-pager a:focus-visible, .ui-card a:focus-visible,
+    .ui-prose a:focus-visible, .ui-crumbs a:focus-visible, .ui-tabs a:focus-visible,
+    .ui-table-wrap:focus-visible {
+      outline: var(--ui-ring) solid var(--ui-focus-ring);
+      outline-offset: var(--ui-ring);
+      box-shadow: 0 0 0 var(--ui-ring) var(--ui-focus-ring-halo);
+    }
+
+    /* Buttons: a plain one on the surface, or a filled variant; three sizes. */
+    .ui-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: var(--ui-space-xs);
+      padding: var(--ui-space-sm) var(--ui-space-md);
+      font: inherit; font-size: var(--ui-font-base); line-height: 1.25;
+      color: var(--ui-on-surface-alt); background: var(--ui-surface-alt);
+      border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-md);
+      cursor: pointer; text-decoration: none;
+      transition: background-color var(--ui-duration), border-color var(--ui-duration);
+    }
+    .ui-btn:hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
+    .ui-btn:active { color: var(--ui-on-surface); background: var(--ui-surface-high); }
+    .ui-btn[aria-busy="true"] { cursor: progress; }
+    .ui-btn--sm { padding: var(--ui-space-xs) var(--ui-space-sm); font-size: var(--ui-font-sm); }
+    .ui-btn--lg { padding: var(--ui-space-md) var(--ui-space-lg); font-size: var(--ui-font-lg); }
+    .ui-btn--primary { color: var(--ui-on-primary); background: var(--ui-primary); border-color: var(--ui-primary-border); }
+    .ui-btn--primary:hover { color: var(--ui-on-primary); background: var(--ui-primary-hover); }
+    .ui-btn--primary:active { color: var(--ui-on-primary); background: var(--ui-primary-active); }
+    .ui-btn--secondary { color: var(--ui-on-secondary); background: var(--ui-secondary); border-color: var(--ui-secondary-border); }
+    .ui-btn--secondary:hover { color: var(--ui-on-secondary); background: var(--ui-secondary-hover); }
+    .ui-btn--secondary:active { color: var(--ui-on-secondary); background: var(--ui-secondary-active); }
+    .ui-btn--success { color: var(--ui-on-success); background: var(--ui-success); border-color: var(--ui-success-border); }
+    .ui-btn--success:hover { color: var(--ui-on-success); background: var(--ui-success-hover); }
+    .ui-btn--success:active { color: var(--ui-on-success); background: var(--ui-success-active); }
+    .ui-btn--danger { color: var(--ui-on-danger); background: var(--ui-danger); border-color: var(--ui-danger-border); }
+    .ui-btn--danger:hover { color: var(--ui-on-danger); background: var(--ui-danger-hover); }
+    .ui-btn--danger:active { color: var(--ui-on-danger); background: var(--ui-danger-active); }
+    .ui-btn--warning { color: var(--ui-on-warning); background: var(--ui-warning); border-color: var(--ui-warning-border); }
+    .ui-btn--warning:hover { color: var(--ui-on-warning); background: var(--ui-warning-hover); }
+    .ui-btn--warning:active { color: var(--ui-on-warning); background: var(--ui-warning-active); }
+    .ui-btn--info { color: var(--ui-on-info); background: var(--ui-info); border-color: var(--ui-info-border); }
+    .ui-btn--info:hover { color: var(--ui-on-info); background: var(--ui-info-hover); }
+    .ui-btn--info:active { color: var(--ui-on-info); background: var(--ui-info-active); }
+    .ui-btn:disabled, .ui-btn[aria-disabled="true"] {
+      color: var(--ui-disabled-fg); background: var(--ui-disabled-bg); border-color: var(--ui-disabled-bg); cursor: default;
+    }
+
+    /* Actions: one button's form; a confirm opens a second step beneath its first. */
+    .ui-action { display: inline-block; margin: 0; }
+    .ui-confirm { display: inline-block; }
+    .ui-confirm > summary { list-style: none; cursor: pointer; }
+    .ui-confirm > summary::-webkit-details-marker { display: none; }
+    .ui-confirm > .ui-action { margin-block-start: var(--ui-space-sm); }
+
+    /* Forms: a field is its label, its control and, when refused, its error. */
+    .ui-form { display: grid; gap: var(--ui-space-md); max-width: 32rem; }
+    .ui-field { display: grid; gap: var(--ui-space-xs); }
+    .ui-field__label { font-weight: 600; }
+    /* The same box as a button's (padding, line, type, border), so the two sit level. */
+    .ui-input {
+      font: inherit; font-size: var(--ui-font-base); line-height: 1.25;
+      padding: var(--ui-space-sm) var(--ui-space-sm); color: var(--ui-on-surface); background: var(--ui-surface);
+      border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-md);
+    }
+    .ui-input::placeholder { color: var(--ui-text-muted); opacity: 1; }
+    textarea.ui-input { min-height: 6rem; resize: vertical; }
+    /* Hover, then a refusal over it, then read-only, then disabled over everything: equal
+     * specificity, so the order is the precedence. */
+    .ui-input:hover { border-color: var(--ui-primary-border); }
+    .ui-input[aria-invalid="true"] { border-color: var(--ui-danger-border); }
+    .ui-input[readonly] { color: var(--ui-on-surface-alt); background: var(--ui-surface-alt); }
+    .ui-input:disabled {
+      color: var(--ui-disabled-fg); background: var(--ui-disabled-bg); border-color: var(--ui-disabled-bg); cursor: not-allowed;
+    }
+    .ui-field__error { color: var(--ui-danger-ink); font-size: var(--ui-font-sm); }
+    .ui-field__hint { color: var(--ui-text-muted); font-size: var(--ui-font-sm); }
+    .ui-field__req { color: var(--ui-danger-ink); margin-inline-start: var(--ui-space-xxs); }
+    .ui-field--inline { grid-auto-flow: column; justify-content: start; align-items: baseline; gap: var(--ui-space-sm); }
+    .ui-field--check { grid-template-columns: auto 1fr; align-items: baseline; gap: var(--ui-space-sm); }
+    .ui-field--check .ui-field__label { font-weight: normal; }
+    .ui-field--check .ui-field__error { grid-column: 1 / -1; }
+    .ui-field--check .ui-field__hint { grid-column: 2; }
+    .ui-field--group { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
+    .ui-field--group > .ui-field__label { padding: 0; margin-block-end: var(--ui-space-xs); }
+    .ui-field__choice { display: flex; align-items: baseline; gap: var(--ui-space-sm); }
+    .ui-check { width: 1rem; height: 1rem; margin: 0; accent-color: var(--ui-primary-border); }
+
+    /* Notices: what an action answered — status for an outcome, alert for a refusal. */
+    .ui-notice {
+      padding: var(--ui-space-sm) var(--ui-space-md); border-inline-start: 4px solid var(--ui-border-strong);
+      background: var(--ui-surface-alt); color: var(--ui-on-surface-alt); border-radius: var(--ui-radius-sm);
+    }
+    .ui-notice--ok { border-inline-start-color: var(--ui-success-border); color: var(--ui-success-ink); }
+    .ui-notice--error { border-inline-start-color: var(--ui-danger-border); color: var(--ui-danger-ink); }
+    .ui-notice--info { border-inline-start-color: var(--ui-info-border); color: var(--ui-info-ink); }
+    .ui-notice--warning { border-inline-start-color: var(--ui-warning-border); color: var(--ui-warning-ink); }
+
+    /* Tables, and the region that scrolls a wide one on a narrow screen. */
+    .ui-table-wrap { position: relative; overflow-x: auto; }
+    .ui-table { border-collapse: collapse; width: 100%; }
+    .ui-table caption { text-align: start; padding-block-end: var(--ui-space-sm); color: var(--ui-text-muted); }
+    .ui-table th, .ui-table td { padding: var(--ui-space-sm); text-align: start; border-bottom: 1px solid var(--ui-border); }
+    .ui-table thead th { border-bottom: 2px solid var(--ui-border-strong); }
+    .ui-table .ui-num { text-align: end; font-variant-numeric: tabular-nums; }
+
+    /* Rows: a list whose rows wrap, each a line of its parts. */
+    .ui-rows { list-style: none; padding: 0; margin: 0; }
+    .ui-row {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ui-space-sm) var(--ui-space-md);
+      padding-block: var(--ui-space-sm); border-bottom: 1px solid var(--ui-border);
+    }
+    .ui-rows--plain > .ui-row { display: block; padding-block: 0; border-bottom: none; }
+    .ui-row form { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ui-space-sm); margin: 0; }
+
+    /* Pager. */
+    .ui-pager { display: flex; gap: var(--ui-space-md); align-items: baseline; margin-block: var(--ui-space-md); }
+    .ui-pager a { color: var(--ui-link); padding-block: var(--ui-space-xs); }
+    .ui-pager__where { color: var(--ui-text-muted); }
+
+    /* Breadcrumbs and tabs: where a page sits, and the views of one list. */
+    .ui-crumbs { margin-block-end: var(--ui-space-md); }
+    .ui-crumbs ol { display: flex; flex-wrap: wrap; gap: var(--ui-space-xs); list-style: none; padding: 0; margin: 0; }
+    .ui-crumbs li + li::before { content: "/"; margin-inline-end: var(--ui-space-xs); color: var(--ui-text-muted); }
+    .ui-crumbs a { color: var(--ui-link); }
+    .ui-tabs { margin-block-end: var(--ui-space-md); }
+    .ui-tabs ul {
+      display: flex; flex-wrap: wrap; gap: var(--ui-space-xs); list-style: none; padding: 0;
+      margin: 0; border-bottom: 1px solid var(--ui-border);
+    }
+    .ui-tabs a { display: block; padding: var(--ui-space-sm) var(--ui-space-md); color: var(--ui-link); text-decoration: none; }
+    .ui-tabs a[aria-current="page"] { font-weight: 600; box-shadow: inset 0 -2px 0 var(--ui-primary-border); }
+    /* Its own shadow would take the ring's halo away: the two together. */
+    .ui-tabs a[aria-current="page"]:focus-visible {
+      box-shadow: inset 0 -2px 0 var(--ui-primary-border), 0 0 0 var(--ui-ring) var(--ui-focus-ring-halo);
+    }
+
+    /* Badges: a status as a small filled label. */
+    .ui-badge {
+      display: inline-block; padding: 0 var(--ui-space-sm); font-size: var(--ui-font-xs); line-height: 1.6;
+      border-radius: var(--ui-radius-full); color: var(--ui-on-neutral); background: var(--ui-neutral);
+    }
+    .ui-badge--success { color: var(--ui-on-success); background: var(--ui-success); }
+    .ui-badge--danger { color: var(--ui-on-danger); background: var(--ui-danger); }
+    .ui-badge--warning { color: var(--ui-on-warning); background: var(--ui-warning); }
+    .ui-badge--info { color: var(--ui-on-info); background: var(--ui-info); }
+
+    /* Empty states, description lists, page headings. */
+    .ui-empty { margin: 0; padding-block: var(--ui-space-lg); text-align: center; color: var(--ui-text-muted); }
+    .ui-pairs { display: grid; grid-template-columns: fit-content(40%) 1fr; gap: var(--ui-space-xs) var(--ui-space-md); margin: 0; }
+    .ui-pairs > dt { font-weight: 600; }
+    .ui-pairs > dd { margin: 0; }
+    .ui-page-head {
+      display: grid; grid-template-columns: 1fr auto; align-items: baseline;
+      gap: var(--ui-space-xs) var(--ui-space-md); margin-block-end: var(--ui-space-md);
+    }
+    .ui-page-head__title { margin: 0; grid-column: 1; }
+    .ui-page-head__sub { margin: 0; grid-column: 1; color: var(--ui-text-muted); }
+    .ui-page-head__actions { grid-column: 2; grid-row: 1; }
+    @media (max-width: 40rem) {
+      .ui-page-head { grid-template-columns: 1fr; }
+      .ui-page-head__actions { grid-column: 1; grid-row: auto; }
+    }
+
+    /* A value shown once, in figures of one width; a thread of messages. */
+    .ui-input--code { font-family: ui-monospace, monospace; }
+    .ui-thread { display: grid; gap: var(--ui-space-md); list-style: none; padding: 0; margin: 0; }
+    .ui-message { padding: var(--ui-space-sm) var(--ui-space-md); color: var(--ui-on-surface-alt); background: var(--ui-surface-alt); border-radius: var(--ui-radius-md); }
+    .ui-message__meta { font-size: var(--ui-font-sm); color: var(--ui-text-muted); margin-block-end: var(--ui-space-xs); }
+
+    /* Cards. */
+    .ui-card {
+      padding: var(--ui-space-md); color: var(--ui-on-surface); background: var(--ui-surface);
+      border: 1px solid var(--ui-border); border-radius: var(--ui-radius-lg); box-shadow: var(--ui-shadow-sm);
+    }
+    .ui-card__head { margin: 0 0 var(--ui-space-sm); font-size: var(--ui-font-lg); line-height: 1.25; }
+    .ui-card__foot { margin-block-start: var(--ui-space-md); padding-block-start: var(--ui-space-sm); border-top: 1px solid var(--ui-border); }
+
+    /* Layout: a stack of blocks, a cluster that wraps, a grid of as many columns as fit. */
+    .ui-stack { display: grid; gap: var(--ui-space-md); align-content: start; }
+    .ui-stack > * { margin-block: 0; }
+    .ui-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-space-sm); }
+    .ui-grid { display: grid; gap: var(--ui-space-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
+
+    /* Read, not seen: out of the flow, one pixel, clipped — never display or visibility,
+     * which a screen reader would skip too. */
+    .ui-sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+
+    /* Prose: text a host writes, its headings, links and code, on the kit's scale. */
+    .ui-prose { line-height: 1.6; }
+    .ui-prose > :first-child { margin-block-start: 0; }
+    .ui-prose h1, .ui-prose h2, .ui-prose h3 { line-height: 1.25; margin-block: var(--ui-space-lg) var(--ui-space-sm); }
+    .ui-prose h1 { font-size: var(--ui-font-xl); }
+    .ui-prose h2 { font-size: var(--ui-font-lg); }
+    .ui-prose h3 { font-size: var(--ui-font-base); }
+    .ui-prose a { color: var(--ui-link); }
+    .ui-prose code, .ui-prose kbd {
+      font-family: ui-monospace, monospace; font-size: 0.9em; padding: 0 var(--ui-space-xxs);
+      color: var(--ui-on-surface-alt); background: var(--ui-surface-alt); border-radius: var(--ui-radius-sm);
+    }
+    .ui-prose kbd { border: 1px solid var(--ui-border-strong); }
+
+    @media (prefers-reduced-motion: reduce) { .ui-btn { transition: none; } }
   }
-  .ui-btn:hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
-  .ui-btn:active { color: var(--ui-on-surface); background: var(--ui-surface-high); }
-  .ui-btn[aria-busy="true"] { cursor: progress; }
-  .ui-btn--sm { padding: var(--ui-space-xs) var(--ui-space-sm); font-size: var(--ui-font-sm); }
-  .ui-btn--lg { padding: var(--ui-space-md) var(--ui-space-lg); font-size: var(--ui-font-lg); }
-  .ui-btn--primary { color: var(--ui-on-primary); background: var(--ui-primary); border-color: var(--ui-primary-border); }
-  .ui-btn--primary:hover { color: var(--ui-on-primary); background: var(--ui-primary-hover); }
-  .ui-btn--primary:active { color: var(--ui-on-primary); background: var(--ui-primary-active); }
-  .ui-btn--secondary { color: var(--ui-on-secondary); background: var(--ui-secondary); border-color: var(--ui-secondary-border); }
-  .ui-btn--secondary:hover { color: var(--ui-on-secondary); background: var(--ui-secondary-hover); }
-  .ui-btn--secondary:active { color: var(--ui-on-secondary); background: var(--ui-secondary-active); }
-  .ui-btn--success { color: var(--ui-on-success); background: var(--ui-success); border-color: var(--ui-success-border); }
-  .ui-btn--success:hover { color: var(--ui-on-success); background: var(--ui-success-hover); }
-  .ui-btn--success:active { color: var(--ui-on-success); background: var(--ui-success-active); }
-  .ui-btn--danger { color: var(--ui-on-danger); background: var(--ui-danger); border-color: var(--ui-danger-border); }
-  .ui-btn--danger:hover { color: var(--ui-on-danger); background: var(--ui-danger-hover); }
-  .ui-btn--danger:active { color: var(--ui-on-danger); background: var(--ui-danger-active); }
-  .ui-btn--warning { color: var(--ui-on-warning); background: var(--ui-warning); border-color: var(--ui-warning-border); }
-  .ui-btn--warning:hover { color: var(--ui-on-warning); background: var(--ui-warning-hover); }
-  .ui-btn--warning:active { color: var(--ui-on-warning); background: var(--ui-warning-active); }
-  .ui-btn--info { color: var(--ui-on-info); background: var(--ui-info); border-color: var(--ui-info-border); }
-  .ui-btn--info:hover { color: var(--ui-on-info); background: var(--ui-info-hover); }
-  .ui-btn--info:active { color: var(--ui-on-info); background: var(--ui-info-active); }
-  .ui-btn:disabled, .ui-btn[aria-disabled="true"] {
-    color: var(--ui-disabled-fg); background: var(--ui-disabled-bg); border-color: var(--ui-disabled-bg); cursor: default;
-  }
-
-  /* Actions: one button's form; a confirm opens a second step beneath its first. */
-  .ui-action { display: inline-block; margin: 0; }
-  .ui-confirm { display: inline-block; }
-  .ui-confirm > summary { list-style: none; cursor: pointer; }
-  .ui-confirm > summary::-webkit-details-marker { display: none; }
-  .ui-confirm > .ui-action { margin-block-start: var(--ui-space-sm); }
-
-  /* Forms: a field is its label, its control and, when refused, its error. */
-  .ui-form { display: grid; gap: var(--ui-space-md); max-width: 32rem; }
-  .ui-field { display: grid; gap: var(--ui-space-xs); }
-  .ui-field__label { font-weight: 600; }
-  /* The same box as a button's (padding, line, type, border), so the two sit level. */
-  .ui-input {
-    font: inherit; font-size: var(--ui-font-base); line-height: 1.25;
-    padding: var(--ui-space-sm) var(--ui-space-sm); color: var(--ui-on-surface); background: var(--ui-surface);
-    border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-md);
-  }
-  .ui-input::placeholder { color: var(--ui-text-muted); opacity: 1; }
-  textarea.ui-input { min-height: 6rem; resize: vertical; }
-  /* Hover, then a refusal over it, then read-only, then disabled over everything: equal
-   * specificity, so the order is the precedence. */
-  .ui-input:hover { border-color: var(--ui-primary-border); }
-  .ui-input[aria-invalid="true"] { border-color: var(--ui-danger-border); }
-  .ui-input[readonly] { color: var(--ui-on-surface-alt); background: var(--ui-surface-alt); }
-  .ui-input:disabled {
-    color: var(--ui-disabled-fg); background: var(--ui-disabled-bg); border-color: var(--ui-disabled-bg); cursor: not-allowed;
-  }
-  .ui-field__error { color: var(--ui-danger-ink); font-size: var(--ui-font-sm); }
-  .ui-field__hint { color: var(--ui-text-muted); font-size: var(--ui-font-sm); }
-  .ui-field__req { color: var(--ui-danger-ink); margin-inline-start: var(--ui-space-xxs); }
-  .ui-field--inline { grid-auto-flow: column; justify-content: start; align-items: baseline; gap: var(--ui-space-sm); }
-  .ui-field--check { grid-template-columns: auto 1fr; align-items: baseline; gap: var(--ui-space-sm); }
-  .ui-field--check .ui-field__label { font-weight: normal; }
-  .ui-field--check .ui-field__error { grid-column: 1 / -1; }
-  .ui-field--check .ui-field__hint { grid-column: 2; }
-  .ui-field--group { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
-  .ui-field--group > .ui-field__label { padding: 0; margin-block-end: var(--ui-space-xs); }
-  .ui-field__choice { display: flex; align-items: baseline; gap: var(--ui-space-sm); }
-  .ui-check { width: 1rem; height: 1rem; margin: 0; accent-color: var(--ui-primary-border); }
-
-  /* Notices: what an action answered — status for an outcome, alert for a refusal. */
-  .ui-notice {
-    padding: var(--ui-space-sm) var(--ui-space-md); border-inline-start: 4px solid var(--ui-border-strong);
-    background: var(--ui-surface-alt); color: var(--ui-on-surface-alt); border-radius: var(--ui-radius-sm);
-  }
-  .ui-notice--ok { border-inline-start-color: var(--ui-success-border); color: var(--ui-success-ink); }
-  .ui-notice--error { border-inline-start-color: var(--ui-danger-border); color: var(--ui-danger-ink); }
-  .ui-notice--info { border-inline-start-color: var(--ui-info-border); color: var(--ui-info-ink); }
-  .ui-notice--warning { border-inline-start-color: var(--ui-warning-border); color: var(--ui-warning-ink); }
-
-  /* Tables, and the region that scrolls a wide one on a narrow screen. */
-  .ui-table-wrap { position: relative; overflow-x: auto; }
-  .ui-table { border-collapse: collapse; width: 100%; }
-  .ui-table caption { text-align: start; padding-block-end: var(--ui-space-sm); color: var(--ui-text-muted); }
-  .ui-table th, .ui-table td { padding: var(--ui-space-sm); text-align: start; border-bottom: 1px solid var(--ui-border); }
-  .ui-table thead th { border-bottom: 2px solid var(--ui-border-strong); }
-  .ui-table .ui-num { text-align: end; font-variant-numeric: tabular-nums; }
-
-  /* Rows: a list whose rows wrap, each a line of its parts. */
-  .ui-rows { list-style: none; padding: 0; margin: 0; }
-  .ui-row {
-    display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ui-space-sm) var(--ui-space-md);
-    padding-block: var(--ui-space-sm); border-bottom: 1px solid var(--ui-border);
-  }
-  .ui-rows--plain > .ui-row { display: block; padding-block: 0; border-bottom: none; }
-  .ui-row form { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ui-space-sm); margin: 0; }
-
-  /* Pager. */
-  .ui-pager { display: flex; gap: var(--ui-space-md); align-items: baseline; margin-block: var(--ui-space-md); }
-  .ui-pager a { color: var(--ui-link); padding-block: var(--ui-space-xs); }
-  .ui-pager__where { color: var(--ui-text-muted); }
-
-  /* Breadcrumbs and tabs: where a page sits, and the views of one list. */
-  .ui-crumbs { margin-block-end: var(--ui-space-md); }
-  .ui-crumbs ol { display: flex; flex-wrap: wrap; gap: var(--ui-space-xs); list-style: none; padding: 0; margin: 0; }
-  .ui-crumbs li + li::before { content: "/"; margin-inline-end: var(--ui-space-xs); color: var(--ui-text-muted); }
-  .ui-crumbs a { color: var(--ui-link); }
-  .ui-tabs { margin-block-end: var(--ui-space-md); }
-  .ui-tabs ul {
-    display: flex; flex-wrap: wrap; gap: var(--ui-space-xs); list-style: none; padding: 0;
-    margin: 0; border-bottom: 1px solid var(--ui-border);
-  }
-  .ui-tabs a { display: block; padding: var(--ui-space-sm) var(--ui-space-md); color: var(--ui-link); text-decoration: none; }
-  .ui-tabs a[aria-current="page"] { font-weight: 600; box-shadow: inset 0 -2px 0 var(--ui-primary-border); }
-  /* Its own shadow would take the ring's halo away: the two together. */
-  .ui-tabs a[aria-current="page"]:focus-visible {
-    box-shadow: inset 0 -2px 0 var(--ui-primary-border), 0 0 0 var(--ui-ring) var(--ui-focus-ring-halo);
-  }
-
-  /* Badges: a status as a small filled label. */
-  .ui-badge {
-    display: inline-block; padding: 0 var(--ui-space-sm); font-size: var(--ui-font-xs); line-height: 1.6;
-    border-radius: var(--ui-radius-full); color: var(--ui-on-neutral); background: var(--ui-neutral);
-  }
-  .ui-badge--success { color: var(--ui-on-success); background: var(--ui-success); }
-  .ui-badge--danger { color: var(--ui-on-danger); background: var(--ui-danger); }
-  .ui-badge--warning { color: var(--ui-on-warning); background: var(--ui-warning); }
-  .ui-badge--info { color: var(--ui-on-info); background: var(--ui-info); }
-
-  /* Empty states, description lists, page headings. */
-  .ui-empty { margin: 0; padding-block: var(--ui-space-lg); text-align: center; color: var(--ui-text-muted); }
-  .ui-pairs { display: grid; grid-template-columns: fit-content(40%) 1fr; gap: var(--ui-space-xs) var(--ui-space-md); margin: 0; }
-  .ui-pairs > dt { font-weight: 600; }
-  .ui-pairs > dd { margin: 0; }
-  .ui-page-head {
-    display: grid; grid-template-columns: 1fr auto; align-items: baseline;
-    gap: var(--ui-space-xs) var(--ui-space-md); margin-block-end: var(--ui-space-md);
-  }
-  .ui-page-head__title { margin: 0; grid-column: 1; }
-  .ui-page-head__sub { margin: 0; grid-column: 1; color: var(--ui-text-muted); }
-  .ui-page-head__actions { grid-column: 2; grid-row: 1; }
-  @media (max-width: 40rem) {
-    .ui-page-head { grid-template-columns: 1fr; }
-    .ui-page-head__actions { grid-column: 1; grid-row: auto; }
-  }
-
-  /* A value shown once, in figures of one width; a thread of messages. */
-  .ui-input--code { font-family: ui-monospace, monospace; }
-  .ui-thread { display: grid; gap: var(--ui-space-md); list-style: none; padding: 0; margin: 0; }
-  .ui-message { padding: var(--ui-space-sm) var(--ui-space-md); color: var(--ui-on-surface-alt); background: var(--ui-surface-alt); border-radius: var(--ui-radius-md); }
-  .ui-message__meta { font-size: var(--ui-font-sm); color: var(--ui-text-muted); margin-block-end: var(--ui-space-xs); }
-
-  /* Cards. */
-  .ui-card {
-    padding: var(--ui-space-md); color: var(--ui-on-surface); background: var(--ui-surface);
-    border: 1px solid var(--ui-border); border-radius: var(--ui-radius-lg); box-shadow: var(--ui-shadow-sm);
-  }
-  .ui-card__head { margin: 0 0 var(--ui-space-sm); font-size: var(--ui-font-lg); line-height: 1.25; }
-  .ui-card__foot { margin-block-start: var(--ui-space-md); padding-block-start: var(--ui-space-sm); border-top: 1px solid var(--ui-border); }
-
-  /* Layout: a stack of blocks, a cluster that wraps, a grid of as many columns as fit. */
-  .ui-stack { display: grid; gap: var(--ui-space-md); align-content: start; }
-  .ui-stack > * { margin-block: 0; }
-  .ui-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-space-sm); }
-  .ui-grid { display: grid; gap: var(--ui-space-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
-
-  /* Read, not seen: out of the flow, one pixel, clipped — never display or visibility,
-   * which a screen reader would skip too. */
-  .ui-sr-only {
-    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
-  }
-
-  /* Prose: text a host writes, its headings, links and code, on the kit's scale. */
-  .ui-prose { line-height: 1.6; }
-  .ui-prose > :first-child { margin-block-start: 0; }
-  .ui-prose h1, .ui-prose h2, .ui-prose h3 { line-height: 1.25; margin-block: var(--ui-space-lg) var(--ui-space-sm); }
-  .ui-prose h1 { font-size: var(--ui-font-xl); }
-  .ui-prose h2 { font-size: var(--ui-font-lg); }
-  .ui-prose h3 { font-size: var(--ui-font-base); }
-  .ui-prose a { color: var(--ui-link); }
-  .ui-prose code, .ui-prose kbd {
-    font-family: ui-monospace, monospace; font-size: 0.9em; padding: 0 var(--ui-space-xxs);
-    color: var(--ui-on-surface-alt); background: var(--ui-surface-alt); border-radius: var(--ui-radius-sm);
-  }
-  .ui-prose kbd { border: 1px solid var(--ui-border-strong); }
-
-  @media (prefers-reduced-motion: reduce) { .ui-btn { transition: none; } }
 }

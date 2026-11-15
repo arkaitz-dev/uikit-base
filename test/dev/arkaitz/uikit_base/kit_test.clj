@@ -137,6 +137,16 @@
         la (lum a) lb (lum b)]
     (/ (+ (max la lb) 0.05) (+ (min la lb) 0.05))))
 
+(deftest every-rule-sits-in-a-sub-layer-the-kit-names
+  ;; A rule directly in `uikit` would beat base, components and utilities alike, so a
+  ;; utility would lose to it whatever the layers say.
+  (is (= ["base" "components" "utilities"] (get (:layer-order parsed) ["uikit"])) "the order the sub-layers are named in")
+  (is (< 100 (count (:rules parsed))) "witness: the rules were read")
+  (is (= [] (for [{:keys [layer selectors]} (:rules parsed) :when (not= 2 (count layer))] [layer selectors]))
+      "each in exactly one of them")
+  (is (= #{["uikit" "base"] ["uikit" "components"]} (set (map :layer (:rules parsed))))
+      "and the scales in base, what the kit draws in components"))
+
 (declare cascaded specificity)
 
 (deftest the-tests-model-of-the-cascade-knows-layers-media-and-specificity
