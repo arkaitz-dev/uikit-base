@@ -4,9 +4,11 @@
   basaku 97024284, kept line for line — floating-point order included — so it answers
   the same hex for every token (CLAUDE.md, rule 2).
 
-  Only the default options are ported: presence `.calm`, no secondary or tertiary seed
-  (both derived from the primary), elevation `.normal`. Every contrast-critical role is
-  solved against the surfaces it is audited on, as in basaku.
+  Its options are basaku's colour ones: `:presence` (`:calm`, the default, `:balanced`,
+  `:vivid`, brand.zig:56-75), a `:secondary` and a `:tertiary` seed (derived from the
+  primary when absent, brand.zig:667-685), and `:elevation`'s dark tonal tiers (`:flat`,
+  `:normal`, the default, `:raised`, personality.zig:332-352). Every contrast-critical role
+  is solved against the surfaces it is audited on, as in basaku.
 
   `cvd-ok?` is basaku's status-separability gate, which there fires at compile time; it
   is a check on the derivation, never part of it."
@@ -26,8 +28,17 @@
 (def ^:private su-l-dark 0.350)
 (def ^:private sh-l-dark 0.390)
 
-;; Elevation `.normal` (personality.zig:337).
-(def ^:private tonal {:low 0.04 :mid 0.08 :high 0.12})
+;; Presence: the canvas chroma multiplier and the lightness dips (brand.zig:62-75).
+(def ^:private presences
+  {:calm     {:cmult 1.0 :dip-l 0.0 :dip-d 0.0}
+   :balanced {:cmult 1.8 :dip-l 0.050 :dip-d 0.012}
+   :vivid    {:cmult 2.8 :dip-l 0.100 :dip-d 0.028}})
+
+;; Elevation's dark tonal deltas (personality.zig:337-352).
+(def ^:private tonals
+  {:flat   {:low 0.0 :mid 0.0 :high 0.0}
+   :normal {:low 0.04 :mid 0.08 :high 0.12}
+   :raised {:low 0.06 :mid 0.10 :high 0.12}})
 
 (defn- cap-mult
   "Green/cyan tint a near-white field far more than blue/violet at equal chroma, so the
@@ -282,26 +293,32 @@
   [try-tone against target fallback]
   (if (>= (c/contrast try-tone against) target) try-tone (fallback)))
 
+(defn- seed-of [k hex]
+  (or (c/parse-hex hex) (throw (ex-info (str "the " (name k) " must be a #rrggbb colour") {k hex}))))
+
 (defn theme
-  "The 72 tokens of basaku's `brandTheme` for `{:primary \"#rrggbb\"}`, at default
-  options, as keyword → `[\"#light\" \"#dark\"]`."
-  [{:keys [primary]}]
-  (let [seed (or (c/parse-hex primary)
-                 (throw (ex-info "the primary must be a #rrggbb colour" {:primary primary})))
+  "The 72 tokens of basaku's `brandTheme` for `{:primary \"#rrggbb\"}` and its colour
+  options — `:secondary`, `:tertiary`, `:presence`, `:elevation` — as keyword →
+  `[\"#light\" \"#dark\"]`."
+  [{:keys [primary secondary tertiary presence elevation] :or {presence :calm elevation :normal}}]
+  (let [seed (seed-of :primary primary)
+        pres  (or (presences presence) (throw (ex-info "the presence is :calm, :balanced or :vivid" {:presence presence})))
+        tonal (or (tonals elevation) (throw (ex-info "the elevation is :flat, :normal or :raised" {:elevation elevation})))
         [lab hp cp] (lab-hue-chroma seed)
         lab-l    (double (first lab))
         mult     (cap-mult (c/hue-degrees hp))
-        cc-l     (min cp (* cap-light mult))
-        cc-d     (min cp (* cap-dark mult))
-        bg       (v (c/rgb-at bg-l-light cc-l hp) (c/rgb-at bg-l-dark cc-d hp))
-        surface  (v (c/rgb-at su-l-light (* cc-l 1.05) hp) (c/rgb-at su-l-dark cc-d hp))
-        surf-alt (v (c/rgb-at sa-l-light (* cc-l 1.10) hp) (c/rgb-at sa-l-dark (* cc-d 1.05) hp))
-        surf-hov (v (c/rgb-at sh-l-light (* cc-l 1.15) hp) (c/rgb-at sh-l-dark (* cc-d 1.05) hp))
+        cc-l     (min cp (* (* cap-light mult) (:cmult pres)))
+        cc-d     (min cp (* (* cap-dark mult) (:cmult pres)))
+        dl (:dip-l pres) dd (:dip-d pres)
+        bg       (v (c/rgb-at (- bg-l-light dl) cc-l hp) (c/rgb-at (- bg-l-dark dd) cc-d hp))
+        surface  (v (c/rgb-at (- su-l-light dl) (* cc-l 1.05) hp) (c/rgb-at (- su-l-dark dd) cc-d hp))
+        surf-alt (v (c/rgb-at (- sa-l-light dl) (* cc-l 1.10) hp) (c/rgb-at (- sa-l-dark dd) (* cc-d 1.05) hp))
+        surf-hov (v (c/rgb-at (- sh-l-light dl) (* cc-l 1.15) hp) (c/rgb-at (- sh-l-dark dd) (* cc-d 1.05) hp))
         bg-l (:light bg) bg-d (:dark bg) su-d (:dark surface)
         sa-l (:light surf-alt) sh-l (:light surf-hov) su-light (:light surface)
-        tier-low-d  (c/rgb-at (+ su-l-dark (:low tonal)) cc-d hp)
-        tier-mid-d  (c/rgb-at (+ su-l-dark (:mid tonal)) cc-d hp)
-        tier-high-d (c/rgb-at (+ su-l-dark (:high tonal)) cc-d hp)
+        tier-low-d  (c/rgb-at (+ (- su-l-dark dd) (:low tonal)) cc-d hp)
+        tier-mid-d  (c/rgb-at (+ (- su-l-dark dd) (:mid tonal)) cc-d hp)
+        tier-high-d (c/rgb-at (+ (- su-l-dark dd) (:high tonal)) cc-d hp)
         surfaces-l [bg-l su-light sa-l sh-l]
         surfaces-d [bg-d su-d (:dark surf-alt) (:dark surf-hov) tier-low-d tier-mid-d tier-high-d]
         st         @status
@@ -318,8 +335,12 @@
 
         tert-h (c/rotate hp -0.8660254037844387 0.5)
         p   (track hp cp lab-l)
-        s   (track hp (* cp 0.25) lab-l)
-        ter (track tert-h (* cp 0.9) lab-l)
+        s   (if secondary
+              (let [[sl sh sc] (lab-hue-chroma (seed-of :secondary secondary))] (track sh sc (double (first sl))))
+              (track hp (* cp 0.25) lab-l))
+        ter (if tertiary
+              (let [[tl th tc] (lab-hue-chroma (seed-of :tertiary tertiary))] (track th tc (double (first tl))))
+              (track tert-h (* cp 0.9) lab-l))
         pri-border (brand-border (:base p) surfaces-l surfaces-d)
         sec-border (brand-border (:base s) surfaces-l surfaces-d)
 

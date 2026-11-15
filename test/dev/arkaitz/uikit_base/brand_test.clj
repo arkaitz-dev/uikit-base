@@ -5,6 +5,7 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
+            [dev.arkaitz.uikit-base.audit :as audit]
             [dev.arkaitz.uikit-base.brand :as brand]
             [dev.arkaitz.uikit-base.color :as c]))
 
@@ -21,6 +22,20 @@
                          expected)]
         (is (= (set (keys expected)) (set (keys actual))) "the same 72 token names, no more, no fewer")
         (is (= {} wrong) (str (count wrong) " of 72 tokens differ"))))))
+
+(def ^:private option-goldens (edn/read-string (slurp (io/file "test/resources/basaku-option-goldens.edn"))))
+
+(deftest every-colour-option-is-basakus-own-hex--and-every-palette-passes-the-audit
+  (is (= 201 (count (:cases option-goldens))) "witness: 19 seeds by three presences by three elevations, and thirty seed cases")
+  (is (= #{72} (set (map (comp count :tokens) (:cases option-goldens)))) "witness: 72 tokens each")
+  (is (= #{:calm :balanced :vivid} (set (map (comp :presence :opts) (:cases option-goldens)))) "witness: every presence")
+  (is (= 30 (count (filter (comp #(or (:secondary %) (:tertiary %)) :opts) (:cases option-goldens)))) "witness: the seed cases")
+  (doseq [{:keys [opts tokens]} (:cases option-goldens)]
+    (testing (pr-str opts)
+      (let [actual (brand/theme opts)
+            wrong  (into (sorted-map) (keep (fn [[t pair]] (when (not= pair (get actual t)) [t {:basaku pair :port (get actual t)}]))) tokens)]
+        (is (= {} wrong) (str (count wrong) " of 72 tokens differ"))
+        (is (= [] (audit/failures actual)) "and the palette passes every audited pair, as basaku's build requires")))))
 
 (deftest the-colour-vision-simulation-reproduces-basakus-measured-table
   ;; cvd.zig:144-146, measured there: OKLab distance of two sample pairs under each vision,
