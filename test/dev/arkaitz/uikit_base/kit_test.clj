@@ -994,7 +994,9 @@
            [(shown ".ui-carousel[data-ui-rotating] .ui-carousel__start") (shown ".ui-carousel[data-ui-rotating] .ui-carousel__stop")
             (shown ".ui-carousel:not([data-ui-rotating]) .ui-carousel__start") (shown ".ui-carousel:not([data-ui-rotating]) .ui-carousel__stop")])
         (str "turning, it says stop; standing, start " (:width env)))
-    (is (= (when (= :reduce (:motion env)) "none") (shown ".ui-carousel__rotate"))
+    ;; The button is a .ui-btn too, whose own display it must win over: read on the element.
+    (is (= (if (= :reduce (:motion env)) "none" "inline-flex")
+           (on-element rules {:classes #{"ui-btn" "ui-btn--sm" "ui-carousel__rotate"}} "display"))
         (str "a carousel never turns where reduced motion was asked for, so its button is not offered " (:motion env)))))
 
 (deftest no-text-travels-through-a-data-attribute

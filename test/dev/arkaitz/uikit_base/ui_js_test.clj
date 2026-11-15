@@ -3,19 +3,35 @@
   browser checks do), but what it is allowed to contain is decided here. It writes no
   markup and no text — the server rendered both, escaped — evaluates no string, fetches
   nothing, and positions through single CSSOM properties, which `style-src 'self'` allows.
-  Its size is the user's bound: 150 lines."
+  Its size is the user's bound: 150 lines of code. Every class and data attribute it names
+  is one the kit's stylesheet or its markup carries."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.test :refer [deftest is]]))
+            [clojure.test :refer [deftest is]]
+            [dev.arkaitz.uikit-base.gallery :as gallery]
+            [ring.mock.request :as mock]))
 
 (def ^:private source (slurp (io/resource "dev/arkaitz/uikit_base/public/ui.js")))
+
+(def ^:private before-a-regex
+  "The words after which a `/` opens a regex literal, though they end in a letter."
+  #{"return" "typeof" "case" "do" "else" "in" "of" "new" "delete" "void" "throw" "yield" "await" "instanceof"})
+
+(defn- divides?
+  "Whether a `/` after the code `before` divides: it follows a value — a name that is no
+  keyword, a number, a closing bracket. Anything else would open a regex literal."
+  [before]
+  (let [t (str/trimr before)]
+    (boolean (or (re-find #"[)\]]$" t)
+                 (when-let [w (re-find #"[\w$]+$" t)] (not (before-a-regex w)))))))
 
 (defn- code
   "The script with its comments blanked and its strings kept, read by a lexer of its
   quotes and comments: a comment may name what the code never does, and a `//` inside a
-  string is no comment. Answers `{:code … :open …}`, `:open` the quote a string was left
-  open in, nil when every one closed. The script holds no regex literal, whose quotes and
-  slashes this lexer would misread; the bans name `RegExp` for that reason."
+  string is no comment. Answers `{:code … :open … :refused …}`: `:open` the quote a string
+  was left open in, `:refused` `[what index]` where the lexer met what it cannot read — a
+  regex literal or a template literal — and stopped, so a desync is a red, never code
+  blanked as a string or a comment."
   [^String text]
   (let [n (count text) out (StringBuilder.)]
     (loop [i 0 quote nil]
@@ -27,31 +43,52 @@
                       (cond (= c \\) (do (when nxt (.append out nxt)) (recur (+ i 2) quote))
                             (= c quote) (recur (inc i) nil)
                             :else (recur (inc i) quote)))
-            (#{\" \' \`} c) (do (.append out c) (recur (inc i) c))
+            (= c \`) {:code (str out) :open nil :refused [:template-literal i]}
+            (#{\" \'} c) (do (.append out c) (recur (inc i) c))
             (and (= c \/) (= nxt \/)) (recur (or (str/index-of text "\n" i) n) nil)
             (and (= c \/) (= nxt \*)) (recur (+ 2 (or (str/index-of text "*/" (+ i 2)) (- n 2))) nil)
+            (and (= c \/) (not (divides? (str out)))) {:code (str out) :open nil :refused [:regex-literal i]}
             :else (do (.append out c) (recur (inc i) nil))))))))
 
+(deftest the-lexer-refuses-what-it-cannot-read
+  ;; Measured against the first lexer: this line passed, its innerHTML blanked as a string.
+  (is (= [:regex-literal 10] (:refused (code "if (ok && /\\/\\//.test(s)) el.innerHTML = s;"))) "a regex after &&")
+  (doseq [[src at] [["return /a/.test(x);" 7] ["x = !/a/.test(y);" 5] ["f(a ? /b/ : c);" 6] ["[/a/];" 1] ["a; /b/.exec(c);" 3] ["x = y || /z/;" 9]]]
+    (is (= [:regex-literal at] (:refused (code src))) src))
+  (is (= [:template-literal 4] (:refused (code "x = `${a}` + innerHTML;"))) "a template literal")
+  (doseq [src ["a / 2" "(a + b) / c" "x[1] / y" "w / h // half"]]
+    (is (nil? (:refused (code src))) (str "a division is read as one: " src))))
+
 (def ^:private banned
-  "Each construct the script may never contain, and why."
+  "Each construct the script may never contain, and why. The scan is lexical: it reads the
+  script's words, so it holds the code honest and does not claim to catch an obfuscation —
+  a name built by concatenation, an access through a computed key — which review must."
   [[#"\binnerHTML\b" "markup from a string"] [#"\bouterHTML\b" "markup from a string"]
    [#"\binsertAdjacentHTML\b" "markup from a string"] [#"\bdocument\s*\.\s*write" "markup from a string"]
+   [#"\bsetHTMLUnsafe\b" "markup from a string"]
    [#"\bcreateContextualFragment\b" "markup from a string"] [#"\bDOMParser\b" "markup from a string"]
    [#"\btextContent\b" "text the server did not render"] [#"\binnerText\b" "text the server did not render"]
-   [#"\bcreateTextNode\b" "text the server did not render"] [#"\bcreateElement\b" "markup the server did not render"]
+   [#"\bcreateTextNode\b" "text the server did not render"] [#"\bcreateElement(NS)?\b" "markup the server did not render"]
+   [#"\.(append|prepend|before|after|replaceWith)\s*\(" "nodes placed the server did not render"]
    [#"\beval\b" "a string evaluated"] [#"\bFunction\s*\(" "a string evaluated"]
-   [#"\bset(Timeout|Interval)\s*\(\s*[\"'`]" "a string timer, evaluated"]
-   [#"setAttribute\s*\(\s*[\"'`]style" "an inline style, which style-src refuses"]
+   [#"\bset(Timeout|Interval)\s*\((?!\s*function\s*\()" "a timer whose first argument is no function literal"]
+   [#"\bReflect\s*\." "a call through reflection"] [#"\.\s*constructor\b" "a constructor reached, the road to Function"]
+   [#"setAttribute(NS)?\s*\(\s*[\"']style" "an inline style, which style-src refuses"]
+   [#"\bsetAttributeNS\b" "an attribute written by namespace"]
    [#"\.style\s*\.\s*(?!setProperty\b|removeProperty\b)\w+" "a style written but through setProperty or removeProperty"]
-   [#"\.style\s*=" "an inline style, which style-src refuses"]
+   [#"\.style\s*\[" "a style written but through setProperty"] [#"\.style\s*=" "an inline style, which style-src refuses"]
    [#"\bfetch\b" "a request of its own"] [#"\bXMLHttpRequest\b" "a request of its own"]
-   [#"\bimport\s*\(" "code loaded at run time"] [#"\bRegExp\b|[=(,:]\s*/[^/*\s]" "a regex, which the lexer here cannot read"] [#"\bdataset\s*\.\s*\w+\s*=" "a data attribute written"]])
+   [#"\bimport\s*\(" "code loaded at run time"] [#"\bRegExp\b" "a regex, which the lexer here cannot read"]
+   [#"\bdataset\s*\.\s*\w+\s*=" "a data attribute written"] [#"\bdataset\s*\[" "a data attribute by a computed name"]
+   [#"setAttribute\s*\(\s*[\"']data-" "a data attribute written"]])
 
 (deftest the-script-holds-none-of-the-banned-constructs
-  (let [{c :code open :open} (code source)]
+  (let [{c :code open :open refused :refused} (code source)]
+    (is (nil? refused) (str "the lexer met what it cannot read in ui.js, at " refused ": rewrite it so the scan sees every word"))
     (is (nil? open) "witness: every string of the script closes, so the lexer read it to its end")
     (is (str/includes? c "on(\"htmx:after:swap\", init);") "witness: the comments went and the code stayed")
-    (is (not (str/includes? c "the server rendered both")) "witness: and a comment is gone")
+    (is (str/includes? source "so a swap of <main> re-binds nothing") "witness: the phrase below is in a comment of ui.js")
+    (is (not (str/includes? c "re-binds nothing")) "witness: and the comment is gone from the code scanned")
     (is (= [] (for [[re why] banned :let [m (re-find re c)] :when m] [(if (string? m) m (first m)) why]))
         "constructs found in ui.js, each with why it is banned")))
 
@@ -73,3 +110,19 @@
     (is (re-find #"position-area\s*:" kit) "witness: the stylesheet places popovers by an anchor area")
     (is (some? place) "witness: the script's placement was found")
     (is (str/includes? (str place) "\"position-area\": \"none\"") "the placement sets position-area to none before its own top and left")))
+
+(defn- kebab [camel] (str/replace camel #"[A-Z]" #(str "-" (str/lower-case %))))
+
+(deftest every-class-and-data-attribute-the-script-names-is-the-kits
+  ;; A name the script reads that nothing renders is a feature that silently does nothing.
+  (let [c       (:code (code source))
+        strings (map second (re-seq #"\"([^\"]*)\"" c))
+        classes (set (for [st strings [_ pre nm] (re-seq #"(data-)?(ui-[\w-]+)" st) :when (nil? pre)] nm))
+        data    (into (set (for [st strings nm (re-seq #"data-[\w-]+" st)] nm))
+                      (for [[_ k] (re-seq #"\bdataset\.(\w+)" c)] (str "data-" (kebab k))))
+        kit     (slurp (io/resource "dev/arkaitz/uikit_base/public/kit.css"))
+        page    (:body ((gallery/handler) (mock/request :get "/")))
+        known?  (fn [nm] (or (str/includes? kit nm) (re-find (re-pattern (str "[\\s\"]" (java.util.regex.Pattern/quote nm) "[\\s\"=]")) page)))]
+    (is (= 12 (count classes)) (str "witness: the classes the script names, a count measured once: " (vec (sort classes))))
+    (is (= #{"data-timeout-ms" "data-interval-ms" "data-ui-rotating"} data) "witness: the data attributes the script names")
+    (is (= [] (sort (remove known? (concat classes data)))) "names in ui.js that neither kit.css nor the gallery's page carries")))
