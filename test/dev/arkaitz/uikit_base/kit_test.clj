@@ -8,10 +8,12 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
+            [dev.arkaitz.uikit-base :as ui]
             [dev.arkaitz.uikit-base.brand :as brand]
             [dev.arkaitz.uikit-base.web :as web]
             [dev.arkaitz.web-base :as wb]
             [dev.arkaitz.web-base.response :as response]
+            [dev.arkaitz.web-base.security :as security]
             [dev.arkaitz.web-base.shell :as shell]
             [ring.mock.request :as mock])
   (:import [java.util Arrays]))
@@ -72,26 +74,67 @@
     (is (= [] (remove (some-fn palette declared) read)) "every variable read is the palette's or a scale the kit declares")
     (is (= [] (filter palette declared)) "the kit redeclares no palette token, which would be dead under the unlayered colours")))
 
-(defn- chain
-  "The selector, then without its trailing pseudo-class or attribute, then without its
-  modifier: where an effective colour or background is inherited from."
+(def ^:private compound-re #"[^\s>+~]+")
+(def ^:private state-re #"(::?[a-z-]+(\([^)]*\))?|\[[^\]]*\])")
+
+(defn- specificity
+  "A selector's specificity, [ids classes elements]: a class, an attribute and a
+  pseudo-class are one class each (`:not(x)` counts its argument), a type or a
+  pseudo-element one element."
   [sel]
-  (let [base (str/replace sel #"(:[a-z-]+(\([^)]*\))?|\[[^\]]*\])+$" "")
-        root (str/replace base #"--[a-z]+$" "")]
-    (distinct [sel base root])))
+  (let [s (str/replace sel #":not\(" "(")]
+    [(count (re-seq #"#[\w-]+" s))
+     (count (re-seq #"\.[\w-]+|\[[^\]]*\]|(?<!:):[a-z-]+" s))
+     (+ (count (re-seq #"(?:^|[\s>+~(])[a-z][a-z0-9]*" s)) (count (re-seq #"::[a-z-]+" s)))]))
+
+(defn- implied
+  "Every compound an element matching `compound` also matches among the kit's rules: its
+  modifier implies its base (`.ui-btn--primary` is a `.ui-btn`), and each subset of its
+  states (`:hover`, `[aria-invalid]`) applies with or without the others. A
+  pseudo-element stays: it is another box."
+  [compound]
+  (let [pe     (re-find #"::[a-z-]+$" compound)
+        c      (if pe (subs compound 0 (- (count compound) (count pe))) compound)
+        core   (str/replace c #"(:[a-z-]+(\([^)]*\))?|\[[^\]]*\])+$" "")
+        states (map first (re-seq state-re (subs c (count core))))
+        subsets (reduce (fn [acc st] (concat acc (map #(conj % st) acc))) [[]] states)]
+    (distinct (for [k (distinct [core (str/replace core #"--[a-z]+$" "")]) st subsets] (str k (apply str st) pe)))))
+
+(defn- selectors-implied
+  "Every selector an element matching `sel` also matches: the product of each compound's
+  implications, the combinators kept."
+  [sel]
+  (let [parts (re-seq #"[^\s>+~]+|\s*[>+~]\s*|\s+" (str/trim sel))]
+    (map str/join (reduce (fn [acc part] (for [a acc x (if (re-matches compound-re part) (implied part) [part])] (conj a x))) [[]] parts))))
+
+(defn- resolved
+  "The palette token the cascade gives `sel` for one of `props`: among the kit's rules that
+  apply to it, the one of highest specificity, then the last — they share a layer. With
+  none, a pseudo-element takes its element's, and a descendant its ancestor's: the colour
+  it inherits, the background that shows through."
+  [rules sel props]
+  (let [applies (set (selectors-implied sel))
+        winner  (last (sort-by (juxt (comp specificity first) second)
+                               (for [[sels decls i] rules s sels :when (applies s) p props :when (contains? decls p)] [s i (get decls p)])))]
+    (cond winner (palette-var (nth winner 2))
+          (re-find #"::[a-z-]+$" sel) (resolved rules (str/replace sel #"::[a-z-]+$" "") props)
+          (re-find #"[\s>+~]" (str/trim sel)) (resolved rules (str/trim (str/replace (str/trim sel) #"\s*[>+~]?\s*[^\s>+~]+$" "")) props))))
+
+(def ^:private backgrounds ["background" "background-color"])
 
 (deftest every-text-the-kit-paints-is-an-audited-pair-and-reads-at-4-5
   (let [rules  (leaf-rules)
-        by-sel (fn [s] (some (fn [[sels decls]] (when (some #{s} sels) decls)) (reverse rules)))
-        eff    (fn [sel prop] (some #(palette-var (get (by-sel %) prop)) (chain sel)))
         pairs  (distinct (for [[sels decls] rules s sels
-                               :when (or (contains? decls "color") (contains? decls "background"))
-                               :let [fg (eff s "color") bg (eff s "background")]
+                               :when (some #(contains? decls %) (cons "color" backgrounds))
+                               :let [fg (resolved rules s ["color"]) bg (resolved rules s backgrounds)]
                                :when fg
                                bg (if bg [bg] [:background :surface :surface-alt])]
                            [s bg fg]))
         disabled? (fn [[s]] (or (str/includes? s ":disabled") (str/includes? s "aria-disabled")))]
-    (is (= 39 (count pairs)) (str "witness: every painted pair found, a count measured once: " (count pairs)))
+    (is (= [0 2 1] (specificity ".ui-pager a:focus-visible")) "witness: the test's specificity")
+    (is (= #{".ui-btn--primary:hover" ".ui-btn--primary" ".ui-btn:hover" ".ui-btn"} (set (selectors-implied ".ui-btn--primary:hover")))
+        "witness: a variant's hover is also the base's hover")
+    (is (= 40 (count pairs)) (str "witness: every painted pair found, a count measured once: " (count pairs)))
     (is (= 21.0 (wcag "#000000" "#ffffff")) "witness: the test's WCAG")
     (doseq [[s bg fg :as p] pairs]
       (testing s
@@ -102,24 +145,109 @@
                 :let [r (wcag (get-in tokens [bg i]) (get-in tokens [fg i]))]]
           (if (disabled? p)
             (is (< r 4.5) (str seed " " scheme " " r))
-            (is (>= r 4.5) (str seed " " scheme " " [bg fg] " " r))))))
-    (testing "colour and background come only from the palette"
-      (is (= [] (for [[sels decls] rules [k v] decls :when (#{"color" "background"} k) :when (not (palette-var v))] [sels k v]))))))
+            (is (>= r 4.5) (str seed " " scheme " " [bg fg] " " r))))))))
+
+(def ^:private colour-bearing
+  #"^(color|background(-color)?|border(-(top|right|bottom|left|block|inline)(-(start|end))?)?(-color)?|outline(-color)?|accent-color|caret-color|fill|stroke|box-shadow|text-decoration-color)$")
+
+(def ^:private shadows
+  "The kit's own properties that hold a colour literal: a shadow's, which no palette token
+  is, read only by `box-shadow`."
+  #{"--ui-shadow-sm"})
+
+(deftest every-colour-comes-from-the-palette
+  (let [rules    (leaf-rules)
+        decls    (for [[sels ds] rules [k v] ds] [sels k v])
+        scales   (set (map (comp keyword second) (re-seq #"--ui-([a-z0-9-]+)\s*:" css)))
+        token-ok (fn [t] (or (re-matches #"-?[\d.]+(px|rem|em|%)?" t)
+                             (#{"solid" "dashed" "dotted" "none" "inset" "inherit" "currentcolor"} t)
+                             (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
+        tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
+        bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
+    (is (= 88 (count bearing)) (str "witness: the colour-bearing declarations, a count measured once: " (count bearing)))
+    (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
+        "a colour is a palette token: no literal, no keyword, nothing else")
+    (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
+        "a colour and a background read one")
+    (is (= [] (for [[sels k v] decls :when (not (str/starts-with? k "--")) :when (re-find #"#[0-9a-fA-F]{3,8}\b|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix)\(" v)] [sels k v]))
+        "no other property holds a colour literal either")
+    (is (= shadows (set (for [[_ k v] decls :when (str/starts-with? k "--") :when (re-find #"#[0-9a-fA-F]{3,8}\b|\(" v)] k)))
+        "the kit's own properties holding a colour are the shadows, and only those")
+    (is (= #{"box-shadow"} (set (for [[_ k v] decls :when (some #(str/includes? v (str "var(" % ")")) shadows)] k)))
+        "and only a shadow reads them")))
+
+(def ^:private dividers
+  "Lines that separate, not edges that bound a control: drawn in `border`, which is no
+  audited non-text pair, and named here one by one so a new one is decided, not inherited."
+  #{[".ui-table th" :border] [".ui-table td" :border] [".ui-row" :border] [".ui-card" :border]})
 
 (deftest every-control-edge-is-visible
-  (let [edges (for [[sels decls] (leaf-rules) s sels
-                    :when (re-find #"^\.ui-(btn|input|notice|check)" s)
-                    :when (not (or (str/includes? s ":disabled") (str/includes? s "aria-disabled")))
-                    [k v] decls :when (re-find #"^(border|outline|accent-color)" k)
-                    :let [t (palette-var v)] :when t
-                    bg [:background :surface :surface-alt]]
-                [s bg t])]
-    (is (< 10 (count edges)) "witness: the edges were found")
-    (doseq [[s bg t] (distinct edges)]
+  (let [found (distinct (for [[sels decls] (leaf-rules) s sels
+                              :when (str/starts-with? s ".ui-")
+                              :when (not (or (str/includes? s ":disabled") (str/includes? s "aria-disabled")))
+                              [k v] decls :when (re-find #"^(border|outline|accent-color)" k)
+                              :let [t (palette-var v)] :when t]
+                          [s t]))
+        edges (remove dividers found)]
+    (is (= dividers (set (filter dividers found))) "every divider named is still drawn")
+    (is (= 21 (count edges)) (str "witness: the edges, a count measured once: " (count edges)))
+    (doseq [[s t] edges bg [:background :surface :surface-alt]]
       (testing (str s " " t)
         (is (= :ui (audited [bg t])) "an audited non-text pair")
         (doseq [[seed tokens] goldens [scheme i] [[:light 0] [:dark 1]]]
           (is (>= (wcag (get-in tokens [bg i]) (get-in tokens [t i])) 3.0) (str seed " " scheme)))))))
+
+(def ^:private req
+  {::security/csrf-stored true :anti-forgery-token "T" ::security/csrf-used (volatile! false)
+   :wb/tr (fn [k args] (str k args))})
+
+(def ^:private fixtures
+  "Every component, drawn with everything it can make focusable."
+  {'button    [(ui/button "x") (ui/button {:variant :primary} "x")]
+   'post-form [(ui/post-form req "/a" (ui/button "x"))]
+   'field     (for [t [nil "select" "textarea" "file" "checkbox"]] (ui/field req {:id "f" :label "F" :type t :options [["a" "A"]] :error :e}))
+   'notice    [(ui/notice :ok "x")]
+   'table     [(ui/table {:caption "c" :head ["h"] :rows [["a"]] :row-header? true})]
+   'rows      [(ui/rows (ui/row "x"))]
+   'row       [(ui/row "x")]
+   'pager     [(ui/pager req {:previous "/a" :next "/b" :where "w"})]
+   'badge     [(ui/badge :info "x")]
+   'card      [(ui/card "x")]})
+
+(defn- elements
+  "Every element of a Hiccup tree as [tag attrs classes ancestors' classes]."
+  [node ancestors]
+  (cond (and (vector? node) (keyword? (first node)))
+        (let [[t & more] node
+              [_ tag cls] (re-matches #"([a-z0-9]+)(?:#[^.]*)?((?:\.[^.#]+)*)" (name t))
+              attrs   (if (map? (first more)) (first more) {})
+              classes (into (set (remove str/blank? (str/split (subs (or cls "") (min 1 (count (or cls "")))) #"\."))) (str/split (str (:class attrs "")) #" "))
+              classes (set (filter #(str/starts-with? % "ui-") classes))]
+          (cons [tag attrs classes ancestors]
+                (mapcat #(elements % (concat classes ancestors)) (if (map? (first more)) (rest more) more))))
+        (sequential? node) (mapcat #(elements % ancestors) node)
+        :else nil))
+
+(defn- focusable? [[tag attrs]]
+  (or (and (= "a" tag) (:href attrs)) (#{"button" "select" "textarea" "summary"} tag)
+      (and (= "input" tag) (not= "hidden" (:type attrs))) (contains? attrs :tabindex)))
+
+(deftest everything-focusable-the-kit-emits-wears-the-focus-ring
+  (let [ringed (set (for [[sels decls] (leaf-rules) s sels
+                          :when (str/ends-with? s ":focus-visible")
+                          :when (= :focus-ring (palette-var (get decls "outline")))]
+                      (str/replace s #":focus-visible$" "")))
+        found  (filter focusable? (mapcat #(elements % ()) (vals fixtures)))
+        bare   (for [[tag _ classes ancestors :as e] found
+                     :when (not (or (some #(ringed (str "." %)) classes)
+                                    (some-> (first ancestors) (#(ringed (str "." % " " tag))))))]
+                 [tag classes (first ancestors)])]
+    (is (= (set (keys fixtures)) (set (remove '#{words cell} (keys (ns-publics 'dev.arkaitz.uikit-base)))))
+        "every public component is drawn here, so a new one needs its fixture")
+    (is (= 10 (count found)) (str "witness: the focusables, a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
+    (is (= [] bare) "each wears the ring, through a class of its own or its kit ancestor's")
+    (is (= [] (for [[sels decls] (leaf-rules) :let [v (get decls "outline")] :when v :when (not= :focus-ring (palette-var v))] [sels v]))
+        "no rule takes the ring away: an outline is the ring")))
 
 (deftest the-disabled-look-wins-over-every-variant-by-coming-last
   (let [rules (leaf-rules)
