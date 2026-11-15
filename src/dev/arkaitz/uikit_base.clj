@@ -50,32 +50,42 @@
 
 (defn- split-attrs [more] (if (map? (first more)) [(first more) (rest more)] [nil more]))
 
-(def ^:private variants #{:primary :secondary :success :danger :warning :info})
+(def ^:private fills #{:primary :secondary :success :danger :warning :info})
+(def ^:private variants
+  "A fill, its outline — the fill's edge and ink on the surface, filled when hovered — or a
+  button drawn as a link."
+  (into (conj fills :link) (map #(keyword (str "outline-" (name %)))) fills))
 (def ^:private sizes #{:sm :lg})
 
 (defn- btn-class
-  "The classes of a button of `variant` and `size`, either refused when it is not the kit's."
-  [variant size]
-  (when-not (or (nil? variant) (variants variant))
-    (throw (ex-info "uikit-base: a button's :variant is one of the kit's" {:variant variant})))
-  (when-not (or (nil? size) (sizes size))
-    (throw (ex-info "uikit-base: a button's :size is :sm or :lg" {:size size})))
-  (str/join " " (cond-> ["ui-btn"]
-                  variant (conj (str "ui-btn--" (name variant)))
-                  size (conj (str "ui-btn--" (name size))))))
+  "The classes of a button of `variant` and `size`, either refused when it is not the kit's,
+  as wide as its container when `block?`."
+  ([variant size] (btn-class variant size nil))
+  ([variant size block?]
+   (when-not (or (nil? variant) (variants variant))
+     (throw (ex-info "uikit-base: a button's :variant is one of the kit's" {:variant variant})))
+   (when-not (or (nil? size) (sizes size))
+     (throw (ex-info "uikit-base: a button's :size is :sm or :lg" {:size size})))
+   (str/join " " (cond-> ["ui-btn"]
+                   variant (conj (str "ui-btn--" (name variant)))
+                   size (conj (str "ui-btn--" (name size)))
+                   block? (conj "ui-btn--block")))))
 
 (defn button
   "`(button opts? & body)` → a `<button>` of the kit. `opts` may name a `:variant` —
-  `:primary`, `:secondary`, `:success`, `:danger`, `:warning` or `:info`, or none for a
-  plain button on the surface — and a `:size`, `:sm` or `:lg`; the rest are the button's
-  attributes, `:type` \"submit\" unless given — never `formaction`, `formmethod` or `form`,
-  which would send its form elsewhere. An unknown variant or size is refused."
+  `:primary`, `:secondary`, `:success`, `:danger`, `:warning` or `:info`, their outlines
+  `:outline-primary` … `:outline-info`, `:link` for a button that reads as a link, or none
+  for a plain button on the surface — a `:size`, `:sm` or `:lg`, and `:block? true` for one
+  as wide as its container; the rest are the button's attributes, `:type` \"submit\" unless
+  given — never `formaction`, `formmethod` or `form`, which would send its form elsewhere.
+  An unknown variant or size is refused."
   [& more]
   (let [[opts body] (split-attrs more)
-        {:keys [variant size]} opts]
-    (refuse-attrs! (normalised (dissoc opts :variant :size)) [:formaction :formmethod :form] "button"
+        {:keys [variant size block?]} opts
+        attrs (dissoc opts :variant :size :block?)]
+    (refuse-attrs! (normalised attrs) [:formaction :formmethod :form] "button"
                    "a submitter's own target would send its form, token and all, where the form does not")
-    (into [:button (with-attrs {:type "submit" :class (btn-class variant size)} (dissoc opts :variant :size) [])]
+    (into [:button (with-attrs {:type "submit" :class (btn-class variant size block?)} attrs [])]
           body)))
 
 (declare subject-of)
@@ -83,7 +93,7 @@
 (defn link-button
   "`(link-button path opts? & body)` → a link that looks like a `button`: a `wb/link` to
   `path`, so it swaps the page's `<main>` and its path is web-base's to refuse. `opts`
-  name a `:variant` and a `:size` as `button`'s do, refused alike; a `:subject`, read
+  name a `:variant`, a `:size` and `:block?` as `button`'s do, refused alike; a `:subject`, read
   after the body by a screen reader and never shown, so the tenth \"Edit\" says which;
   and `:download? true` for what must load as a document — a CSV, a file — which is then
   a plain link to a path on this origin, never swapped. The rest are the link's
@@ -91,7 +101,7 @@
   is a form's button."
   [path & more]
   (let [[opts body] (split-attrs more)
-        attrs (with-attrs {:class (btn-class (:variant opts) (:size opts))} (dissoc opts :variant :size :subject :download?) [])
+        attrs (with-attrs {:class (btn-class (:variant opts) (:size opts) (:block? opts))} (dissoc opts :variant :size :block? :subject :download?) [])
         body  (concat body [(subject-of (:subject opts))])]
     (if (:download? opts)
       (do (when-not (or (= "/" path) (render/local-path? path))
@@ -192,6 +202,49 @@
   [:details (with-attrs {:class "ui-confirm"} (dissoc (normalised details) :open) [])
    [:summary (with-attrs {:class (btn-class (:variant first) nil)} (dissoc first :variant) []) label (subject-of subject)]
    (action request path (assoc (dissoc opts :confirm-label :first :details) :label confirm-label :variant (or variant :danger)))])
+
+(defn toggle-button
+  "`(toggle-button request path opts)` → an `action` whose button is a toggle the server
+  drew in its state: `aria-pressed` is `:pressed?`, true or false, which no attribute of
+  the caller's changes. Its `:label` names the setting and stays the same in both states —
+  a screen reader says pressed or not — and its `:hidden` fields say what pressing it asks
+  for (`{:on (not pressed?)}`). The rest of `opts` are `action`'s but `:variant`, refused:
+  a toggle is drawn pressed in the kit's own look, which a fill would hide."
+  [request path {:keys [label pressed?] :as opts}]
+  (label! "a toggle-button" :label label)
+  (when-not (boolean? pressed?)
+    (throw (ex-info "uikit-base: a toggle-button's :pressed? is true or false" {:pressed? pressed?})))
+  (when (contains? opts :variant)
+    (throw (ex-info "uikit-base: a toggle-button takes no :variant: its pressed look is the kit's" {:variant (:variant opts)})))
+  (action request path (-> (dissoc opts :pressed?)
+                           (assoc :button (assoc (normalised (:button opts)) :aria-pressed (str pressed?))))))
+
+(defn button-group
+  "`(button-group opts & buttons)` → buttons drawn as one control, their edges joined: a
+  `role=group` named by `:label`, which is required — a group of unnamed buttons is read as
+  loose ones. The rest of `opts` are its attributes; its role and name are its own."
+  [opts & body]
+  (let [label (:label opts)]
+    (when-not (and (string? label) (not (str/blank? label)))
+      (throw (ex-info "uikit-base: a button-group is named by its label" {:label label})))
+    (into [:div (with-attrs {:class "ui-btn-group" :role "group" :aria-label label} (dissoc opts :label) [:role :aria-label])]
+          body)))
+
+(declare kit-word)
+
+(defn close-button
+  "`(close-button request opts?)` → a button that closes something: a mark the eye reads,
+  hidden from a screen reader, which reads its name — the kit's word `:uikit-base/close` in
+  the reader's language, or `:label`. The rest of `opts` are its attributes, `:type`
+  \"button\" unless given, never `formaction`, `formmethod` or `form`, as `button`'s."
+  [request & [opts]]
+  (let [attrs (dissoc opts :label)
+        label (:label opts)]
+    (refuse-attrs! (normalised attrs) [:formaction :formmethod :form] "close-button"
+                   "a submitter's own target would send its form, token and all, where the form does not")
+    [:button (with-attrs {:type "button" :class "ui-close"} attrs [])
+     [:span {:aria-hidden "true"} "\u00d7"]
+     [:span.ui-sr-only (kit-word request (when-not (and (string? label) (str/blank? label)) label) :uikit-base/close)]]))
 
 (defn- word
   "A word of the host's dictionary: a key, or a vector of the key and its arguments,
@@ -388,9 +441,9 @@
   a dictionary, which a host's own overrides; a language the kit does not speak falls back
   to the English here, so no word of the kit is ever missing from a page."
   {:en {:uikit-base {:previous "Previous" :next "Next" :pages "Pages" :breadcrumbs "Breadcrumbs"
-                     :shown-once "Copy it now: it will not be shown again."}}
+                     :shown-once "Copy it now: it will not be shown again." :close "Close"}}
    :es {:uikit-base {:previous "Anterior" :next "Siguiente" :pages "Páginas" :breadcrumbs "Ruta de navegación"
-                     :shown-once "Cópialo ahora: no se volverá a mostrar."}}})
+                     :shown-once "Cópialo ahora: no se volverá a mostrar." :close "Cerrar"}}})
 
 (defn- kit-word [request given k]
   (or given

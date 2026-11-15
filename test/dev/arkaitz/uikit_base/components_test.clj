@@ -226,9 +226,13 @@
                             (ui/rows {:plain? true} (ui/row "x"))
                             (ui/field req {:id "c" :label "C" :type "checkbox" :inline? true})
                             (for [k [:neutral :success :danger :warning :info]] (ui/badge k "x"))
-                            (ui/card "x")))
+                            (ui/card "x")
+                            (for [v [:outline-primary :outline-secondary :outline-success :outline-danger :outline-warning :outline-info :link]] (ui/button {:variant v} "x"))
+                            (ui/button {:block? true} "x")
+                            (ui/button-group {:label "g"} (ui/button "x"))
+                            (ui/close-button {})))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 56 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
+    (is (= 66 (count classes)) (str "witness: the classes emitted — 0.5.0's 56, then K9's six outlines, link, block, button-group and close — a count measured once: " (sort classes)))
     (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{>]")) kit) classes))
         "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
@@ -615,6 +619,12 @@
                                     (mock/request :get "/"))))
                        "Cópialo ahora: no se volverá a mostrar.")
         "and the secret's note")
+    (doseq [[component spanish] [[#(ui/close-button %) "<span class=\"ui-sr-only\">Cerrar</span>"]]]
+      (is (str/includes? (str (:body ((wb/handler {:routes [["/" {:wb/layouts [shell/page] :get (fn [q] {:status 200 :body (component q)})}]]
+                                                   :session {:key KEY} :plugins [(web/plugin)] :i18n {:default-locale :es}})
+                                      (mock/request :get "/"))))
+                         spanish)
+          (str "and the kit's word in " spanish)))
     (is (str/includes? (str (main ((app {:default-locale :es :dict {:es {:uikit-base {:next "Más"}}}}) (mock/request :get "/"))))
                        (str (L "/b" "next" "Más") "</nav>"))
         "a host's own word wins over the kit's")
@@ -747,3 +757,60 @@
          (html (ui/field req {:id "r" :label "R" :required? true :attrs {:required false}})))
       "no attribute makes a required field optional")
   (is (= "e-error" (get-in (ui/field req {:id "e" :label "E" :error :e}) [2 1 :aria-describedby])) "no hint, no hint id"))
+
+;; --- K9: buttons ------------------------------------------------------------------------
+
+(deftest outline-link-and-block-buttons-carry-their-classes
+  (doseq [v [:primary :secondary :success :danger :warning :info]]
+    (is (= (str "<button class=\"ui-btn ui-btn--outline-" (name v) "\" type=\"submit\">Go</button>")
+           (html (ui/button {:variant (keyword (str "outline-" (name v)))} "Go")))
+        (str "outline-" (name v))))
+  (is (= "<button class=\"ui-btn ui-btn--link\" type=\"submit\">Go</button>" (html (ui/button {:variant :link} "Go")))
+      "a button that reads as a link is still a button")
+  (is (= "<button class=\"ui-btn ui-btn--primary ui-btn--lg ui-btn--block x\" type=\"submit\">&lt;Go&gt;</button>"
+         (html (ui/button {:variant :primary :size :lg :block? true :class "x"} "<Go>")))
+      "block after the variant and size, the caller's class last; block? is no attribute")
+  (is (= "<button class=\"ui-btn\" type=\"submit\">Go</button>" (html (ui/button {:block? false} "Go"))) "not block unless asked")
+  (is (= (str/replace (L "/a" nil "Go") "<a href" "<a class=\"ui-btn ui-btn--outline-info ui-btn--block\" href")
+         (html (ui/link-button "/a" {:variant :outline-info :block? true} "Go")))
+      "a link-button takes them alike")
+  (doseq [v [:outline :outline-huge :outline-link "outline-primary"]]
+    (is (= ["uikit-base: a button's :variant is one of the kit's" {:variant v}] (refusal #(ui/button {:variant v} "x"))) (pr-str v))))
+
+(deftest a-toggle-button-says-its-state-and-no-attribute-changes-it
+  (is (= (str "<form action=\"/s/mute\" class=\"ui-action\" method=\"post\">" TOKEN "<input name=\"on\" type=\"hidden\" value=\"false\" />"
+              "<button aria-pressed=\"true\" class=\"ui-btn ui-btn--sm\" id=\"m\" type=\"submit\">Mute &lt;all&gt;<span class=\"ui-sr-only\"> Ada</span></button></form>")
+         (html (ui/toggle-button req "/s/mute" {:label "Mute <all>" :pressed? true :hidden {:on false} :subject "Ada" :size :sm
+                                                :button {:id "m" "ARIA-PRESSED" "false" :aria-pressed "mixed"}})))
+      "pressed, as the server drew it, whatever the caller's spelling of aria-pressed")
+  (is (= (str "<form action=\"/s\" class=\"ui-action\" method=\"post\">" TOKEN "<button aria-pressed=\"false\" class=\"ui-btn\" type=\"submit\">Mute</button></form>")
+         (html (ui/toggle-button req "/s" {:label "Mute" :pressed? false}))))
+  (doseq [p [nil "true" 1 :on]]
+    (is (= ["uikit-base: a toggle-button's :pressed? is true or false" {:pressed? p}] (refusal #(ui/toggle-button req "/s" {:label "M" :pressed? p}))) (pr-str p)))
+  (doseq [l [nil " " :mute]]
+    (is (= ["uikit-base: a toggle-button's label is the text its button shows" {:label l}] (refusal #(ui/toggle-button req "/s" {:label l :pressed? true}))) (pr-str l)))
+  (is (= ["uikit-base: a toggle-button takes no :variant: its pressed look is the kit's" {:variant :primary}]
+         (refusal #(ui/toggle-button req "/s" {:label "M" :pressed? true :variant :primary}))))
+  (is (= "uikit-base: an action's button takes no type, name, value, variant or size of its own"
+         (first (refusal #(ui/toggle-button req "/s" {:label "M" :pressed? true :button {:type "button"}}))))
+      "action's refusals hold"))
+
+(deftest a-button-group-is-a-named-group-whose-role-and-name-are-its-own
+  (is (= "<div aria-label=\"Lesson &lt;tools&gt;\" class=\"ui-btn-group x\" id=\"g\" role=\"group\"><button class=\"ui-btn\" type=\"submit\">A</button><b>B</b></div>"
+         (html (ui/button-group {:label "Lesson <tools>" :class "x" :id "g" :role "toolbar" "ARIA-LABEL" "other"} (ui/button "A") [:b "B"]))))
+  (doseq [l [nil "" "  " :k]]
+    (is (= ["uikit-base: a button-group is named by its label" {:label l}] (refusal #(ui/button-group {:label l} (ui/button "A")))) (pr-str l))))
+
+(deftest a-close-button-is-a-hidden-mark-named-in-the-readers-language
+  (is (= "<button class=\"ui-close\" type=\"button\"><span aria-hidden=\"true\">×</span><span class=\"ui-sr-only\">Close</span></button>"
+         (html (ui/close-button {})))
+      "with no translator, the kit's English")
+  (is (= "<button class=\"ui-close\" type=\"button\"><span aria-hidden=\"true\">×</span><span class=\"ui-sr-only\">Cerrar</span></button>"
+         (html (ui/close-button {:wb/tr (tr-for :es)})))
+      "in Spanish, through the plugin's dictionary")
+  (is (= "<button class=\"ui-close x\" id=\"c\" type=\"submit\"><span aria-hidden=\"true\">×</span><span class=\"ui-sr-only\">Dismiss &lt;it&gt;</span></button>"
+         (html (ui/close-button {:wb/tr (tr-for :es)} {:label "Dismiss <it>" :class "x" :id "c" :type "submit"})))
+      "its own label wins, and the caller's type")
+  (is (= (html (ui/close-button {})) (html (ui/close-button {} {:label " "}))) "a blank label is none")
+  (is (= "uikit-base: a close-button takes no formaction: a submitter's own target would send its form, token and all, where the form does not"
+         (first (refusal #(ui/close-button {} {"FormAction" "/x"}))))))

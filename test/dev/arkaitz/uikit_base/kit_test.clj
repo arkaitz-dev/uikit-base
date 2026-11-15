@@ -170,7 +170,7 @@
   (is (= #{["uikit" "utilities"]} (set (map :layer (:rules utilities-parsed))))
       "and every utility in utilities"))
 
-(declare cascaded specificity)
+(declare cascaded specificity implied)
 
 (deftest the-tests-model-of-the-cascade-knows-layers-media-and-specificity
   ;; The model every other test here stands on, checked against stylesheets whose cascade
@@ -191,6 +191,8 @@
         "and a dotted statement names each part under the ones before it")
     (is (= ["wide" "narrow" "narrow"] (mapv #(win % ".m") [{:width 768 :scheme :dark :motion :reduce} {:width 767 :scheme :dark :motion :reduce} {:width 1024 :scheme :light :motion :reduce}]))
         "a query applies where it holds and nowhere else, its conditions all at once"))
+  (is (= #{".ui-btn--outline-primary:hover" ".ui-btn:hover" ".ui-btn--outline-primary" ".ui-btn"} (set (implied ".ui-btn--outline-primary:hover")))
+      "a modifier of more than one word implies its base, as a one-word modifier does")
   (is (= [[0 0 0] [0 1 0] [0 2 0] [0 1 1]] (mapv specificity [":where(.a, .b)" ":is(.a, a)" ".x:has(.a)" "a:not(.b)"]))
       "where counts nothing; is, has and not their most specific argument")
   (is (= "kit.css: a rule nested in a rule" (try (parse-css ".a { color: x; .b { color: y; } }") nil (catch clojure.lang.ExceptionInfo e (ex-message e)))))
@@ -254,7 +256,7 @@
         core   (str/replace c #"(:[a-z-]+(\([^)]*\))?|\[[^\]]*\])+$" "")
         states (map first (re-seq state-re (subs c (count core))))
         subsets (reduce (fn [acc st] (concat acc (map #(conj % st) acc))) [[]] states)]
-    (distinct (for [k (distinct [core (str/replace core #"--[a-z]+$" "")]) st subsets] (str k (apply str st) pe)))))
+    (distinct (for [k (distinct [core (str/replace core #"--[a-z][a-z-]*$" "")]) st subsets] (str k (apply str st) pe)))))
 
 (defn- selectors-implied
   "Every selector an element matching `sel` also matches: the product of each compound's
@@ -431,7 +433,7 @@
     (is (= [0 2 1] (specificity ".ui-pager a:focus-visible")) "witness: the test's specificity")
     (is (= #{".ui-btn--primary:hover" ".ui-btn--primary" ".ui-btn:hover" ".ui-btn"} (set (selectors-implied ".ui-btn--primary:hover")))
         "witness: a variant's hover is also the base's hover")
-    (is (= 126 (count pairs)) (str "witness: every painted pair found — the kit's 80, then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
+    (is (= 150 (count pairs)) (str "witness: every painted pair found — the kit's 104 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one, the close button in two), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
     (is (= 21.0 (wcag "#000000" "#ffffff")) "witness: the test's WCAG")
     (doseq [[s bg fg :as p] pairs]
       (testing s
@@ -461,7 +463,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 191 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 119 and the utilities' 75, a count measured once: " (count bearing)))
+    (is (= 247 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 175 (0.5.0's 119; K9's 42 outline, 4 link, 5 pressed and 5 close) and the utilities' 72, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -490,7 +492,7 @@
                           [s t]))
         edges (remove dividers found)]
     (is (= dividers (set (filter dividers found))) "every divider named is still drawn")
-    (is (= 39 (count edges)) (str "witness: the edges — the kit's 27, then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
+    (is (= 47 (count edges)) (str "witness: the edges — the kit's 35 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
     (doseq [[s t] edges bg [:background :surface :surface-alt]]
       (testing (str s " " t)
         (is (= :ui (audited [bg t])) "an audited non-text pair")
@@ -790,7 +792,10 @@
 
 (def ^:private fixtures
   "Every component, drawn with everything it can make focusable."
-  {'button    [(ui/button "x") (ui/button {:variant :primary} "x")]
+  {'button    [(ui/button "x") (ui/button {:variant :primary} "x") (ui/button {:variant :outline-danger :block? true} "x") (ui/button {:variant :link} "x")]
+   'toggle-button [(ui/toggle-button req "/a" {:label "x" :pressed? true})]
+   'button-group [(ui/button-group {:label "g"} (ui/button "a") (ui/action req "/a" {:label "b"}))]
+   'close-button [(ui/close-button req)]
    'link-button [(ui/link-button "/a" {:variant :primary} "x") (ui/link-button "/f.csv" {:download? true} "x")]
    'action    [(ui/action req "/a" {:label "x" :hidden {:a 1}})]
    'confirm   [(ui/confirm req "/a" {:label "x" :confirm-label "y"})]
@@ -844,7 +849,7 @@
                  [tag classes (first ancestors)])]
     (is (= (set (keys fixtures)) (set (remove '#{words cell} (keys (ns-publics 'dev.arkaitz.uikit-base)))))
         "every public component is drawn here, so a new one needs its fixture")
-    (is (= 22 (count found)) (str "witness: the focusables, a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
+    (is (= 28 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
     (is (= [] bare) "each wears the ring, through a class of its own or its kit ancestor's")
     (is (= [] (for [[sels decls] (leaf-rules) :let [v (get decls "outline")] :when v :when (not= :focus-ring (palette-var v))] [sels v]))
         "no rule takes the ring away: an outline is the ring")

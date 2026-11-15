@@ -23,7 +23,7 @@
     /* The focus ring, on everything the kit makes focusable. */
     .ui-btn:focus-visible, .ui-input:focus-visible, .ui-check:focus-visible, .ui-pager a:focus-visible, .ui-card a:focus-visible,
     .ui-prose a:focus-visible, .ui-crumbs a:focus-visible, .ui-tabs a:focus-visible,
-    .ui-table-wrap:focus-visible {
+    .ui-table-wrap:focus-visible, .ui-close:focus-visible {
       outline: var(--ui-focus-outline-width) solid var(--ui-focus-ring);
       outline-offset: var(--ui-focus-outline-width);
       box-shadow: 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
@@ -62,9 +62,59 @@
     .ui-btn--info { color: var(--ui-on-info); background: var(--ui-info); border-color: var(--ui-info-border); }
     .ui-btn--info:hover { color: var(--ui-on-info); background: var(--ui-info-hover); }
     .ui-btn--info:active { color: var(--ui-on-info); background: var(--ui-info-active); }
+    /* Outlines: the fill's edge and an audited ink on the surface, filled when hovered. */
+    .ui-btn--outline-primary { color: var(--ui-link); background: var(--ui-surface); border-color: var(--ui-primary-border); }
+    .ui-btn--outline-primary:hover { color: var(--ui-on-primary); background: var(--ui-primary); }
+    .ui-btn--outline-primary:active { color: var(--ui-on-primary); background: var(--ui-primary-active); }
+    .ui-btn--outline-secondary { color: var(--ui-text-muted-strong); background: var(--ui-surface); border-color: var(--ui-secondary-border); }
+    .ui-btn--outline-secondary:hover { color: var(--ui-on-secondary); background: var(--ui-secondary); }
+    .ui-btn--outline-secondary:active { color: var(--ui-on-secondary); background: var(--ui-secondary-active); }
+    .ui-btn--outline-success { color: var(--ui-success-ink); background: var(--ui-surface); border-color: var(--ui-success-border); }
+    .ui-btn--outline-success:hover { color: var(--ui-on-success); background: var(--ui-success); }
+    .ui-btn--outline-success:active { color: var(--ui-on-success); background: var(--ui-success-active); }
+    .ui-btn--outline-danger { color: var(--ui-danger-ink); background: var(--ui-surface); border-color: var(--ui-danger-border); }
+    .ui-btn--outline-danger:hover { color: var(--ui-on-danger); background: var(--ui-danger); }
+    .ui-btn--outline-danger:active { color: var(--ui-on-danger); background: var(--ui-danger-active); }
+    .ui-btn--outline-warning { color: var(--ui-warning-ink); background: var(--ui-surface); border-color: var(--ui-warning-border); }
+    .ui-btn--outline-warning:hover { color: var(--ui-on-warning); background: var(--ui-warning); }
+    .ui-btn--outline-warning:active { color: var(--ui-on-warning); background: var(--ui-warning-active); }
+    .ui-btn--outline-info { color: var(--ui-info-ink); background: var(--ui-surface); border-color: var(--ui-info-border); }
+    .ui-btn--outline-info:hover { color: var(--ui-on-info); background: var(--ui-info); }
+    .ui-btn--outline-info:active { color: var(--ui-on-info); background: var(--ui-info-active); }
+    /* A button that reads as a link: no edge, the link's ink on the page's own ground. */
+    .ui-btn--link { color: var(--ui-link); background: var(--ui-background); border-style: none; text-decoration: underline; }
+    .ui-btn--link:hover, .ui-btn--link:active { color: var(--ui-link); background: var(--ui-background); text-decoration-thickness: 2px; }
+    .ui-btn--block { display: flex; inline-size: 100%; }
+    /* Pressed: a thicker edge as well as a ground, so the state is never colour alone; its
+     * inset shadow would take the ring's halo away, so focused it carries both. */
+    .ui-btn[aria-pressed="true"] {
+      color: var(--ui-on-surface); background: var(--ui-surface-high); border-color: var(--ui-primary-border);
+      box-shadow: inset 0 0 0 1px var(--ui-primary-border);
+    }
+    .ui-btn[aria-pressed="true"]:focus-visible {
+      box-shadow: inset 0 0 0 1px var(--ui-primary-border), 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
+    }
     .ui-btn:disabled, .ui-btn[aria-disabled="true"] {
       color: var(--ui-disabled-fg); background: var(--ui-disabled-bg); border-color: var(--ui-disabled-bg); cursor: default;
     }
+
+    /* A group: its buttons one control, the edges between them joined; the one hovered or
+     * focused lifted, so its edge and ring are not hidden under a neighbour's. */
+    .ui-btn-group { display: inline-flex; flex-wrap: wrap; }
+    .ui-btn-group > .ui-btn:not(:first-child), .ui-btn-group > :not(:first-child) > .ui-btn {
+      margin-inline-start: -1px; border-start-start-radius: 0; border-end-start-radius: 0;
+    }
+    .ui-btn-group > .ui-btn:not(:last-child), .ui-btn-group > :not(:last-child) > .ui-btn { border-start-end-radius: 0; border-end-end-radius: 0; }
+    .ui-btn-group .ui-btn:hover, .ui-btn-group .ui-btn:focus-visible { position: relative; z-index: var(--ui-z-index-raised); }
+
+    /* A close button: a mark on the surface, named for a screen reader by text it hides. */
+    .ui-close {
+      position: relative; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+      inline-size: 2rem; block-size: 2rem; padding: 0; font: inherit; font-size: var(--ui-font-size-lg); line-height: 1;
+      text-decoration: none; color: var(--ui-on-surface-alt); background: var(--ui-surface-alt);
+      border: 0; border-radius: var(--ui-radius-md); cursor: pointer;
+    }
+    .ui-close:hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
 
     /* Actions: one button's form; a confirm opens a second step beneath its first. */
     .ui-action { display: inline-block; margin: 0; }
