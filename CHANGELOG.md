@@ -5,6 +5,18 @@ changes what a working host sees. A **minor** adds, and may break: when it does,
 opens with **Breaking** and says what a host must change. Every release is on Clojars as
 `dev.arkaitz/uikit-base` and tagged `vX.Y.Z`.
 
+## 0.5.0 — 2026-11-15
+
+- **A fix you will see on a phone:** a confirm's screen-reader text inside a scrolling
+  table escaped the region and widened the page (366px on a 360px screen, measured in
+  booking). The region is positioned now, and a test requires every scrolling rule to be.
+- `ui/sentence`: Hiccup parts where a translated word's `%1`, `%2` stand, in the
+  translation's order, so a time inside "Due %1" keeps its `datetime`.
+- `dev.arkaitz.uikit-base.testing`, for a host's tests: `actions` reads the kit's
+  actions and confirms back from a page (path, hidden fields, visible label, the name a
+  screen reader hears, a confirm's first step); `accessible-name`. Hold the name, not
+  the label: the label stays the same when a subject is lost.
+
 ## 0.4.0 — 2026-11-15
 
 More components, and better ones, adopted by every host of the set.

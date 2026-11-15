@@ -10,7 +10,7 @@ shadows and the focus ring are decided in the kit. Anything else you want differ
 write in your own stylesheet, and it overrides the kit without a fight.
 
 ```clojure
-dev.arkaitz/uikit-base {:mvn/version "0.4.0"}
+dev.arkaitz/uikit-base {:mvn/version "0.5.0"}
 ```
 
 ## In a host
@@ -153,6 +153,19 @@ else wins, except what correctness needs, which no attribute changes:
 - `notice` speaks an error as an alert, and everything else as a status.
 - `pager` names its links and itself in the reader's language (the kit's words, or yours,
   or English), so a link never goes unnamed; a label you give wins.
+
+## Testing your pages
+
+```clojure
+(require '[dev.arkaitz.uikit-base.testing :as ut])
+(ut/actions html)   ; [{:path "/lessons/7/delete" :hidden {} :label "Yes, delete"
+                    ;   :name "Yes, delete Week 1" :first {:label "Delete" :name "Delete Week 1"}} …]
+```
+
+A confirm is read in two places, its first step and its form; `actions` gives both.
+Assert `:name`, the name a screen reader hears: `:label` stays the same when a subject
+is lost. `(ui/sentence request :due (ui/time at shown))` puts a component inside a
+translated word.
 
 ## Fine-tuning by hand
 
