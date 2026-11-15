@@ -227,6 +227,33 @@
                            options))
         (conj (when error [:span.ui-field__error {:id error-id} (word request error)])))))
 
+(defn sentence
+  "`(sentence request k & parts)` → word `k` of the host's dictionary with `parts` — any
+  Hiccup: a `time`, a link, a strong — where its `%1`, `%2`… stand, in the order the
+  translation puts them, so a language may say them in another order. web-base's
+  translator answers text, so a time inside \"Due %1\" would otherwise be text too, with
+  no `datetime`. A word the dictionary lacks is refused, naming it."
+  [request k & parts]
+  (let [tr    (or (:wb/tr request)
+                  (throw (ex-info "uikit-base: a sentence is translated by web-base; the request carries no :wb/tr" {:word k})))
+        mark  (fn [i] (str (char 0xE000) i (char 0xE001)))
+        ;; Three markers past the parts: a word that asks for one of them asks for more
+        ;; than it was given, and the missing one would print as nothing.
+        said  (tr k (mapv mark (range (+ 3 (count parts)))))]
+    (when (some nil? parts)
+      (throw (ex-info "uikit-base: a sentence's parts are something to show" {:word k})))
+    (when-not (string? said)
+      (throw (ex-info "uikit-base: a sentence's word is text in the dictionary" {:word k})))
+    (when (some #(str/includes? said (mark %)) (range (count parts) (+ 3 (count parts))))
+      (throw (ex-info "uikit-base: a sentence's word asks for more parts than it was given" {:word k :parts (count parts)})))
+    (let [m (re-matcher #"\uE000(\d+)\uE001" said)]
+      (loop [at 0 out []]
+        (if (.find m)
+          (recur (.end m) (cond-> out
+                            (< at (.start m)) (conj (subs said at (.start m)))
+                            true (conj (nth parts (Long/parseLong (.group m 1))))))
+          (seq (cond-> out (< at (count said)) (conj (subs said at)))))))))
+
 (defn field
   "A labelled control, marked and explained when the server refused it. `error` is a word
   of the host's dictionary, or a vector of the word and its arguments, as a handler's

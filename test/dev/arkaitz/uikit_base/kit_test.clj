@@ -289,6 +289,7 @@
    'crumbs    [(ui/crumbs req {:items [["/a" "A"] [nil "B"]]})]
    'tabs-nav  [(ui/tabs-nav req {:label "S" :items [["/a" "A"] ["/b" "B"]] :current "/a"})]
    'secret    [(ui/secret req {:id "s" :label "S" :value "v"})]
+   'sentence  [(ui/sentence {:wb/tr (wb/translator {:default-locale :en :dict {:en {:k {:d "Due %1"}}}} [:en])} :k/d (ui/time 0 "x"))]
    'thread    [(ui/thread (ui/message {:meta "m"} "x"))]
    'message   [(ui/message {:meta "m"} "x")]
    'post-form [(ui/post-form req "/a" (ui/button "x"))]

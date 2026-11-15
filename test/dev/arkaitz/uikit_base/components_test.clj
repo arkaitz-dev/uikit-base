@@ -483,6 +483,24 @@
   (is (str/includes? (html (ui/secret {} {:id "s" :label "S" :value "v" :note " "})) "Copy it now: it will not be shown again.")
       "a blank note is none"))
 
+(def ^:private es-tr
+  (wb/translator {:default-locale :es :dict {:es {:a {:due "Entrega: %1, antes de %2." :rev "%2 antes que %1" :twice "%1 y %1"
+                                                      :lost "Sin nada" :raw "<b>&</b> %1"}}}} [:es]))
+
+(deftest a-sentence-holds-its-parts-where-the-translation-puts-them
+  (let [r {:wb/tr es-tr} s #(html [:p (apply ui/sentence r %&)])]
+    (is (= "<p>Entrega: <time datetime=\"1970-01-01T00:00:00Z\">1 ene</time>, antes de <b>&lt;x&gt;</b>.</p>" (s :a/due (ui/time 0 "1 ene") [:b "<x>"])))
+    (is (= "<p><i>2</i> antes que <i>1</i></p>" (s :a/rev [:i 1] [:i 2])) "in the translation's order, not the call's")
+    (is (= "<p><i>1</i> y <i>1</i></p>" (s :a/twice [:i 1])))
+    (is (= "<p>Sin nada</p>" (s :a/lost [:i 1])) "a part the translation leaves out is left out")
+    (is (= "<p>&lt;b&gt;&amp;&lt;/b&gt; &lt;raw&gt;</p>" (s :a/raw "<raw>")) "the word's text and a text part are escaped")
+    (is (not (re-find #"[\uE000\uE001]" (s :a/due "a" "b"))) "no marker of the kit's is ever shown")
+    (is (= "<p>y antes que x\uE0000\uE001</p>" (s :a/rev "x\uE0000\uE001" "y")) "a part that spells a marker is shown as given, never expanded"))
+  (is (= ["uikit-base: a sentence is translated by web-base; the request carries no :wb/tr" {:word :a/due}] (refusal #(ui/sentence {} :a/due "x"))))
+  (is (= ["uikit-base: a sentence's word is text in the dictionary" {:word :a/missing}] (refusal #(ui/sentence {:wb/tr es-tr} :a/missing))))
+  (is (= ["uikit-base: a sentence's word asks for more parts than it was given" {:word :a/due :parts 1}] (refusal #(ui/sentence {:wb/tr es-tr} :a/due "x"))))
+  (is (= ["uikit-base: a sentence's parts are something to show" {:word :a/rev}] (refusal #(ui/sentence {:wb/tr es-tr} :a/rev "x" nil)))))
+
 (deftest a-table-heads-its-columns-and-captions-what-it-lists
   (is (= (str "<table class=\"ui-table\"><caption>C&lt;</caption><thead><tr><th scope=\"col\">A</th><th scope=\"col\">B&amp;</th></tr></thead>"
               "<tbody><tr><td>a1</td><td>b1</td></tr><tr><td>a2</td><td><b>x&lt;</b></td></tr></tbody></table>")

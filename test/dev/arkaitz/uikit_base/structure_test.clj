@@ -20,6 +20,10 @@
   '#{dev.arkaitz.uikit-base.color dev.arkaitz.uikit-base.brand dev.arkaitz.uikit-base.audit
      dev.arkaitz.uikit-base.emit dev.arkaitz.uikit-base.build})
 
+(def ^:private for-tests
+  "Namespaces a host's tests load, never its running code."
+  '#{dev.arkaitz.uikit-base.testing})
+
 (defn- loaded-after
   "The namespaces of this library loaded in a fresh JVM after requiring `nss`, or a
   failure naming why the JVM gave no answer."
@@ -50,6 +54,11 @@
     (is (nil? failure) failure)
     (is (= accepted-runtime loaded) (str "loaded beyond the accepted: " (vec (remove accepted-runtime loaded))))))
 
+(deftest the-testing-namespace-loads-nothing-else-of-this-library
+  (let [{:keys [loaded failure]} (loaded-after (vec (sort for-tests)))]
+    (is (nil? failure) failure)
+    (is (= for-tests loaded) "it reads markup: neither the components nor the engine")))
+
 (deftest every-source-namespace-is-runtime-or-engine
   (let [root  (io/file "src")
         nss   (->> (file-seq root)
@@ -58,5 +67,6 @@
                    set)]
     (is (= accepted-runtime (into #{} (filter accepted-runtime) nss)) "witness: the scan read the runtime namespaces")
     (is (= [] (filter accepted-runtime engine)) "no engine namespace is accepted at run time")
-    (is (= [] (remove (some-fn accepted-runtime engine) nss))
+    (is (= for-tests (into #{} (filter for-tests) nss)) "witness: and the testing namespace")
+    (is (= [] (remove (some-fn accepted-runtime engine for-tests) nss))
         "a source namespace that is neither reds here, so it is classified before it ships")))
