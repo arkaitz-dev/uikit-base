@@ -115,19 +115,27 @@
 
 (deftest a-refused-field-is-marked-and-described-and-no-attribute-undoes-it
   (is (= (str "<div class=\"ui-field\"><label class=\"ui-field__label\" for=\"email\">Email</label>"
-              "<input aria-describedby=\"email-error\" aria-invalid=\"true\" autocomplete=\"email\" class=\"ui-input wide\" "
+              "<input aria-describedby=\"email-error other\" aria-invalid=\"true\" autocomplete=\"email\" class=\"ui-input wide\" "
               "id=\"email\" name=\"email\" required=\"required\" type=\"email\" value=\"x\" />"
               "<span class=\"ui-field__error\" id=\"email-error\">tr::err/bad:[]</span></div>")
          (html (ui/field req {:id "email" :label "Email" :type "email" :value "x" :error :err/bad
                               :attrs {:class "wide" :required true :aria-invalid "false" :aria-describedby "other" :autocomplete "email"}}))))
+  (is (= (str "<div class=\"ui-field\"><label class=\"ui-field__label\" for=\"e\">E</label>"
+              "<input aria-describedby=\"e-error other two\" aria-invalid=\"true\" class=\"ui-input\" id=\"e\" name=\"e\" type=\"text\" />"
+              "<span class=\"ui-field__error\" id=\"e-error\">tr::e:[]</span></div>")
+         (html (ui/field req {:id "e" :label "E" :error :e :attrs {"ARIA-DESCRIBEDBY" "  other e-error  two "}})))
+      "the caller's description follows the error's, joined once, whatever its spelling")
   (is (str/includes? (html (ui/field req {:id "n" :label "N" :error [:err/long 3 "z"]})) "tr::err/long:[3 &quot;z&quot;]")
       "a word with its arguments")
   (is (str/includes? (html (ui/field req {:id "a" :label "L" :error :e :attrs {:id "b"}})) "aria-describedby=\"b-error\"")
       "described by the error of the control it is")
   (is (= (str "<div class=\"ui-field\"><label class=\"ui-field__label\" for=\"h\">H</label>"
               "<input aria-describedby=\"hint\" aria-invalid=\"false\" class=\"ui-input\" id=\"h\" name=\"h\" type=\"text\" /></div>")
-         (html (ui/field req {:id "h" :label "H" :attrs {:aria-invalid "false" :aria-describedby "hint"}})))
+         (html (ui/field req {:id "h" :label "H" :attrs {:aria-invalid "false" :aria-describedby " hint "}})))
       "with no error the caller's ARIA stands")
+  (is (= [:input {:type "text" :value nil :id "b" :name "b" :class "ui-input"}]
+         (nth (ui/field req {:id "b" :label "B" :attrs {:aria-describedby "  "}}) 2))
+      "a blank description is no attribute")
   (is (= ["uikit-base: a field's error is translated by web-base; the request carries no :wb/tr" {}]
          (refusal #(ui/field {} {:id "a" :label "L" :error :e})))
       "an error with no translator is refused by name"))
@@ -187,9 +195,11 @@
           (str (pr-str attrs) ": " h)))))
 
 (deftest every-control-a-refused-field-draws-is-marked
-  (doseq [type ["select" "textarea" "file"]]
-    (let [h (html (ui/field req {:id "c" :label "C" :type type :error :e :options [[1 "One"]] :attrs {:aria-invalid "false"}}))]
-      (is (and (str/includes? h "aria-invalid=\"true\"") (str/includes? h "aria-describedby=\"c-error\"")) (str type ": " h))))
+  (doseq [type ["select" "textarea" "file" "checkbox"]]
+    (let [h (html (ui/field req {:id "c" :label "C" :type type :error :e :options [[1 "One"]] :attrs {:aria-invalid "false"}}))
+          x (html (ui/field req {:id "c" :label "C" :type type :error :e :options [[1 "One"]] :attrs {:aria-describedby "x"}}))]
+      (is (and (str/includes? h "aria-invalid=\"true\"") (str/includes? h "aria-describedby=\"c-error\"")) (str type ": " h))
+      (is (= 1 (count (re-seq #"aria-describedby=\"c-error x\"" x))) (str type " joins the caller's: " x))))
   (is (str/includes? (html (ui/field req {:id "f" :label "F" :type "file" :attrs {:type "text"}})) "type=\"file\"")
       "a file field stays a file input whatever type the caller gives"))
 
@@ -362,10 +372,10 @@
            (f {:value true :attrs {:value "yes" :class "x"}}))
         "what it sends is the caller's")
     (is (str/includes? (f {:attrs {:type "text"}}) "type=\"checkbox\"") "and it stays a checkbox")
-    (is (= (str W "<input aria-describedby=\"ok-error\" aria-invalid=\"true\" class=\"ui-check\" id=\"ok\" name=\"ok\" type=\"checkbox\" value=\"on\" />" LB
+    (is (= (str W "<input aria-describedby=\"ok-error o\" aria-invalid=\"true\" class=\"ui-check\" id=\"ok\" name=\"ok\" type=\"checkbox\" value=\"on\" />" LB
                 "<span class=\"ui-field__error\" id=\"ok-error\">tr::e:[]</span></div>")
            (f {:error :e :attrs {:aria-invalid "false" :aria-describedby "o"}}))
-        "a refused box is marked and described like any field")))
+        "a refused box is marked and described like any field, the caller's description after the error's")))
 
 (deftest an-inline-field-lays-its-label-and-control-on-one-line
   (is (= "<div class=\"ui-field ui-field--inline\"><label class=\"ui-field__label\" for=\"q\">Q</label><input class=\"ui-input\" id=\"q\" name=\"q\" type=\"text\" /></div>"

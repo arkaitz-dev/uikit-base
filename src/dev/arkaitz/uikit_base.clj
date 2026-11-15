@@ -104,7 +104,8 @@
   "A labelled control, marked and explained when the server refused it. `error` is a word
   of the host's dictionary, or a vector of the word and its arguments, as a handler's
   refusal names it; the control is then `aria-invalid` and described by the error, which
-  no attribute of the caller's undoes. `type` is an input's, \"text\" unless given, or one
+  no attribute of the caller's undoes — a caller's own `aria-describedby` is kept after
+  it, never in its place. `type` is an input's, \"text\" unless given, or one
   of four that are not inputs alike: \"select\" draws `options`, `[[value label] …]`, the
   one whose value is `value` selected — compared as text, since a refused form comes back
   as strings; \"textarea\" holds `value` as its text; \"file\" takes no value; \"checkbox\"
@@ -115,9 +116,12 @@
   (let [attrs    (normalised attrs)
         error-id (str (or (:id attrs) id) "-error")
         check?   (= "checkbox" type)
+        described (distinct (cons (when error error-id) (str/split (str/trim (str (:aria-describedby attrs ""))) #"\s+")))
+        described (str/join " " (remove str/blank? described))
         own      (cond-> {:id id :name id :class (if check? "ui-check" "ui-input")}
-                   error (assoc :aria-invalid "true" :aria-describedby error-id))
-        own      (with-attrs own attrs (if error [:aria-invalid :aria-describedby] []))
+                   error (assoc :aria-invalid "true"))
+        own      (cond-> (with-attrs own (dissoc attrs :aria-describedby) (if error [:aria-invalid] []))
+                   (seq described) (assoc :aria-describedby described))
         control  (case (or type "text")
                    "select"   (into [:select own]
                                     (for [[v l] options]
