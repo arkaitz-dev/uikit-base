@@ -22,8 +22,9 @@
       if (!(dialog instanceof HTMLDialogElement)) return;
       var command = button.getAttribute("command");
       if (command === "show-modal" && !dialog.open) { invokers.set(dialog, button); dialog.showModal(); }
-      if (command === "close" && dialog.open) dialog.close();
-      if (command === "request-close" && dialog.open && closedBy(dialog) !== "none") dialog.close();
+      // request-close closes a closedby=none dialog too, as the native command does (measured):
+      // closedby governs the person's own close requests, never the page's.
+      if ((command === "close" || command === "request-close") && dialog.open) dialog.close();
     });
     on("close", function (event) {
       var button = invokers.get(event.target);
@@ -77,7 +78,8 @@
   function hideTip(event) {
     var tip = tipOf(event.target);
     if (tip) setTimeout(function () {
-      var wrap = tip.parentElement, held = wrap.matches(":hover") || wrap.contains(document.activeElement);
+      // The tip is in the top layer, whose :hover its wrap does not share (measured), so ask both.
+      var held = tip.matches(":hover") || tip.parentElement.matches(":hover, :focus-within");
       if (!held && tip.matches(":popover-open")) tip.hidePopover();
     }, 150);
   }
@@ -116,9 +118,12 @@
   function go(carousel, step) {
     var view = carousel.querySelector(".ui-carousel__viewport"), n = view ? view.children.length : 0;
     if (!n || !view.clientWidth) return;
-    var at = Math.abs(view.scrollLeft) / view.clientWidth;
-    var from = Math.abs(at - Math.round(at)) < 0.01 || carousel.uiAt === undefined ? Math.round(at) : carousel.uiAt;
+    // While a scroll this started is under way, scrollLeft has not caught up (it may not have
+    // moved at all yet): count from the slide aimed at. 1000 ms bounds a smooth scroll, declared.
+    var busy = performance.now() < (carousel.uiUntil || 0);
+    var from = busy ? carousel.uiAt : Math.round(Math.abs(view.scrollLeft) / view.clientWidth);
     carousel.uiAt = (from + step + n) % n;
+    carousel.uiUntil = performance.now() + 1000;
     var sign = getComputedStyle(view).direction === "rtl" ? -1 : 1;
     view.scrollTo({ left: sign * carousel.uiAt * view.clientWidth, behavior: stillMotion.matches ? "auto" : "smooth" });
   }
