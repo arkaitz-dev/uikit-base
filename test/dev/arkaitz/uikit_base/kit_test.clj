@@ -736,6 +736,38 @@
     (is (= extras (set (remove (into renamed (map #(str "ui-" %) (keys bv))) (keys kv))))
         "and the utilities generate nothing else but the named extras")))
 
+(def ^:private option-palettes
+  "basaku's 201 option cases: presence by elevation for the nineteen seeds, and thirty with
+  explicit seeds."
+  (map :tokens (:cases (edn/read-string (slurp (io/file "test/resources/basaku-option-goldens.edn"))))))
+
+(deftest every-colour-utility-combination-is-an-audited-pair-in-every-palette
+  ;; A host may put any text utility on any background utility, on one element: each such
+  ;; pair, and each fill with its own ink, must be one basaku audits for text and must read
+  ;; at 4.5 in every palette it was measured in, light and dark.
+  (let [single  (for [{:keys [selectors decls conditions]} (:rules utilities-parsed) s selectors
+                      :when (empty? conditions) :when (re-matches #"\.ui-[\w-]+" s)] [s decls])
+        token   (fn [d k] (palette-var (get d k)))
+        inks    (vec (for [[s d] single :when (token d "color") :when (not (token d "background-color"))] [s (token d "color")]))
+        grounds (vec (for [[s d] single :when (token d "background-color") :when (not (token d "color"))] [s (token d "background-color")]))
+        fills   (vec (for [[s d] single :when (token d "color") :when (token d "background-color")] [s [(token d "background-color") (token d "color")]]))
+        canvases (remove (fn [[s]] (= ".ui-vr" s)) grounds)
+        pairs   (distinct (concat (for [[_ ink] inks [_ bg] canvases] [bg ink]) (map second fills)))
+        palettes (concat (vals goldens) option-palettes)]
+    (is (= [13 9 7] (mapv count [inks grounds fills])) "witness: thirteen text utilities, nine backgrounds, seven fills")
+    (is (= [".ui-vr"] (remove #(str/starts-with? % ".ui-bg-") (map first grounds)))
+        "the one background that is no canvas: a rule, which paints no text")
+    (is (= #{:background :surface :surface-alt :surface-low :surface-mid :surface-high} (set (map second canvases)))
+        "the canvases are the six neutral surfaces, and only those")
+    (is (= 104 (* (count inks) (count canvases))) "witness: the class combinations a host can write")
+    (is (= 49 (count pairs)) "witness: seven inks on six canvases, and seven fills")
+    (is (= 220 (count palettes)) "witness: the nineteen seeds and the 201 option cases")
+    (is (= [] (remove #(#{:aa :aaa} (audited %)) pairs)) "each an audited text pair")
+    (is (= [] (for [[bg fg] pairs t palettes [scheme i] [[:light 0] [:dark 1]]
+                    :let [r (wcag (get-in t [bg i]) (get-in t [fg i]))] :when (< r 4.5)]
+                [bg fg scheme r]))
+        "and each reads at 4.5 in every palette, light and dark")))
+
 (def ^:private req
   {::security/csrf-stored true :anti-forgery-token "T" ::security/csrf-used (volatile! false)
    :wb/tr (fn [k args] (str k args))})

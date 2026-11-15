@@ -4,8 +4,14 @@
   one, the subject — never the visible label alone, which stays the same when the subject
   is lost. A `confirm` is read in two places: its opening step, a `<summary>`, and the
   form its second step posts; `actions` answers both in one map. It reads the markup the
-  kit writes, and needs nothing but Clojure."
-  (:require [clojure.string :as str]))
+  kit writes, and needs nothing but Clojure.
+
+  `unaudited-pairs` reads a page for colour utilities combined on one element into a pair
+  basaku never audited: a text utility on a `ui-text-bg-*` fill, a fill on a background
+  utility, two fills. A text utility on a background utility is always an audited pair,
+  which the kit's own tests prove in every palette."
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]))
 
 (defn- unescape [s]
   (-> s (str/replace "&lt;" "<") (str/replace "&gt;" ">") (str/replace "&quot;" "\"")
@@ -61,3 +67,37 @@
                             (throw (ex-info "uikit-base: a confirm on the page has no form: it is not the kit's" {:html whole})))]
           (assoc (form-of fo fb) :first {:label (visible-label summary) :name (accessible-name summary)}))
         (assoc (form-of form-open form-body) :first nil)))))
+
+(def ^:private utility-colours
+  "Each colour utility of the kit's file, by class, as the tokens it sets: `{\"color\"
+  :link}`, `{\"background-color\" :surface}`, or both for a fill. Read from the file
+  the kit ships, so the two never disagree."
+  (delay
+    (let [css (slurp (io/resource "dev/arkaitz/uikit_base/public/ui-utilities.css"))]
+      (into {} (for [[_ c body] (re-seq #"(?m)^\.(ui-(?:text|link|bg)-[\w-]+)\{([^}]*)\}$" css)
+                     :let [d (into {} (for [[_ k t] (re-seq #"(?<![\w-])(color|background-color):var\(--ui-([a-z-]+)\)" body)] [k (keyword t)]))]
+                     :when (seq d)]
+                 [c d])))))
+
+(defn unaudited-pairs
+  "Every element of `html` whose own class list combines the kit's colour utilities into a
+  pair basaku does not audit, in page order, each `{:tag :class :pairs}`: its tag, its class
+  attribute, and each `[background ink]` its utilities could paint together that is not one
+  of them — every ink against every background its classes set, so a pair is reported even
+  where the cascade happens to hide it. A text utility (`ui-text-*`, `ui-link-*`) on a
+  background utility (`ui-bg-*`) is audited, and a fill (`ui-text-bg-*`) with its own ink;
+  nothing else combined is. An element with one colour utility, or none, is never one."
+  [html]
+  (let [colours @utility-colours
+        fills   (set (for [[_ d] colours :when (= 2 (count d))] [(d "background-color") (d "color")]))
+        inks    (set (for [[_ d] colours :when (= ["color"] (keys d))] (d "color")))
+        grounds (set (for [[_ d] colours :when (= ["background-color"] (keys d))] (d "background-color")))
+        audited? (fn [[bg fg :as pair]] (or (fills pair) (and (grounds bg) (inks fg))))]
+    (for [[_ tag attr-text] (re-seq #"<([a-zA-Z][\w-]*)(\s[^>]*)?>" (str html))
+          :let [cls  (get (attrs (or attr-text "")) "class" "")
+                own  (keep colours (str/split (str/trim cls) #"\s+"))
+                bgs  (distinct (keep #(get % "background-color") own))
+                fgs  (distinct (keep #(get % "color") own))
+                bad  (vec (for [bg bgs fg fgs :when (not (audited? [bg fg]))] [bg fg]))]
+          :when (seq bad)]
+      {:tag tag :class cls :pairs bad})))

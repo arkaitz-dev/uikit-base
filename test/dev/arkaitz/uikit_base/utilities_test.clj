@@ -22,3 +22,24 @@
   (let [out (io/file (str (Files/createTempDirectory "uikit-utilities" (make-array FileAttribute 0))) "a" "ui-utilities.css")]
     (is (= (str out) (utilities/write! (str out))) "answers the path, its directories made")
     (is (= (utilities/css) (slurp out)))))
+
+(defn- gzipped-size [^bytes b]
+  (let [o (java.io.ByteArrayOutputStream.)]
+    (with-open [z (java.util.zip.GZIPOutputStream. o)] (.write z b))
+    (.size o)))
+
+(def ^:private measured
+  "The utilities file at 0.6.0, measured on 2026-11-15: 79908 bytes, 10132 gzipped (Java's
+  GZIPOutputStream, its default level). Bootstrap 5.3.8's utilities and grid, which it
+  replaces, are 107938 and 70323 bytes."
+  {:raw 79908 :gzip 10132})
+
+(deftest the-utilities-stay-within-their-size-budget
+  ;; Declared policy, not a derived bound: the measured size above plus a tenth (87898 raw,
+  ;; 11145 gzipped). Growth past that is a decision to make, and to write here with its new
+  ;; measurement — never a number raised to make this green.
+  (let [b      (java.nio.file.Files/readAllBytes (.toPath (io/file committed-path)))
+        budget (fn [k] (long (* 1.1 (measured k))))]
+    (is (< (alength b) 107938) "witness: smaller than Bootstrap's utilities alone")
+    (is (<= (alength b) (budget :raw)) (str "raw bytes: " (alength b)))
+    (is (<= (gzipped-size b) (budget :gzip)) (str "gzipped bytes: " (gzipped-size b)))))

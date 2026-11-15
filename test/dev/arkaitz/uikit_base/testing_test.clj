@@ -34,3 +34,35 @@
   (is (= "uikit-base: a confirm on the page has no form: it is not the kit's"
          (try (doall (ut/actions "<details class=\"ui-confirm\"><summary>x</summary></details>")) nil (catch ExceptionInfo e (ex-message e)))))
   (is (= "a&lt;b c d" (ut/accessible-name "a&amp;lt;b <b>c</b>\n d")) "entities read once, tags dropped, space collapsed"))
+
+(def ^:private colour-classes
+  "The colour utilities as the shipped file declares them, read here by the test's own
+  pattern: text inks, canvases and fills, by class."
+  (let [css (slurp (clojure.java.io/resource "dev/arkaitz/uikit_base/public/ui-utilities.css"))
+        rules (for [[_ c body] (re-seq #"(?m)^\.(ui-[\w-]+)\{([^}]*)\}$" css)] [c body])
+        sets (fn [body prop] (second (re-find (re-pattern (str "(?:^|;)" prop ":var\\(--ui-([a-z-]+)\\)")) body)))]
+    {:inks  (vec (for [[c b] rules :when (re-matches #"ui-(text|link)-.*" c) :when (not (str/starts-with? c "ui-text-bg-")) :let [t (sets b "color")] :when t] [c (keyword t)]))
+     :bgs   (vec (for [[c b] rules :when (str/starts-with? c "ui-bg-") :let [t (sets b "background-color")] :when t] [c (keyword t)]))
+     :fills (vec (for [[c b] rules :when (str/starts-with? c "ui-text-bg-")] [c [(keyword (sets b "background-color")) (keyword (sets b "color"))]]))}))
+
+(deftest unaudited-pairs-names-every-colour-combination-basaku-never-audited
+  (let [{:keys [inks bgs fills]} colour-classes
+        p (fn [cls] (str "<div><p class=\"" cls "\">x</p></div>"))]
+    (is (= [13 8 7] (mapv count [inks bgs fills])) "witness: thirteen text utilities, eight canvases, seven fills")
+    (is (= [] (for [[i] inks [b] bgs :let [r (ut/unaudited-pairs (p (str i " " b)))] :when (seq r)] [i b r]))
+        "a text utility on a background utility is an audited pair, every one of the 104")
+    (is (= [] (for [[f] fills :let [r (ut/unaudited-pairs (p (str "ui-p-2 " f)))] :when (seq r)] [f r]))
+        "a fill with its own ink is one, beside a utility that paints nothing")
+    (is (= [] (ut/unaudited-pairs (p "ui-text-muted ui-text-danger"))) "two inks with no background are no pair")
+    (is (= (vec (for [[i ink] inks [f [fill own]] fills] {:tag "p" :class (str i " " f) :pairs [[fill ink]]}))
+           (vec (mapcat #(ut/unaudited-pairs (p (str (first %) " " (second %)))) (for [[i] inks [f] fills] [i f]))))
+        "a text utility on a fill is named, the fill's background against the utility's ink, all 91")
+    (is (= [{:tag "p" :class "ui-text-bg-primary ui-bg-surface" :pairs [[:surface :on-primary]]}]
+           (ut/unaudited-pairs (p "ui-text-bg-primary ui-bg-surface")))
+        "a fill on a background utility: its ink on the other background")
+    (is (= [{:tag "span" :class "ui-text-bg-primary ui-text-bg-dark" :pairs [[:primary :on-surface-inverse] [:surface-inverse :on-primary]]}]
+           (ut/unaudited-pairs "<span class=\"ui-text-bg-primary ui-text-bg-dark\"></span>"))
+        "two fills: each ink on the other's ground, whichever the cascade lets win")
+    (is (= [{:tag "a" :class "x ui-link-primary  ui-text-bg-info" :pairs [[:info :link]]}]
+           (ut/unaudited-pairs (str "<p class=\"ui-text-muted\">ok</p><a href=\"/\" class=\"x ui-link-primary  ui-text-bg-info\">" "</a><div class=\"ui-bg-surface\"></div>")))
+        "only the element that combines them, read among others, its class kept as written")))
