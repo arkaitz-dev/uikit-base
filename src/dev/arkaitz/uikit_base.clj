@@ -291,17 +291,27 @@
   by `cell` carries its own attributes. A column whose head is nil is not drawn, in the
   head or in any row, so a column shown only sometimes is `(when shown? \"Label\")` in the
   head and anything at all in the rows; a column always there with an empty header is
-  `\"\"`. `:row-header?` makes the first drawn cell of each row its header."
-  [{:keys [caption head rows row-header? attrs row-attrs]}]
-  (let [gone (set (keep-indexed (fn [i h] (when (nil? h) i)) head))
-        kept (fn [cells] (->> cells (map-indexed vector) (remove (comp gone first)) (map second)))]
-    [:table (with-attrs {:class "ui-table"} attrs [])
-     (when caption [:caption caption])
-     (when (seq head) [:thead [:tr (for [h (kept head)] (cell-of :th {:scope "col"} h))]])
-     [:tbody (for [row rows]
-               (into [:tr (with-attrs {} (when row-attrs (row-attrs row)) [])]
-                     (map-indexed (fn [i c] (if (and row-header? (zero? i)) (cell-of :th {:scope "row"} c) (cell-of :td {} c)))
-                                  (kept row))))]]))
+  `\"\"`. `:row-header?` makes the first drawn cell of each row its header. A cell of
+  `{:class \"ui-num\"}` holds a number, aligned to its end in figures of one width.
+
+  `scroll-label` puts the table in a region that scrolls sideways on a narrow screen,
+  named by it and reachable by the keyboard, which is how a keyboard scrolls it; without
+  one the table is drawn alone."
+  [{:keys [caption head rows row-header? attrs row-attrs scroll-label]}]
+  (when (and (some? scroll-label) (not (and (string? scroll-label) (not (str/blank? scroll-label)))))
+    (throw (ex-info "uikit-base: a table's scroll-label names its region" {:scroll-label scroll-label})))
+  (let [gone  (set (keep-indexed (fn [i h] (when (nil? h) i)) head))
+        kept  (fn [cells] (->> cells (map-indexed vector) (remove (comp gone first)) (map second)))
+        table [:table (with-attrs {:class "ui-table"} attrs [])
+               (when caption [:caption caption])
+               (when (seq head) [:thead [:tr (for [h (kept head)] (cell-of :th {:scope "col"} h))]])
+               [:tbody (for [row rows]
+                         (into [:tr (with-attrs {} (when row-attrs (row-attrs row)) [])]
+                               (map-indexed (fn [i c] (if (and row-header? (zero? i)) (cell-of :th {:scope "row"} c) (cell-of :td {} c)))
+                                            (kept row))))]]]
+    (if scroll-label
+      [:div {:class "ui-table-wrap" :role "region" :tabindex "0" :aria-label scroll-label} table]
+      table)))
 
 (defn rows
   "`(rows attrs? & rows)` → a list of rows, each a `row`: what a page lists when a table's
@@ -347,7 +357,7 @@
   (when (or previous next)
     [:nav (with-attrs {:class "ui-pager" :aria-label (kit-word request label :uikit-base/pages)} attrs [])
      (when previous (wb/link previous {:rel "prev"} (kit-word request previous-label :uikit-base/previous)))
-     (when where [:span where])
+     (when where [:span.ui-pager__where where])
      (when next (wb/link next {:rel "next"} (kit-word request next-label :uikit-base/next)))]))
 
 (defn- named-items!

@@ -217,15 +217,15 @@
                             (ui/tabs-nav req {:label "S" :items [["/a" "A"]] :current "/a"})
                             (ui/page-head {:title "t" :subtitle "s" :actions [(ui/link-button "/a" "x")]})
                             (for [k [:ok :info :warning :error]] (ui/notice k "x"))
-                            (ui/table {:caption "c" :head ["h"] :rows [["a" "b"]] :row-header? true})
-                            (ui/pager req {:previous "/a" :next "/b"})
+                            (ui/table {:caption "c" :head ["h"] :rows [["a" "b"]] :row-header? true :scroll-label "s"})
+                            (ui/pager req {:previous "/a" :next "/b" :where "w"})
                             (ui/rows (ui/row "x"))
                             (ui/rows {:plain? true} (ui/row "x"))
                             (ui/field req {:id "c" :label "C" :type "checkbox" :inline? true})
                             (for [k [:neutral :success :danger :warning :info]] (ui/badge k "x"))
                             (ui/card "x")))
         classes (set (mapcat #(str/split % #" ") (map second (re-seq #"class=\"([^\"]*)\"" markup))))]
-    (is (= 48 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
+    (is (= 50 (count classes)) (str "witness: the classes emitted, a count measured once: " (sort classes)))
     (is (= [] (remove #(re-find (re-pattern (str "(?m)(^\\s*|[,{}]\\s*)\\." % "\\s*[,{>]")) kit) classes))
         "each is the whole selector of a rule of kit.css: a class the kit does not style is a component nobody styled")))
 
@@ -386,6 +386,15 @@
     (is (= ["web-base: link's href must be a path on this origin" {:wb/link :href}] (refusal #(ui/tabs-nav req {:label "S" :items [[p "A"]]}))) (pr-str p)))
   (is (= ["uikit-base: every item of a tabs-nav has a label" {}] (refusal #(ui/tabs-nav req {:label "S" :items [["/a" ""]]})))))
 
+(deftest a-wide-table-scrolls-in-a-named-region-the-keyboard-reaches
+  (is (= (str "<div aria-label=\"Orders &lt;all&gt;\" class=\"ui-table-wrap\" role=\"region\" tabindex=\"0\"><table class=\"ui-table\"><tbody><tr><td>a</td>"
+              "<td class=\"ui-num\">1.50</td></tr></tbody></table></div>")
+         (html (ui/table {:rows [["a" (ui/cell {:class "ui-num"} "1.50")]] :scroll-label "Orders <all>"}))))
+  (is (= "<table class=\"ui-table\"><tbody><tr><td>a</td></tr></tbody></table>" (html (ui/table {:rows [["a"]]})))
+      "without a label, the table alone, as before")
+  (doseq [l ["" "  " :k]]
+    (is (= ["uikit-base: a table's scroll-label names its region" {:scroll-label l}] (refusal #(ui/table {:rows [] :scroll-label l}))) (pr-str l))))
+
 (deftest a-table-heads-its-columns-and-captions-what-it-lists
   (is (= (str "<table class=\"ui-table\"><caption>C&lt;</caption><thead><tr><th scope=\"col\">A</th><th scope=\"col\">B&amp;</th></tr></thead>"
               "<tbody><tr><td>a1</td><td>b1</td></tr><tr><td>a2</td><td><b>x&lt;</b></td></tr></tbody></table>")
@@ -453,14 +462,14 @@
 
 (deftest a-pager-links-each-side-in-the-readers-language-around-where-the-reader-is
   (let [o {:previous "/l?page=1" :next "/l?page=3&q=a" :where "page 2 of 5"}]
-    (is (= (str "<nav aria-label=\"Pages\" class=\"ui-pager\">" (L "/l?page=1" "prev" "Previous") "<span>page 2 of 5</span>"
+    (is (= (str "<nav aria-label=\"Pages\" class=\"ui-pager\">" (L "/l?page=1" "prev" "Previous") "<span class=\"ui-pager__where\">page 2 of 5</span>"
                 (L "/l?page=3&amp;q=a" "next" "Next") "</nav>")
            (html (ui/pager {:wb/tr (tr-for :en)} o))))
-    (is (= (str "<nav aria-label=\"Páginas\" class=\"ui-pager\">" (L "/l?page=1" "prev" "Anterior") "<span>page 2 of 5</span>"
+    (is (= (str "<nav aria-label=\"Páginas\" class=\"ui-pager\">" (L "/l?page=1" "prev" "Anterior") "<span class=\"ui-pager__where\">page 2 of 5</span>"
                 (L "/l?page=3&amp;q=a" "next" "Siguiente") "</nav>")
            (html (ui/pager {:wb/tr (tr-for :es)} o)))
         "in Spanish")
-    (is (= (str "<nav aria-label=\"Pp\" class=\"ui-pager\">" (L "/l?page=1" "prev" "Back") "<span>page 2 of 5</span>"
+    (is (= (str "<nav aria-label=\"Pp\" class=\"ui-pager\">" (L "/l?page=1" "prev" "Back") "<span class=\"ui-pager__where\">page 2 of 5</span>"
                 (L "/l?page=3&amp;q=a" "next" "Fwd") "</nav>")
            (html (ui/pager {:wb/tr (tr-for :es)} (assoc o :label "Pp" :previous-label "Back" :next-label "Fwd"))))
         "an explicit label wins over the dictionary"))
@@ -487,7 +496,7 @@
                                     :session {:key KEY} :plugins [(web/plugin)] :i18n i18n}))
         main #(second (re-find #"(<main[^>]*>.*</main>)" (str (:body %))))]
     (is (= (str "<main class=\"wb-main\" tabindex=\"-1\"><nav aria-label=\"Páginas\" class=\"ui-pager\">" (L "/a" "prev" "Anterior")
-                "<span>page 2 of 5</span>" (L "/b" "next" "Siguiente") "</nav></main>")
+                "<span class=\"ui-pager__where\">page 2 of 5</span>" (L "/b" "next" "Siguiente") "</nav></main>")
            (main ((app {:default-locale :es}) (mock/request :get "/"))))
         "a host speaking Spanish: the plugin's words, merged by web-base")
     (is (str/includes? (str (:body ((wb/handler {:routes [["/" {:wb/layouts [shell/page] :get (fn [q] {:status 200 :body (ui/crumbs q {:items [[nil "x"]]})})}]]
