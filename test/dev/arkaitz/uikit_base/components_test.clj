@@ -1187,11 +1187,12 @@
                   [[:a {:href nil} "x"] :a] [[:span {:tabindex nil} "x"] :span] [[:span {:tabindex "-1"} "x"] :span] [[:span {:tabindex -2} "x"] :span]
                   [[:span {:tabindex "x"} "x"] :span] [[:button {:tabindex "-1"} "x"] :button] [[:button {:disabled true} "x"] :button]
                   [[:input {"DISABLED" "disabled"}] :input] [[:input {:type "hidden"}] :input] [[:input {:type "HIDDEN"}] :input]
-                  [[:SPAN "x"] :span]]]
+                  [[:SPAN "x"] :span] [[:input {:type :hidden}] :input] [[:a {:href false} "x"] :a] [[(keyword ".") "x"] (keyword "")]]]
     (is (= ["uikit-base: a tooltip's trigger takes the focus by Tab: a button, a link with an href, a form control that is neither hidden nor disabled, a summary, or an element with a tabindex of 0 or more" {:trigger el}]
            (refusal #(ui/tooltip {:id "t" :text "T"} t))) (pr-str t)))
   (doseq [t [[:button "x"] [:a {:href "/x"} "x"] [:input {:type "text"}] [:input] [:select] [:textarea] [:summary "s"] [:span {"TABINDEX" "0"} "i"]
-             [:span {:tabindex 2} "i"] [:button#b.c "x"] [:BUTTON "x"] [:A {:href "/x"} "x"] [:button {:disabled false} "x"]]]
+             [:span {:tabindex 2} "i"] [:button#b.c "x"] [:BUTTON "x"] [:A {:href "/x"} "x"] [:button {:disabled false} "x"]
+             [:span {:tabindex 0 :disabled true} "i"] [:a {:href "/x" :disabled true} "x"]]]
     (is (str/includes? (html (ui/tooltip {:id "t" :text "T"} t)) "aria-describedby=\"t\"") (str "a trigger that takes the focus is described " (pr-str t)))))
 
 ;; --- K18: toasts and carousels -----------------------------------------------------------

@@ -1042,13 +1042,14 @@
   (when-not (and (vector? trigger) (keyword? (first trigger)))
     (throw (ex-info "uikit-base: a tooltip's trigger is one element, which it describes" {})))
   (let [[tag & more] trigger
-        el (keyword (.toLowerCase ^String (first (str/split (name tag) #"[.#]")) java.util.Locale/ROOT))
+        el (keyword (.toLowerCase (str (first (str/split (name tag) #"[.#]"))) java.util.Locale/ROOT))
         a  (normalised (first (split-attrs more)))
         tab (some-> (:tabindex a) str str/trim parse-long)]
     ;; Shown on focus as well as hover: a trigger Tab cannot reach hides it from the keyboard.
-    (when-not (and (or (#{:button :select :textarea :summary} el) (and (= :input el) (not= "hidden" (some-> (:type a) str str/lower-case)))
-                       (and (= :a el) (some? (:href a))) (and (some? (:tabindex a)) (some? tab) (<= 0 tab)))
-                   (not (:disabled a))
+    (when-not (and (or (#{:button :select :textarea :summary} el) (and (= :input el) (not= "hidden" (some-> (:type a) name str/lower-case)))
+                       (and (= :a el) (some? (:href a)) (not (false? (:href a)))) (and (some? (:tabindex a)) (some? tab) (<= 0 tab)))
+                   ;; Only a form control is disabled by the attribute; a span or a link keeps its focus.
+                   (not (and (#{:button :input :select :textarea} el) (:disabled a)))
                    (not (and (some? (:tabindex a)) (or (nil? tab) (neg? tab)))))
       (throw (ex-info "uikit-base: a tooltip's trigger takes the focus by Tab: a button, a link with an href, a form control that is neither hidden nor disabled, a summary, or an element with a tabindex of 0 or more" {:trigger el}))))
   (let [[tag & more] trigger

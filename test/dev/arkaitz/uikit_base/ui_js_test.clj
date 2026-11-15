@@ -37,7 +37,8 @@
             (#{\" \'} c) (do (.append out c) (recur (inc i) c))
             (and (= c \/) (= nxt \/)) (recur (or (str/index-of text "\n" i) n) nil)
             (and (= c \/) (= nxt \*)) (recur (+ 2 (or (str/index-of text "*/" (+ i 2)) (- n 2))) nil)
-            (and (= c \/) (not (and (pos? i) (= \space (.charAt text (dec i))) (= \space nxt))))
+            (and (= c \/) (not (and (pos? i) (= \space (.charAt text (dec i))) (= \space nxt)
+                                    (not (#{\" \' \/} (when (< (+ i 2) n) (.charAt text (+ i 2))))))))
             {:code (str out) :open nil :refused [:slash i]}
             :else (do (.append out c) (recur (inc i) nil))))))))
 
@@ -47,7 +48,8 @@
   (is (= [:slash 8] (:refused (code "if (ok) /[//]/.test(s) && (el.innerHTML = s);"))) "a regex after a closing parenthesis")
   (is (= [:slash 4] (:refused (code "x = /[/*]/.test(s); el.innerHTML = s; // */"))) "a regex holding a comment's opening")
   (doseq [[src at] [["return /a/.test(x);" 7] ["x = !/a/.test(y);" 5] ["f(a ? /b/ : c);" 6] ["[/a/];" 1] ["a; /b/.exec(c);" 3]
-                    ["x = y || /z/;" 9] ["a/2" 1] ["a /2" 2] ["a/ 2" 1] ["/a/" 0]]]
+                    ["x = y || /z/;" 9] ["a/2" 1] ["a /2" 2] ["a/ 2" 1] ["/a/" 0]
+                    ["x = / ' / .test(s); el.innerHTML = s; y = ' ';" 4] ["x = / \" /;" 4]]]
     (is (= [:slash at] (:refused (code src))) src))
   (is (= [:template-literal 4] (:refused (code "x = `${a}` + innerHTML;"))) "a template literal")
   (doseq [src ["a / 2" "(a + b) / c" "x[1] / y" "w / h // half" "a /* b */ / c"]]

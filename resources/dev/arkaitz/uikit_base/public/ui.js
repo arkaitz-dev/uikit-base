@@ -93,8 +93,10 @@
     if (event.key !== "Escape") return;
     var tips = document.querySelectorAll(".ui-tooltip:popover-open");
     tips.forEach(function (tip) { tip.hidePopover(); });
-    var refused = !nativeClosedBy && !document.querySelector("[popover]:popover-open") &&
-      document.activeElement?.closest("dialog[closedby='none']:modal");
+    // The innermost modal holding the focus; when the focus has fallen to body (a click on a
+    // modal's text), the open modal itself.
+    var modal = [...document.querySelectorAll(":modal:focus-within")].pop() || document.querySelector(":modal");
+    var refused = !nativeClosedBy && !document.querySelector(":popover-open") && modal?.matches("[closedby=none]");
     if (tips.length || refused) event.preventDefault();
   }, true);
 
