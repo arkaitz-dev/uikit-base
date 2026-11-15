@@ -2,15 +2,16 @@
 ;; tree: the kit's behaviour no JVM test can see. browser_checks_test holds that every check
 ;; passed and that the files below are the bytes they were run against, so a change to any of
 ;; them reds until the checks are run again and this file regenerated.
-{:checked "2026-11-15"
- :files {"kit.css" "75465bc7554a1569b79a6a4e15ee83095787a320672f49bb551fb04c135c947f"
+{:checked "2026-11-16"
+ :files {"kit.css" "c4ac3ce0cd2dbe7b317fb70c081e0e820fab6c9f4c225dcec50d31612d3769a6"
          "ui-utilities.css" "a13d081a7dacf810293c7e730b1e6da87d36c89af1336f9bb5dda55fc6f981e6"
          "ui.js" "878114b96d396c64e6f22a94926abab1e6e042334bbf97947ea25d956c275daa"
-         "gallery-check.mjs" "35fd6bc8f422b4ffc997077b2304cc2fa21de9dea3cba60827f4357cc337783a"}
+         "gallery-check.mjs" "5d6f041b6f0b7f30874a37fd030f906cf6432a4906189af4ee6ff3ea1658192b"}
  :runs [
   {:engine "webkit" :version "26.4"
    :modes {
     "native" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
+     "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
      "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
@@ -23,6 +24,7 @@
      "forced: native invoker commands were cancelled, so the script acted" true
      "no CSP violation, no script error" true}
     "older-floor" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
+     "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
      "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
@@ -37,6 +39,7 @@
   {:engine "chromium" :version "145.0.7632.6"
    :modes {
     "native" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
+     "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
      "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
@@ -49,6 +52,7 @@
      "forced: native invoker commands were cancelled, so the script acted" true
      "no CSP violation, no script error" true}
     "older-floor" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
+     "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
      "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
@@ -61,6 +65,7 @@
      "forced: native invoker commands were cancelled, so the script acted" true
      "no CSP violation, no script error" true}
     "anchor-without-scope" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
+     "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
      "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true

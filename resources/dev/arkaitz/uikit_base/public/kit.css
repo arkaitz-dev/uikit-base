@@ -544,7 +544,9 @@
 
     /* Layout: a stack of blocks, a cluster that wraps, a grid of as many columns as fit. */
     .ui-stack { display: grid; gap: var(--ui-spacing-md); align-content: start; }
-    .ui-stack > * { margin-block: 0; }
+    /* Not a dialog or a popover: they sit in the top layer, out of the stack's flow, and the
+     * user agent centres a modal by its auto margins (measured: zeroed, it sat at the top). */
+    .ui-stack > :where(:not(dialog, [popover])) { margin-block: 0; }
     .ui-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-sm); }
     .ui-grid { display: grid; gap: var(--ui-spacing-md); grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
 

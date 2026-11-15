@@ -50,6 +50,15 @@ for (const [mode, init] of Object.entries(modes)) {
     await p.keyboard.press('Escape');
     return { open, inside, closed: !(await isOpen('g-dialog')), focus: await p.evaluate(() => document.activeElement?.matches('button[command=show-modal][commandfor=g-dialog]')) };
   }, s => s.open && s.inside && s.closed && s.focus);
+  await check('dialog: centred in the viewport, inside a ui-stack as a page puts it', async () => {
+    // Measured in Chrome: `.ui-stack > *` zeroed the user agent's auto margins and the modal
+    // sat at the top of the window; no check looked at where it sat.
+    await opener.click();
+    const r = await p.locator('#g-dialog').boundingBox(), vw = 1024, vh = 768;
+    const inStack = await p.evaluate(() => !!document.getElementById('g-dialog').closest('.ui-stack'));
+    await p.keyboard.press('Escape');
+    return { inStack, dy: Math.round(r.y - (vh - r.height) / 2), dx: Math.round(r.x - (vw - r.width) / 2) };
+  }, s => s.inStack && Math.abs(s.dy) <= 1 && Math.abs(s.dx) <= 1);
   await check('dialog: a press on the backdrop closes, a drag out of it does not, the x closes', async () => {
     await opener.click(); await p.mouse.click(5, 5);
     const press = !(await isOpen('g-dialog'));
