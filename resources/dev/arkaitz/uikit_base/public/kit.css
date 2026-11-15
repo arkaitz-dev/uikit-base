@@ -41,6 +41,8 @@
     transition: background-color var(--ui-duration), border-color var(--ui-duration);
   }
   .ui-btn:hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
+  .ui-btn:active { color: var(--ui-on-surface); background: var(--ui-surface-high); }
+  .ui-btn[aria-busy="true"] { cursor: progress; }
   .ui-btn--sm { padding: var(--ui-space-xs) var(--ui-space-sm); font-size: var(--ui-font-sm); }
   .ui-btn--lg { padding: var(--ui-space-md) var(--ui-space-lg); font-size: var(--ui-font-lg); }
   .ui-btn--primary { color: var(--ui-on-primary); background: var(--ui-primary); border-color: var(--ui-primary-border); }
@@ -69,11 +71,22 @@
   .ui-form { display: grid; gap: var(--ui-space-md); max-width: 32rem; }
   .ui-field { display: grid; gap: var(--ui-space-xs); }
   .ui-field__label { font-weight: 600; }
+  /* The same box as a button's (padding, line, type, border), so the two sit level. */
   .ui-input {
-    font: inherit; padding: var(--ui-space-sm); color: var(--ui-on-surface); background: var(--ui-surface);
+    font: inherit; font-size: var(--ui-font-base); line-height: 1.25;
+    padding: var(--ui-space-sm) var(--ui-space-sm); color: var(--ui-on-surface); background: var(--ui-surface);
     border: 1px solid var(--ui-border-strong); border-radius: var(--ui-radius-md);
   }
+  .ui-input::placeholder { color: var(--ui-text-muted); opacity: 1; }
+  textarea.ui-input { min-height: 6rem; resize: vertical; }
+  /* Hover, then a refusal over it, then read-only, then disabled over everything: equal
+   * specificity, so the order is the precedence. */
+  .ui-input:hover { border-color: var(--ui-primary-border); }
   .ui-input[aria-invalid="true"] { border-color: var(--ui-danger-border); }
+  .ui-input[readonly] { color: var(--ui-on-surface-alt); background: var(--ui-surface-alt); }
+  .ui-input:disabled {
+    color: var(--ui-disabled-fg); background: var(--ui-disabled-bg); border-color: var(--ui-disabled-bg); cursor: not-allowed;
+  }
   .ui-field__error { color: var(--ui-danger-ink); font-size: var(--ui-font-sm); }
   .ui-field--inline { grid-auto-flow: column; justify-content: start; align-items: baseline; gap: var(--ui-space-sm); }
   .ui-field--check { grid-template-columns: auto 1fr; align-items: baseline; gap: var(--ui-space-sm); }

@@ -107,16 +107,23 @@
   (let [parts (re-seq #"[^\s>+~]+|\s*[>+~]\s*|\s+" (str/trim sel))]
     (map str/join (reduce (fn [acc part] (for [a acc x (if (re-matches compound-re part) (implied part) [part])] (conj a x))) [[]] parts))))
 
-(defn- resolved
-  "The palette token the cascade gives `sel` for one of `props`: among the kit's rules that
-  apply to it, the one of highest specificity, then the last — they share a layer. With
-  none, a pseudo-element takes its element's, and a descendant its ancestor's: the colour
-  it inherits, the background that shows through."
+(defn- cascaded
+  "The value the cascade gives `sel` for the first of `props` any rule sets: among the
+  kit's rules that apply to it, the one of highest specificity, then the last — they share
+  a layer. Nil when none sets it."
   [rules sel props]
-  (let [applies (set (selectors-implied sel))
-        winner  (last (sort-by (juxt (comp specificity first) second)
-                               (for [[sels decls i] rules s sels :when (applies s) p props :when (contains? decls p)] [s i (get decls p)])))]
-    (cond winner (palette-var (nth winner 2))
+  (let [applies (set (selectors-implied sel))]
+    (some-> (last (sort-by (juxt (comp specificity first) second)
+                           (for [[sels decls i] rules s sels :when (applies s) p props :when (contains? decls p)] [s i (get decls p)])))
+            (nth 2))))
+
+(defn- resolved
+  "The palette token the cascade gives `sel` for one of `props`. With none, a
+  pseudo-element takes its element's, and a descendant its ancestor's: the colour it
+  inherits, the background that shows through."
+  [rules sel props]
+  (let [winner (cascaded rules sel props)]
+    (cond winner (palette-var winner)
           (re-find #"::[a-z-]+$" sel) (resolved rules (str/replace sel #"::[a-z-]+$" "") props)
           (re-find #"[\s>+~]" (str/trim sel)) (resolved rules (str/trim (str/replace (str/trim sel) #"\s*[>+~]?\s*[^\s>+~]+$" "")) props))))
 
@@ -134,7 +141,7 @@
     (is (= [0 2 1] (specificity ".ui-pager a:focus-visible")) "witness: the test's specificity")
     (is (= #{".ui-btn--primary:hover" ".ui-btn--primary" ".ui-btn:hover" ".ui-btn"} (set (selectors-implied ".ui-btn--primary:hover")))
         "witness: a variant's hover is also the base's hover")
-    (is (= 40 (count pairs)) (str "witness: every painted pair found, a count measured once: " (count pairs)))
+    (is (= 44 (count pairs)) (str "witness: every painted pair found, a count measured once: " (count pairs)))
     (is (= 21.0 (wcag "#000000" "#ffffff")) "witness: the test's WCAG")
     (doseq [[s bg fg :as p] pairs]
       (testing s
@@ -164,7 +171,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 88 (count bearing)) (str "witness: the colour-bearing declarations, a count measured once: " (count bearing)))
+    (is (= 97 (count bearing)) (str "witness: the colour-bearing declarations, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -190,7 +197,7 @@
                           [s t]))
         edges (remove dividers found)]
     (is (= dividers (set (filter dividers found))) "every divider named is still drawn")
-    (is (= 21 (count edges)) (str "witness: the edges, a count measured once: " (count edges)))
+    (is (= 22 (count edges)) (str "witness: the edges, a count measured once: " (count edges)))
     (doseq [[s t] edges bg [:background :surface :surface-alt]]
       (testing (str s " " t)
         (is (= :ui (audited [bg t])) "an audited non-text pair")
@@ -210,6 +217,39 @@
                               (when (re-find four k) (let [t (str/split (str/trim v) #"\s+")] (and (= 4 (count t)) (not= (t 1) (t 3))))))]
                 [sels k v]))
         "every side is a logical one: inline start and end")))
+
+(defn- input-states
+  "Every combination of the states the kit styles on `.ui-input`, as one compound each."
+  []
+  (let [states (distinct (for [[sels] (leaf-rules) s sels :let [[_ st] (re-matches #"\.ui-input((?::[a-z-]+|\[[^\]]*\])+)" s)] :when st
+                               x (map first (re-seq state-re st))] x))]
+    (map #(str ".ui-input" (apply str %)) (reduce (fn [acc st] (concat acc (map #(conj % st) acc))) [[]] states))))
+
+(deftest a-refused-control-keeps-its-danger-edge-in-every-state
+  (let [rules (leaf-rules)
+        live  (remove #(str/includes? % ":disabled") (filter #(str/includes? % "[aria-invalid=\"true\"]") (input-states)))]
+    (is (= 8 (count live)) (str "witness: the refused states, a count measured once: " (vec live)))
+    (is (= [] (for [s live :let [t (resolved rules s ["border-color" "border"])] :when (not= :danger-border t)] [s t]))
+        "hovered, read-only or not, a refused control is edged in danger")))
+
+(deftest a-disabled-input-looks-disabled-in-every-state
+  (let [rules (leaf-rules)
+        look  (fn [s] (mapv #(resolved rules s %) [["color"] backgrounds ["border-color" "border"]]))
+        dead  (filter #(str/includes? % ":disabled") (input-states))]
+    (is (= [:disabled-fg :disabled-bg :disabled-bg] (look ".ui-input:disabled")) "witness: the disabled look")
+    (is (= 16 (count dead)) (str "witness: the disabled states, a count measured once: " (count dead)))
+    (is (= [] (for [s dead :let [l (look s)] :when (not= l (look ".ui-input:disabled"))] [s l]))
+        "no hover, refusal or read-only shows through a disabled control")))
+
+(deftest an-input-and-a-button-share-one-box
+  ;; Only the declarations are compared: a browser alone measures pixels.
+  (let [rules (leaf-rules)
+        box   (fn [s] [(cascaded rules s ["font-size"]) (cascaded rules s ["line-height"])
+                       (some-> (cascaded rules s ["padding-block" "padding"]) (str/split #"\s+") first)
+                       (some-> (cascaded rules s ["border-width" "border"]) (str/split #"\s+") first)
+                       (cascaded rules s ["height" "min-height"])])]
+    (is (= ["var(--ui-font-base)" "1.25" "var(--ui-space-sm)" "1px" nil] (box ".ui-btn")) "witness: the button's box")
+    (is (= (box ".ui-btn") (box ".ui-input")) "an inline input sits level with the button beside it")))
 
 (def ^:private req
   {::security/csrf-stored true :anti-forgery-token "T" ::security/csrf-used (volatile! false)
