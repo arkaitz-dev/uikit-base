@@ -431,7 +431,7 @@
     (is (= [0 2 1] (specificity ".ui-pager a:focus-visible")) "witness: the test's specificity")
     (is (= #{".ui-btn--primary:hover" ".ui-btn--primary" ".ui-btn:hover" ".ui-btn"} (set (selectors-implied ".ui-btn--primary:hover")))
         "witness: a variant's hover is also the base's hover")
-    (is (= 80 (count pairs)) (str "witness: every painted pair found, a count measured once: " (count pairs)))
+    (is (= 126 (count pairs)) (str "witness: every painted pair found — the kit's 80, then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
     (is (= 21.0 (wcag "#000000" "#ffffff")) "witness: the test's WCAG")
     (doseq [[s bg fg :as p] pairs]
       (testing s
@@ -461,7 +461,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 119 (count bearing)) (str "witness: the colour-bearing declarations, a count measured once: " (count bearing)))
+    (is (= 194 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 119 and the utilities' 75, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -490,7 +490,7 @@
                           [s t]))
         edges (remove dividers found)]
     (is (= dividers (set (filter dividers found))) "every divider named is still drawn")
-    (is (= 27 (count edges)) (str "witness: the edges, a count measured once: " (count edges)))
+    (is (= 39 (count edges)) (str "witness: the edges — the kit's 27, then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
     (doseq [[s t] edges bg [:background :surface :surface-alt]]
       (testing (str s " " t)
         (is (= :ui (audited [bg t])) "an audited non-text pair")
@@ -567,6 +567,175 @@
     (is (= [] (remove (fn [[_ p]] (#{"relative" "absolute" "fixed" "sticky"} p)) scrolling))
         "each is positioned, so what it holds is clipped by it")))
 
+(def ^:private bootstrap
+  "Bootstrap 5.3.8's utilities and grid (MIT; test/resources/bootstrap-5.3.8, downloaded with
+  the user's permission), read by this test's own parser."
+  (delay (parse-css (str/replace (str (slurp (io/file "test/resources/bootstrap-5.3.8/bootstrap-utilities.css")) "\n"
+                                      (slurp (io/file "test/resources/bootstrap-5.3.8/bootstrap-grid.css")))
+                                 #"(?s)/\*.*?\*/" ""))))
+
+(def ^:private bootstrap-widths
+  "Bootstrap's breakpoints on basaku's, by the user's decision."
+  {"576px" "640px" "768px" "768px" "992px" "1024px" "1200px" "1280px" "1400px" "1536px"})
+
+(def ^:private logical-properties
+  "Bootstrap's physical sides on the logical ones: start and end are inline, top and bottom stay."
+  {"margin-left" "margin-inline-start" "margin-right" "margin-inline-end" "padding-left" "padding-inline-start"
+   "padding-right" "padding-inline-end" "left" "inset-inline-start" "right" "inset-inline-end"
+   "border-left" "border-inline-start" "border-right" "border-inline-end"
+   "border-top-left-radius" "border-start-start-radius" "border-top-right-radius" "border-start-end-radius"
+   "border-bottom-right-radius" "border-end-end-radius" "border-bottom-left-radius" "border-end-start-radius"})
+
+(def ^:private logical-values {"float" {"left" "inline-start" "right" "inline-end"} "text-align" {"left" "start" "right" "end"}})
+
+(def ^:private kit-values
+  "Bootstrap's values on the kit's, by the properties each table applies to. A value no table
+  names is compared as it is."
+  (let [spacing #{"margin" "margin-top" "margin-bottom" "margin-inline" "margin-inline-start" "margin-inline-end"
+                  "padding" "padding-top" "padding-bottom" "padding-inline" "padding-inline-start" "padding-inline-end"
+                  "gap" "row-gap" "column-gap"}
+        radius  #{"border-radius" "border-start-start-radius" "border-start-end-radius" "border-end-end-radius" "border-end-start-radius"}
+        rgba    (fn [kind suffix] (str "rgba(var(--bs-" kind "-rgb), var(--bs-" suffix "))"))]
+    [[spacing {"0.25rem" "var(--ui-spacing-xs)" "0.5rem" "var(--ui-spacing-sm)" "1rem" "var(--ui-spacing-md)"
+               "1.5rem" "var(--ui-spacing-lg)" "3rem" "var(--ui-spacing-xl)"}]
+     ;; Six of basaku's sizes top down; Bootstrap's fs-5 and fs-6 land a step lower (base, sm).
+     [#{"font-size"} {"calc(1.375rem + 1.5vw)" "var(--ui-font-size-xxxl)" "calc(1.325rem + 0.9vw)" "var(--ui-font-size-xxl)"
+                      "calc(1.3rem + 0.6vw)" "var(--ui-font-size-xl)" "calc(1.275rem + 0.3vw)" "var(--ui-font-size-lg)"
+                      "1.25rem" "var(--ui-font-size-base)" "1rem" "var(--ui-font-size-sm)"}]
+     [#{"font-weight"} {"300" "var(--ui-font-weight-light)" "400" "var(--ui-font-weight-regular)" "500" "var(--ui-font-weight-medium)"
+                        "600" "var(--ui-font-weight-semibold)" "700" "var(--ui-font-weight-bold)"}]
+     [#{"line-height"} {"1" "var(--ui-line-height-none)" "1.25" "var(--ui-line-height-tight)" "1.5" "var(--ui-line-height-normal)" "2" "var(--ui-line-height-loose)"}]
+     [radius {"var(--bs-border-radius)" "var(--ui-radius-md)" "var(--bs-border-radius-sm)" "var(--ui-radius-sm)"
+              "var(--bs-border-radius-lg)" "var(--ui-radius-lg)" "var(--bs-border-radius-xl)" "var(--ui-radius-xl)"
+              "var(--bs-border-radius-pill)" "var(--ui-radius-full)"}]
+     [#{"box-shadow"} {"var(--bs-box-shadow)" "var(--ui-shadow-md)" "var(--bs-box-shadow-sm)" "var(--ui-shadow-sm)" "var(--bs-box-shadow-lg)" "var(--ui-shadow-lg)"}]
+     [#{"border-width"} {"1px" "var(--ui-border-width-default)" "2px" "var(--ui-border-width-thick)"}]
+     [#{"border" "border-top" "border-bottom" "border-inline-start" "border-inline-end"}
+      {"var(--bs-border-width) var(--bs-border-style) var(--bs-border-color)" "var(--ui-border-width-default) solid var(--ui-border-strong)"}]
+     ;; A fixed bar is the kit's banner, a sticky one its sticky.
+     [#{"z-index"} {"1030" "var(--ui-z-index-banner)" "1020" "var(--ui-z-index-sticky)"}]
+     [#{"font-family"} {"var(--bs-font-monospace)" "var(--ui-font-family-mono)"}]
+     [#{"transform"} {"var(--bs-icon-link-transform, translate3d(0.25em, 0, 0))" "translate3d(0.25em, 0, 0)"}]
+     ;; The colours: each to the audited token the restricted utilities paint.
+     [#{"color"} (into {"var(--bs-secondary-color)" "var(--ui-text-muted)" "var(--bs-emphasis-color)" "var(--ui-text-muted-strong)"}
+                       (for [[k ink] [["primary" "link"] ["success" "success-ink"] ["info" "info-ink"] ["warning" "warning-ink"] ["danger" "danger-ink"]]]
+                         [(rgba k "text-opacity") (str "var(--ui-" ink ")")]))]
+     [#{"text-decoration-color"} (into {"rgba(var(--bs-link-color-rgb), var(--bs-link-opacity, 0.5))" "currentcolor"}
+                                       (for [[k ink] [["primary" "link"] ["success" "success-ink"] ["info" "info-ink"] ["warning" "warning-ink"] ["danger" "danger-ink"]]]
+                                         [(rgba k "link-underline-opacity") (str "var(--ui-" ink ")")]))]
+     [#{"background-color"} {(rgba "body-bg" "bg-opacity") "var(--ui-background)" (rgba "secondary-bg" "bg-opacity") "var(--ui-surface-mid)"
+                             (rgba "tertiary-bg" "bg-opacity") "var(--ui-surface-low)"}]
+     [#{"border-color"} (into {} (for [k ["primary" "secondary" "success" "info" "warning" "danger"]] [(rgba k "border-opacity") (str "var(--ui-" k "-border)")]))]]))
+
+(defn- canonical-condition [c] (str/replace (str/trim c) #":\s+" ":"))
+(defn- canonical-selector [s] (-> (str/trim s) (str/replace #"\s*>\s*" ">") (str/replace #"\s+" " ")))
+
+(defn- normalised
+  "One Bootstrap declaration block as the kit writes it: `!important` dropped (a utility wins
+  by its layer); vendor prefixes and Bootstrap's own custom properties dropped (the floor
+  browsers need none, and the kit declares none); physical sides made logical, a start and
+  an end of one value folded into the `-inline` shorthand; then each value through
+  `kit-values`."
+  [decls]
+  (let [d (into {} (for [[k v] decls :when (not (str/starts-with? k "-"))]
+                     [(logical-properties k k) (str/trim (str/replace v #"\s*!important$" ""))]))
+        d (into {} (for [[k v] d] [k (get-in logical-values [k v] v)]))
+        d (reduce (fn [d base] (let [s (str base "-inline-start") e (str base "-inline-end")]
+                                 (if (and (contains? d s) (= (d s) (d e))) (-> d (dissoc s e) (assoc (str base "-inline") (d s))) d)))
+                  d ["margin" "padding" "inset"])]
+    (into {} (for [[k v] d] [k (or (some (fn [[props table]] (when (props k) (table v))) kit-values) v)]))))
+
+(defn- first-class [sel] (second (re-find #"^\.(-?[a-zA-Z][\w-]*)" (str/trim sel))))
+
+(defn- by-class
+  "Each class that opens a selector, with the set of `[conditions selector declarations]` of
+  every rule it opens."
+  [rows]
+  (reduce (fn [m [c row]] (update m c (fnil conj #{}) row)) {} rows))
+
+(defn- bootstrap-view []
+  (by-class (for [{:keys [selectors decls conditions]} (:rules @bootstrap) s selectors :let [c (first-class s)] :when c
+                  :let [conds (mapv #(canonical-condition (str/replace % #"(min-width:\s*)(\d+px)" (fn [[_ p w]] (str p (bootstrap-widths w w))))) conditions)]
+                  ;; RFS's fluid caps: basaku's sizes grow by their own variables.
+                  :when (not (and (= ["@media (min-width:1280px)"] conds) (= #{"font-size"} (set (keys decls)))))]
+              [c [conds (canonical-selector (-> s (str/replace #"\.bi(?![\w-])" "svg") (str/replace #"\.(-?[a-zA-Z][\w-]*)" ".ui-$1")))
+                  (normalised decls)]])))
+
+(defn- kit-view []
+  (by-class (for [{:keys [selectors decls conditions]} (:rules utilities-parsed) s selectors :let [c (first-class s)] :when c]
+              [c [(mapv canonical-condition conditions) (canonical-selector s) decls]])))
+
+(def ^:private infixes [nil "sm" "md" "lg" "xl" "xxl"])
+(defn- bs [prefix bp v] (str prefix (when bp (str "-" bp)) (when (some? v) (str "-" v))))
+
+(def ^:private deviations
+  "Every Bootstrap class the kit does not generate as `ui-<name>` with Bootstrap's
+  declarations under the stated normalisation: `[:absent why]`, not generated; `[:reshaped
+  why]`, generated differently; `[:renamed to why]`, generated under another name."
+  (let [k      (fn [kind why classes] (for [c classes] [c [kind why]]))
+        colours ["primary" "secondary" "success" "info" "warning" "danger" "light" "dark"]]
+    (into {}
+      (concat
+        (k :absent "no ink of that colour is audited at AA on every canvas a background utility paints"
+           (concat (map #(str "text-" %) ["secondary" "light" "dark" "black" "white" "body" "black-50" "white-50" "body-tertiary"])
+                   (map #(str "text-" % "-emphasis") colours)))
+        (k :absent "inherit is no palette token, and every colour the kit writes is one" ["text-reset"])
+        (k :absent "an opacity of a colour: the palette has no alpha tokens, and the kit declares no custom property"
+           (concat (map #(str "text-opacity-" %) [25 50 75 100])
+                   (map #(str "bg-opacity-" %) [10 25 50 75 100])
+                   (map #(str "border-opacity-" %) [10 25 50 75 100])
+                   (for [v [10 25 50 75 100] h ["" "-hover"]] (str "link-opacity-" v h))
+                   (for [v [0 10 25 50 75 100] h ["" "-hover"]] (str "link-underline-opacity-" v h))
+                   ["link-underline"]))
+        (k :absent "a background utility paints a neutral canvas alone; a fill comes with its audited ink through ui-text-bg-*"
+           (concat (map #(str "bg-" %) (concat colours ["black" "white"])) (map #(str "bg-" % "-subtle") colours)))
+        (k :absent "transparent is no palette token" ["bg-transparent"])
+        (k :absent "a gradient is no palette token" ["bg-gradient"])
+        (k :absent "no audited edge of that colour" (concat (map #(str "border-" %) ["light" "dark" "black" "white"]) (map #(str "border-" % "-subtle") colours)))
+        (k :absent "no link ink of that colour is audited on every canvas"
+           (concat (map #(str "link-" %) ["secondary" "light" "dark" "body-emphasis"]) (map #(str "link-underline-" %) ["secondary" "light" "dark"])))
+        (k :absent "the kit has one focus ring, in the audited focus colour" (map #(str "focus-ring-" %) colours))
+        (k :absent "a light fill is a canvas: ui-bg-* paints it, and ui-text-* inks it" ["text-bg-light"])
+        (k :absent "basaku's radii stop at xl and full" (cons "rounded-5" (map #(str "rounded-" % "-5") ["top" "end" "bottom" "start"])))
+        (k :reshaped "the fill's own audited ink, not Bootstrap's fixed black or white" (map #(str "text-bg-" %) ["primary" "secondary" "success" "info" "warning" "danger" "dark"]))
+        (k :reshaped "no hover ink in the palette: the link keeps its audited ink when hovered" (map #(str "link-" %) ["primary" "success" "info" "warning" "danger"]))
+        (k :reshaped "the kit's one ring, both bands, on :focus-visible" ["focus-ring"])
+        (k :reshaped "the platform's aspect-ratio, not a padding through a custom property" ["ratio" "ratio-1x1" "ratio-4x3" "ratio-16x9" "ratio-21x9"])
+        (k :reshaped "an audited edge colour at full opacity, not currentcolor at a quarter" ["vr"])
+        (k :reshaped "a region that scrolls is positioned, so what it hides is clipped by it" (for [p ["overflow" "overflow-x" "overflow-y"] v ["auto" "scroll"]] (str p "-" v)))
+        (k :reshaped "a shadow keeps the focus ring's halo beneath it when its element is focused" ["shadow" "shadow-sm" "shadow-lg" "shadow-none"])
+        (k :reshaped "a container is bounded at basaku's breakpoints, as wide as the one it reached, its gutters the kit's spacing"
+           (concat ["container" "container-fluid"] (map #(str "container-" %) (rest infixes))))
+        (k :reshaped "a twelve-track CSS grid, not a flex row with negative margins: a span is grid-column-end, an offset grid-column-start, a gutter the gap"
+           (concat (for [bp infixes v (cons "auto" (range 1 13))] (bs "col" bp v))
+                   (for [bp infixes n (range (if bp 0 1) 12)] (bs "offset" bp n))
+                   (for [p ["g" "gx" "gy"] bp infixes n (range 6)] (bs p bp n))))
+        [["row" [:renamed "ui-layout" "ui-row is the kit's rows component"]]]
+        (for [bp infixes v (cons "auto" (range 1 7))] [(bs "row-cols" bp v) [:renamed (str "ui-" (bs "layout-cols" bp v)) "ui-row is the kit's rows component"]])))))
+
+(def ^:private extras
+  "Every class the utilities generate that Bootstrap has not, with no Bootstrap name to take:
+  the neutral canvases past Bootstrap's three, so a background utility reaches each."
+  #{"ui-bg-surface" "ui-bg-surface-alt" "ui-bg-surface-low" "ui-bg-surface-mid" "ui-bg-surface-high"})
+
+(deftest every-bootstrap-utility-is-the-kits-or-a-named-deviation
+  (let [bv (bootstrap-view) kv (kit-view)
+        unmatched (set (for [[c rows] bv :when (not= rows (get kv (str "ui-" c)))] c))
+        renamed (set (for [[_ [kind to]] deviations :when (= :renamed kind)] to))]
+    (is (= 1705 (count bv)) (str "witness: the classes that open a Bootstrap selector, a count measured once: " (count bv)))
+    (is (= 444 (count deviations)) "witness: the deviations, counted")
+    (is (= #{} (set (remove (set (keys bv)) (keys deviations)))) "every deviation names a class Bootstrap has")
+    (is (= (set (keys deviations)) unmatched)
+        (str "every class Bootstrap has is the kit's, equal after normalisation, or a named deviation. Unnamed: "
+             (vec (sort (remove (set (keys deviations)) unmatched))) " — named but equal: " (vec (sort (remove unmatched (keys deviations))))))
+    (doseq [[c [kind to]] deviations]
+      (case kind
+        :absent   (is (nil? (get kv (str "ui-" c))) (str c " is absent, as its deviation says"))
+        :reshaped (is (seq (get kv (str "ui-" c))) (str c " is generated, reshaped, as its deviation says"))
+        :renamed  (is (and (nil? (get kv (str "ui-" c))) (seq (get kv to))) (str c " is generated as " to ", and only so"))))
+    (is (= extras (set (remove (into renamed (map #(str "ui-" %) (keys bv))) (keys kv))))
+        "and the utilities generate nothing else but the named extras")))
+
 (def ^:private req
   {::security/csrf-stored true :anti-forgery-token "T" ::security/csrf-used (volatile! false)
    :wb/tr (fn [k args] (str k args))})
@@ -634,8 +803,12 @@
     (let [rules  (leaf-rules)
           shaded (distinct (for [[sels decls] rules s sels :when (contains? decls "box-shadow")
                                  :when (not (str/ends-with? s ":focus-visible"))
-                                 :when (some #(str/starts-with? s %) ringed)] s))]
+                                 :when (or (some #(str/starts-with? s %) ringed)
+                                           ;; A utility may sit on anything focusable.
+                                           (and (re-matches #"\.ui-[\w-]+" s) (some #{s} (mapcat :selectors (:rules utilities-parsed)))))] s))]
       (is (seq shaded) "witness: a focusable that casts a shadow of its own was found")
+      (is (= #{".ui-shadow" ".ui-shadow-sm" ".ui-shadow-lg" ".ui-shadow-none"} (set (filter #(str/starts-with? % ".ui-shadow") shaded)))
+          "witness: and every shadow utility, which a host may put on a focusable")
       (is (= [] (for [s shaded :let [v (cascaded rules (str s ":focus-visible") ["box-shadow"])]
                       :when (not (str/includes? (str v) "var(--ui-focus-ring-halo)"))] [s v]))
           "and its shadow never takes the ring's halo away: the ring is two bands"))))
