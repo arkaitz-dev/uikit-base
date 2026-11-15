@@ -197,6 +197,20 @@
         (doseq [[seed tokens] goldens [scheme i] [[:light 0] [:dark 1]]]
           (is (>= (wcag (get-in tokens [bg i]) (get-in tokens [t i])) 3.0) (str seed " " scheme)))))))
 
+(deftest nothing-is-pinned-to-a-physical-side
+  ;; A page in a right-to-left language mirrors every inline start and end; a left or a
+  ;; right stays put, on the wrong side. Top and bottom are not this rule's: no host
+  ;; writes vertically.
+  (let [decls (for [[sels ds] (leaf-rules) [k v] ds] [sels k v])
+        four  #"^(margin|padding|inset|border-width|border-style|border-color)$"]
+    (is (< 80 (count decls)) "witness: the declarations were read")
+    (is (= [] (for [[sels k v] decls
+                    :when (or (re-find #"(^|-)(left|right)(-|$)" k)
+                              (some #{"left" "right"} (str/split v #"\s+"))
+                              (when (re-find four k) (let [t (str/split (str/trim v) #"\s+")] (and (= 4 (count t)) (not= (t 1) (t 3))))))]
+                [sels k v]))
+        "every side is a logical one: inline start and end")))
+
 (def ^:private req
   {::security/csrf-stored true :anti-forgery-token "T" ::security/csrf-used (volatile! false)
    :wb/tr (fn [k args] (str k args))})

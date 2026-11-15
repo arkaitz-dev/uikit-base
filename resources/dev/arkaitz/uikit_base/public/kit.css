@@ -83,18 +83,18 @@
 
   /* Notices: what an action answered — status for an outcome, alert for a refusal. */
   .ui-notice {
-    padding: var(--ui-space-sm) var(--ui-space-md); border-left: 4px solid var(--ui-border-strong);
+    padding: var(--ui-space-sm) var(--ui-space-md); border-inline-start: 4px solid var(--ui-border-strong);
     background: var(--ui-surface-alt); color: var(--ui-on-surface-alt); border-radius: var(--ui-radius-sm);
   }
-  .ui-notice--ok { border-left-color: var(--ui-success-border); color: var(--ui-success-ink); }
-  .ui-notice--error { border-left-color: var(--ui-danger-border); color: var(--ui-danger-ink); }
-  .ui-notice--info { border-left-color: var(--ui-info-border); color: var(--ui-info-ink); }
-  .ui-notice--warning { border-left-color: var(--ui-warning-border); color: var(--ui-warning-ink); }
+  .ui-notice--ok { border-inline-start-color: var(--ui-success-border); color: var(--ui-success-ink); }
+  .ui-notice--error { border-inline-start-color: var(--ui-danger-border); color: var(--ui-danger-ink); }
+  .ui-notice--info { border-inline-start-color: var(--ui-info-border); color: var(--ui-info-ink); }
+  .ui-notice--warning { border-inline-start-color: var(--ui-warning-border); color: var(--ui-warning-ink); }
 
   /* Tables. */
   .ui-table { border-collapse: collapse; width: 100%; }
-  .ui-table caption { text-align: left; padding-bottom: var(--ui-space-sm); color: var(--ui-text-muted); }
-  .ui-table th, .ui-table td { padding: var(--ui-space-sm); text-align: left; border-bottom: 1px solid var(--ui-border); }
+  .ui-table caption { text-align: start; padding-block-end: var(--ui-space-sm); color: var(--ui-text-muted); }
+  .ui-table th, .ui-table td { padding: var(--ui-space-sm); text-align: start; border-bottom: 1px solid var(--ui-border); }
   .ui-table thead th { border-bottom: 2px solid var(--ui-border-strong); }
 
   /* Rows: a list whose rows wrap, each a line of its parts. */
