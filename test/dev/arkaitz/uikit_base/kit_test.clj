@@ -965,14 +965,26 @@
 (deftest the-plugin-links-and-serves-the-kit
   (let [app   (wb/handler {:routes [["/" {:get #(response/ok (shell/page {:request % :title "t" :content [:p "x"]}))}]]
                            :session {:key (byte-array 16 (byte 7))} :plugins [(web/plugin)] :i18n {:default-locale :en}
-                           :stylesheets ["/ui-colors.css" "/app.css"]})
+                           :stylesheets ["/ui-colors.css" "/app.css"]
+                           :security {:csp "default-src 'self'; script-src 'nonce-{nonce}'; style-src 'self'"}})
         page  (app (mock/request :get "/"))
         bytes (fn [in] (with-open [i (io/input-stream in)] (.readAllBytes i)))]
     (is (= 200 (:status page)) "witness: the page answered")
     (is (= ["/wb/wb.css" "/ui/ui-colors.css" "/ui/kit.css" "/ui/ui-utilities.css" "/ui-colors.css" "/app.css"]
            (map second (re-seq #"<link href=\"([^\"]+)\" rel=\"stylesheet\">" (:body page))))
         "web-base's, the kit's colours, the kit and its utilities, then the host's colours and its own sheet")
-    (doseq [f ["kit.css" "ui-colors.css" "ui-utilities.css"]]
+    (let [policy (get-in page [:headers "Content-Security-Policy"])
+          nonce  (second (re-find #"'nonce-([^']+)'" (str policy)))]
+      (is (some? nonce) "witness: the page's policy carries a nonce")
+      (is (= [["/wb/htmx.min.js" nonce] ["/wb/nav.js" nonce] ["/ui/ui.js" nonce]]
+             (for [tag (re-seq #"<script[^>]*>" (:body page))]
+               [(second (re-find #"src=\"([^\"]+)\"" tag)) (second (re-find #"nonce=\"([^\"]+)\"" tag))]))
+          "web-base's two scripts, then the kit's, each under the page's nonce")
+      (is (re-find #"<script defer nonce=\"[^\"]+\" src=\"/ui/ui.js\">" (:body page)) "deferred, so it runs once the page is parsed"))
+    (let [swap (app (-> (mock/request :get "/") (mock/header "hx-request" "true") (mock/header "hx-request-type" "full") (mock/header "hx-target" "main")))]
+      (is (= 200 (:status swap)) "a swap of <main> is answered with the page, not sent to load it as a document: the kit's script does not make a page its own")
+      (is (str/includes? (:body swap) "<main") "witness: the swap's answer holds the page"))
+    (doseq [f ["kit.css" "ui-colors.css" "ui-utilities.css" "ui.js"]]
       (let [r (app (mock/request :get (str "/ui/" f))) want (bytes (io/resource (str "dev/arkaitz/uikit_base/public/" f)))]
         (is (= 200 (:status r)) f)
         (is (pos? (alength ^bytes want)) "witness: a file with bytes")
