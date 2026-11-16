@@ -101,6 +101,16 @@ for (const [mode, init] of Object.entries(modes)) {
       return { uiForm: f.classList.contains('ui-form'), md: Math.round(md), gaps: [...new Set(gaps)], actions: [...new Set(actions)] };
     });
   }, s => !s.uiForm && s.md > 0 && s.gaps.length === 1 && s.gaps[0] === s.md && s.actions.length > 0 && !s.actions.includes('grid'));
+  await check('button-group: an open confirm leaves its neighbours their own height', async () => {
+    // Measured in academy: a confirm opened in a group stretched the Edit beside it.
+    const g = p.locator('#g-group-confirm');
+    await g.scrollIntoViewIfNeeded();
+    const edit = g.locator('a.ui-btn').first(), before = (await edit.boundingBox()).height;
+    await g.locator('summary').click(); await p.waitForTimeout(100);
+    const open = await g.locator('details').evaluate(d => d.open), after = (await edit.boundingBox()).height;
+    await g.locator('summary').click();
+    return { open, before: Math.round(before), after: Math.round(after) };
+  }, s => s.open && s.before > 0 && s.before === s.after);
   await check('offcanvas: the end sheet at the inline end, full height', async () => {
     await p.locator('button[commandfor=g-end][command=show-modal]').click();
     const b = await p.locator('#g-end').boundingBox(); await p.keyboard.press('Escape');
