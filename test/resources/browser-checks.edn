@@ -3,7 +3,7 @@
 ;; passed and that the files below are the bytes they were run against, so a change to any of
 ;; them reds until the checks are run again and this file regenerated.
 {:checked "2026-11-16"
- :files {"kit.css" "9fbed43a1a60abc01369d85cf04ada57ebe5219e1a689d1c76575bcfddf201e4"
+ :files {"kit.css" "dc88c2c1d23822ede807ace1b00a0fc5f070764cb472f63b6fb1dddf3367dd6f"
          "ui-utilities.css" "a13d081a7dacf810293c7e730b1e6da87d36c89af1336f9bb5dda55fc6f981e6"
          "ui.js" "878114b96d396c64e6f22a94926abab1e6e042334bbf97947ea25d956c275daa"
          "gallery-check.mjs" "a13de0e00694481644da49aa9fe302467e09ae583e0ef05797ebbefcbc13712a"}

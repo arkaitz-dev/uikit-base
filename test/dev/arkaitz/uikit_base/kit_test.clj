@@ -451,7 +451,7 @@
     (is (= [0 2 1] (specificity ".ui-pager a:focus-visible")) "witness: the test's specificity")
     (is (= #{".ui-btn--primary:hover" ".ui-btn--primary" ".ui-btn:hover" ".ui-btn"} (set (selectors-implied ".ui-btn--primary:hover")))
         "witness: a variant's hover is also the base's hover")
-    (is (= 185 (count pairs)) (str "witness: every painted pair found — the kit's 139 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one, the close button in two; K10's floating label on three canvases and the input group's text; K12's stripe, hovered row, current page, current pill, the list group, its link on three canvases, hovered and current; K13's card nav, the figure's caption and the collapse's summary on three canvases each, the accordion and its open summary; K16's dialog; K17's menu and popover, the menu's link on three canvases and hovered, the tooltip; K18's toast; K19's scrollspy link on three canvases), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
+    (is (= 186 (count pairs)) (str "witness: every painted pair found — the kit's 140 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one and the pressed one hovered, the close button in two; K10's floating label on three canvases and the input group's text; K12's stripe, hovered row, current page, current pill, the list group, its link on three canvases, hovered and current; K13's card nav, the figure's caption and the collapse's summary on three canvases each, the accordion and its open summary; K16's dialog; K17's menu and popover, the menu's link on three canvases and hovered, the tooltip; K18's toast; K19's scrollspy link on three canvases), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
     (is (= 21.0 (wcag "#000000" "#ffffff")) "witness: the test's WCAG")
     (doseq [[s bg fg :as p] pairs]
       (testing s
@@ -481,7 +481,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 341 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 269 (0.5.0's 119; K9's 42 outline, 4 link, 5 pressed and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6; K16's 7: dialog 4, backdrop 1, head and foot lines 2; K17's 10: menu and popover 4, the menu's link 3, the tooltip 3; K18's 9: the toast 5, its kinds 4; K19's 3: the scrollspy link's ink and edge, the current edge) and the utilities' 72, a count measured once: " (count bearing)))
+    (is (= 342 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 270 (0.5.0's 119; K9's 42 outline, 4 link, 6 pressed (one hovered) and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6; K16's 7: dialog 4, backdrop 1, head and foot lines 2; K17's 10: menu and popover 4, the menu's link 3, the tooltip 3; K18's 9: the toast 5, its kinds 4; K19's 3: the scrollspy link's ink and edge, the current edge) and the utilities' 72, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -1050,3 +1050,16 @@
         (is (pos? (alength ^bytes want)) "witness: a file with bytes")
         (is (Arrays/equals ^bytes want ^bytes (bytes (:body r))) (str f " served byte for byte"))))
     (is (= 404 (:status (app (mock/request :get "/ui/nope.css")))) "and nothing else under /ui/")))
+
+(deftest every-button-answers-the-pointer
+  ;; Found by the user in Chrome: a pressed toggle looked the same under the pointer, since
+  ;; its state's rule outranks `.ui-btn:hover`. Every button the kit draws changes some
+  ;; part of its look — ground, ink, edge or underline — when hovered, in every environment.
+  (let [look   (fn [rules sel] (mapv #(cascaded rules sel %) [backgrounds ["color"] ["border-color" "border"] ["text-decoration-thickness"]]))
+        kinds  (concat [".ui-btn" ".ui-btn[aria-pressed=\"true\"]"]
+                       (for [v ["primary" "secondary" "success" "danger" "warning" "info" "link"]] (str ".ui-btn--" v))
+                       (for [v ["primary" "secondary" "success" "danger" "warning" "info"]] (str ".ui-btn--outline-" v)))
+        still  (for [env environments k kinds :let [rules (@env-rules env)] :when (= (look rules k) (look rules (str k ":hover")))]
+                 [k (select-keys env [:scheme :width])])]
+    (is (some? (first (look (@env-rules (first environments)) ".ui-btn[aria-pressed=\"true\"]"))) "witness: the pressed state paints a ground")
+    (is (= [] (distinct (map first still))) (str "buttons that look the same under the pointer, first in " (second (first still))))))
