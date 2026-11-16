@@ -320,13 +320,15 @@
 
     /* Progress and meters: the platform's own elements; each bar an audited edge on its
      * track. A vendor pseudo-element is a rule of its own: a browser drops a whole selector
-     * list for one pseudo-element it does not know. */
+     * list for one pseudo-element it does not know. Each part's ground is the background
+     * shorthand: the user agent paints its own gradient image there, which a
+     * background-color alone sits under (measured in Chrome: a grey track, a yellow sheen). */
     .ui-progress { inline-size: 100%; accent-color: var(--ui-primary-border); }
     .ui-progress--striped, .ui-progress--animated {
       appearance: none; block-size: 1rem; border: 0; border-radius: var(--ui-radius-full); overflow: hidden;
       background-color: var(--ui-surface-alt);
     }
-    .ui-progress--striped::-webkit-progress-bar { background-color: var(--ui-surface-alt); }
+    .ui-progress--striped::-webkit-progress-bar { background: var(--ui-surface-alt); }
     .ui-progress--striped::-webkit-progress-value {
       background-color: var(--ui-primary-border); background-size: 1rem 1rem;
       background-image: linear-gradient(45deg, var(--ui-primary-active) 25%, var(--ui-primary-border) 25% 50%, var(--ui-primary-active) 50% 75%, var(--ui-primary-border) 75%);
@@ -335,6 +337,18 @@
       background-color: var(--ui-primary-border); background-size: 1rem 1rem;
       background-image: linear-gradient(45deg, var(--ui-primary-active) 25%, var(--ui-primary-border) 25% 50%, var(--ui-primary-active) 50% 75%, var(--ui-primary-border) 75%);
     }
+    /* With no value the bar is under way and says so in stripes across the whole track:
+     * in WebKit and Blink the track part covers the element, so it carries them there. */
+    .ui-progress--striped:indeterminate {
+      background: var(--ui-primary-border); background-size: 1rem 1rem;
+      background-image: linear-gradient(45deg, var(--ui-primary-active) 25%, var(--ui-primary-border) 25% 50%, var(--ui-primary-active) 50% 75%, var(--ui-primary-border) 75%);
+    }
+    .ui-progress--striped:indeterminate::-webkit-progress-bar {
+      background: var(--ui-primary-border); background-size: 1rem 1rem;
+      background-image: linear-gradient(45deg, var(--ui-primary-active) 25%, var(--ui-primary-border) 25% 50%, var(--ui-primary-active) 50% 75%, var(--ui-primary-border) 75%);
+    }
+    .ui-progress--animated:indeterminate { animation: ui-stripes 1s linear infinite; }
+    .ui-progress--animated:indeterminate::-webkit-progress-bar { animation: ui-stripes 1s linear infinite; }
     .ui-progress--animated::-webkit-progress-value { animation: ui-stripes 1s linear infinite; }
     .ui-progress--animated::-moz-progress-bar { animation: ui-stripes 1s linear infinite; }
     @keyframes ui-stripes { from { background-position: 1rem 0; } to { background-position: 0 0; } }
@@ -342,13 +356,16 @@
       appearance: none; inline-size: 100%; block-size: 1rem; border: 0; border-radius: var(--ui-radius-full); overflow: hidden;
       background-color: var(--ui-surface-alt);
     }
-    .ui-meter::-webkit-meter-bar { background-color: var(--ui-surface-alt); border: 0; border-radius: inherit; }
-    .ui-meter::-webkit-meter-optimum-value { background-color: var(--ui-success-border); }
-    .ui-meter::-webkit-meter-suboptimum-value { background-color: var(--ui-warning-border); }
-    .ui-meter::-webkit-meter-even-less-good-value { background-color: var(--ui-danger-border); }
-    .ui-meter:-moz-meter-optimum::-moz-meter-bar { background-color: var(--ui-success-border); }
-    .ui-meter:-moz-meter-sub-optimum::-moz-meter-bar { background-color: var(--ui-warning-border); }
-    .ui-meter:-moz-meter-sub-sub-optimum::-moz-meter-bar { background-color: var(--ui-danger-border); }
+    /* Blink centres a shorter fill in the meter's inner box (measured: 8px of 16) unless that
+     * box stretches its track. */
+    .ui-meter::-webkit-meter-inner-element { display: flex; align-items: stretch; block-size: 100%; }
+    .ui-meter::-webkit-meter-bar { flex: 1; block-size: 100%; background: var(--ui-surface-alt); border: 0; border-radius: inherit; }
+    .ui-meter::-webkit-meter-optimum-value { background: var(--ui-success-border); }
+    .ui-meter::-webkit-meter-suboptimum-value { background: var(--ui-warning-border); }
+    .ui-meter::-webkit-meter-even-less-good-value { background: var(--ui-danger-border); }
+    .ui-meter:-moz-meter-optimum::-moz-meter-bar { background: var(--ui-success-border); }
+    .ui-meter:-moz-meter-sub-optimum::-moz-meter-bar { background: var(--ui-warning-border); }
+    .ui-meter:-moz-meter-sub-sub-optimum::-moz-meter-bar { background: var(--ui-danger-border); }
 
     /* Loading: a turning ring, and bars standing in for text; neither moves where the reader
      * asked for reduced motion, and both say so to a screen reader in words. */
@@ -587,6 +604,7 @@
       .ui-dropdown__menu, .ui-popover, .ui-tooltip, .ui-toast { transition: none; }
       .ui-carousel__rotate { display: none; }
       .ui-progress--animated::-webkit-progress-value { animation: none; }
+      .ui-progress--animated:indeterminate, .ui-progress--animated:indeterminate::-webkit-progress-bar { animation: none; }
       .ui-progress--animated::-moz-progress-bar { animation: none; }
       .ui-spinner, .ui-placeholder { animation: none; }
     }

@@ -481,7 +481,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 342 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 270 (0.5.0's 119; K9's 42 outline, 4 link, 6 pressed (one hovered) and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6; K16's 7: dialog 4, backdrop 1, head and foot lines 2; K17's 10: menu and popover 4, the menu's link 3, the tooltip 3; K18's 9: the toast 5, its kinds 4; K19's 3: the scrollspy link's ink and edge, the current edge) and the utilities' 72, a count measured once: " (count bearing)))
+    (is (= 344 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 272 (0.5.0's 119; the striped progress with no value 2; K9's 42 outline, 4 link, 6 pressed (one hovered) and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6; K16's 7: dialog 4, backdrop 1, head and foot lines 2; K17's 10: menu and popover 4, the menu's link 3, the tooltip 3; K18's 9: the toast 5, its kinds 4; K19's 3: the scrollspy link's ink and edge, the current edge) and the utilities' 72, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -609,7 +609,7 @@
   (let [moving (distinct (for [[sels decls _ _ conds] (leaf-rules)
                                :when (not-any? #(str/includes? % "prefers-reduced-motion") conds)
                                s sels [k v] decls :when (motion-props k) :when (not= "none" v)] [s k]))]
-    (is (= 13 (count moving)) (str "witness: what moves — the button, the fades of the dialog, the menu, the popover, the tooltip and the toast, the switch's knob, the floating label, the icon link's arrow, the progress stripes twice, the spinner and the placeholder; a count measured once: " (vec moving)))
+    (is (= 15 (count moving)) (str "witness: what moves — the button, the fades of the dialog, the menu, the popover, the tooltip and the toast, the switch's knob, the floating label, the icon link's arrow, the progress stripes twice and twice more with no value, the spinner and the placeholder; a count measured once: " (vec moving)))
     (doseq [env environments :when (= :reduce (:motion env)) :let [rules (in-env (leaf-rules) env)] [s k] moving]
       (is (= "none" (cascaded rules s [k])) (str s " still has " k " where reduced motion was asked for, " (:width env) " " (:scheme env))))))
 
@@ -1076,3 +1076,16 @@
                  [k (select-keys env [:scheme :width])])]
     (is (some? (first (look (@env-rules (first environments)) ".ui-btn[aria-pressed=\"true\"]"))) "witness: the pressed state paints a ground")
     (is (= [] (distinct (map first still))) (str "buttons that look the same under the pointer, first in " (second (first still))))))
+
+(deftest a-meters-and-a-progress-bars-own-parts-leave-no-user-agent-image
+  ;; Found by the user's eye in Chrome: a meter's track and fill kept the user agent's grey
+  ;; and yellow gradients, since background-color paints under a background-image it does
+  ;; not clear. Each vendor part the kit paints sets its ground with the background
+  ;; shorthand, or names its own image, so no gradient of the browser's survives.
+  (let [part   #"::-(webkit-meter|webkit-progress|moz-meter|moz-progress)-[a-z-]+"
+        parts  (for [{:keys [selectors decls]} (:rules kit-parsed) s selectors :when (re-find part s)
+                     :when (some #(contains? decls %) ["background" "background-color" "background-image"])]
+                 [s decls])
+        leaks  (for [[s decls] parts :when (not (or (contains? decls "background") (contains? decls "background-image")))] s)]
+    (is (<= 9 (count parts)) (str "witness: the meter's and the progress bar's painted parts were found, " (count parts)))
+    (is (= [] leaks) "parts painted by background-color alone, under the user agent's image")))

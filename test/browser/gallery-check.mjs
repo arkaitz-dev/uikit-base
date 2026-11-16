@@ -11,6 +11,29 @@
 // switched off from script, so the shim's decision is read from the Escape keydown's
 // `defaultPrevented`. Prints `{engine version modes {mode {check {pass … seen …}}}}` as JSON.
 const { webkit, chromium } = await import(process.env.PLAYWRIGHT_CORE || 'playwright-core');
+const { inflateSync } = await import('node:zlib');
+
+// The pixel rows of a PNG screenshot, RGB, so a check can see what no computed style says
+// (a user agent's own image on a control's part).
+function pixels(png) {
+  let i = 8, w = 0, h = 0, bpp = 4; const idat = [];
+  while (i < png.length) {
+    const n = png.readUInt32BE(i), t = png.toString('latin1', i + 4, i + 8), c = png.subarray(i + 8, i + 8 + n); i += 12 + n;
+    if (t === 'IHDR') { w = c.readUInt32BE(0); h = c.readUInt32BE(4); bpp = c[9] === 6 ? 4 : 3; }
+    if (t === 'IDAT') idat.push(c);
+  }
+  const raw = inflateSync(Buffer.concat(idat)), st = w * bpp, rows = []; let prev = Buffer.alloc(st), o = 0;
+  for (let y = 0; y < h; y++) {
+    const f = raw[o++], line = Buffer.from(raw.subarray(o, o + st)); o += st;
+    for (let x = 0; x < st; x++) {
+      const a = x >= bpp ? line[x - bpp] : 0, b = prev[x], c = x >= bpp ? prev[x - bpp] : 0;
+      const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+      line[x] = (line[x] + [0, a, b, (a + b) >> 1, pa <= pb && pa <= pc ? a : pb <= pc ? b : c][f]) & 255;
+    }
+    rows.push(line); prev = line;
+  }
+  return { w, h, at: (x, y) => [...rows[y].subarray(x * bpp, x * bpp + 3)].join(',') };
+}
 
 const [engine, url = 'http://localhost:3010/'] = process.argv.slice(2);
 const base = `window.__csp=[];document.addEventListener("securitypolicyviolation",e=>window.__csp.push(e.violatedDirective));
@@ -111,6 +134,22 @@ for (const [mode, init] of Object.entries(modes)) {
     await g.locator('summary').click();
     return { open, before: Math.round(before), after: Math.round(after) };
   }, s => s.open && s.before > 0 && s.before === s.after);
+  await check('meter: its fill and its track are the palette\'s, the fill the track\'s whole height', async () => {
+    // Measured in the user's Chrome: the user agent's grey and yellow gradients showed under
+    // the kit's colours, and Blink centred a fill half the track's height.
+    // On a page of its own: Playwright's element screenshot injects a <style> in WebKit,
+    // whatever its options (measured), which the CSP refuses; the gallery's page stays clean.
+    const q = await ctx.newPage(); await q.goto(url);
+    const m = q.locator('meter').first();
+    await m.scrollIntoViewIfNeeded();
+    const want = await q.evaluate(() => Object.fromEntries(['--ui-warning-border', '--ui-surface-alt'].map(v => {
+      const d = document.createElement('div'); d.style.setProperty('background-color', `var(${v})`); document.body.append(d);
+      const c = getComputedStyle(d).backgroundColor.match(/\d+/g).slice(0, 3).join(','); d.remove(); return [v, c]; })));
+    const img = pixels(await m.screenshot()), mid = [2, Math.floor(img.h / 2), img.h - 3];
+    await q.close();
+    const fill = mid.map(y => img.at(Math.floor(img.w * 0.3), y)), track = mid.map(y => img.at(Math.floor(img.w * 0.9), y));
+    return { fill, track, want };
+  }, s => s.fill.every(c => c === s.want['--ui-warning-border']) && s.track.every(c => c === s.want['--ui-surface-alt']));
   await check('offcanvas: the end sheet at the inline end, full height', async () => {
     await p.locator('button[commandfor=g-end][command=show-modal]').click();
     const b = await p.locator('#g-end').boundingBox(); await p.keyboard.press('Escape');

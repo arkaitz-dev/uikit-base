@@ -3,10 +3,10 @@
 ;; passed and that the files below are the bytes they were run against, so a change to any of
 ;; them reds until the checks are run again and this file regenerated.
 {:checked "2026-11-16"
- :files {"kit.css" "152309390029991c9f7215eb0d63b762390264e84ed400627b15ba52faaa8f39"
+ :files {"kit.css" "7218ca3cf77331134d383eb7839cb75bea93043ff404cb2297ea6d8f6c966c51"
          "ui-utilities.css" "a13d081a7dacf810293c7e730b1e6da87d36c89af1336f9bb5dda55fc6f981e6"
          "ui.js" "878114b96d396c64e6f22a94926abab1e6e042334bbf97947ea25d956c275daa"
-         "gallery-check.mjs" "3e8200ba88430d87b54407241c74a2387234d7b2b07a45ad5dbd0108e5821ec7"}
+         "gallery-check.mjs" "602960ab126d474472ae83143103d268957b605aace75ac98ed5ae6112187093"}
  :runs [
   {:engine "webkit" :version "26.4"
    :modes {
@@ -17,6 +17,7 @@
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
      "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "button-group: an open confirm leaves its neighbours their own height" true
+     "meter: its fill and its track are the palette's, the fill the track's whole height" true
      "offcanvas: the end sheet at the inline end, full height" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
@@ -33,6 +34,7 @@
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
      "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "button-group: an open confirm leaves its neighbours their own height" true
+     "meter: its fill and its track are the palette's, the fill the track's whole height" true
      "offcanvas: the end sheet at the inline end, full height" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
@@ -51,6 +53,7 @@
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
      "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "button-group: an open confirm leaves its neighbours their own height" true
+     "meter: its fill and its track are the palette's, the fill the track's whole height" true
      "offcanvas: the end sheet at the inline end, full height" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
@@ -67,6 +70,7 @@
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
      "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "button-group: an open confirm leaves its neighbours their own height" true
+     "meter: its fill and its track are the palette's, the fill the track's whole height" true
      "offcanvas: the end sheet at the inline end, full height" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
@@ -83,6 +87,7 @@
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
      "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "button-group: an open confirm leaves its neighbours their own height" true
+     "meter: its fill and its track are the palette's, the fill the track's whole height" true
      "offcanvas: the end sheet at the inline end, full height" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
