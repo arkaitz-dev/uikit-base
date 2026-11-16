@@ -3,10 +3,10 @@
 ;; passed and that the files below are the bytes they were run against, so a change to any of
 ;; them reds until the checks are run again and this file regenerated.
 {:checked "2026-11-16"
- :files {"kit.css" "dc88c2c1d23822ede807ace1b00a0fc5f070764cb472f63b6fb1dddf3367dd6f"
+ :files {"kit.css" "3af3aa445515ef5912173dc3a04e7cd54a18e334bddbace0826528569711da6b"
          "ui-utilities.css" "a13d081a7dacf810293c7e730b1e6da87d36c89af1336f9bb5dda55fc6f981e6"
          "ui.js" "878114b96d396c64e6f22a94926abab1e6e042334bbf97947ea25d956c275daa"
-         "gallery-check.mjs" "a13de0e00694481644da49aa9fe302467e09ae583e0ef05797ebbefcbc13712a"}
+         "gallery-check.mjs" "97d2de3141455e948b0ed8225457b39d558970e2f4898473888f4d0b1fc2f8e9"}
  :runs [
   {:engine "webkit" :version "26.4"
    :modes {
@@ -15,6 +15,7 @@
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
      "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
+     "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "offcanvas: the end sheet at the inline end, full height" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
@@ -29,6 +30,7 @@
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
      "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
+     "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "offcanvas: the end sheet at the inline end, full height" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
@@ -45,6 +47,7 @@
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
      "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
+     "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "offcanvas: the end sheet at the inline end, full height" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
@@ -59,6 +62,7 @@
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
      "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
+     "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "offcanvas: the end sheet at the inline end, full height" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
@@ -73,6 +77,7 @@
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
      "static dialog: two Esc and a backdrop press leave it open, the x closes it" true
      "static dialog: a popover inside closes on Esc, a modal stacked above closes on Esc" true
+     "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "offcanvas: the end sheet at the inline end, full height" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true

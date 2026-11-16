@@ -89,6 +89,18 @@ for (const [mode, init] of Object.entries(modes)) {
     await p.locator('#g-static .ui-close').click();
     return { pop, held, stacked, still };
   }, s => s.pop && s.held && s.stacked && s.still);
+  await check('forms: fields apart by the kit\'s spacing without ui-form, a form of only a button left inline', async () => {
+    // Measured in the user's Chrome: a post-form without ui-form drew its fields touching (0px).
+    return await p.evaluate(() => {
+      const f = document.querySelector('#forms form'), kids = [...f.children].filter(e => e.type !== 'hidden');
+      const md = (() => { const d = document.createElement('div'); d.style.setProperty('inline-size', 'var(--ui-spacing-md)');
+        document.body.append(d); const w = d.getBoundingClientRect().width; d.remove(); return w; })();
+      const gaps = kids.slice(1).map((e, i) => Math.round(e.getBoundingClientRect().top - kids[i].getBoundingClientRect().bottom));
+      // A form of only a button, an action in a row, is never made a stack of its own.
+      const actions = [...document.querySelectorAll('form.ui-action')].map(a => getComputedStyle(a).display);
+      return { uiForm: f.classList.contains('ui-form'), md: Math.round(md), gaps: [...new Set(gaps)], actions: [...new Set(actions)] };
+    });
+  }, s => !s.uiForm && s.md > 0 && s.gaps.length === 1 && s.gaps[0] === s.md && s.actions.length > 0 && !s.actions.includes('grid'));
   await check('offcanvas: the end sheet at the inline end, full height', async () => {
     await p.locator('button[commandfor=g-end][command=show-modal]').click();
     const b = await p.locator('#g-end').boundingBox(); await p.keyboard.press('Escape');

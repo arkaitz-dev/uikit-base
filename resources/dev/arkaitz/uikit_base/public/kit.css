@@ -130,6 +130,10 @@
 
     /* Forms: a field is its label, its control and, when refused, its error. */
     .ui-form { display: grid; gap: var(--ui-spacing-md); max-width: 32rem; }
+    /* A form that holds fields but was not given ui-form stacks them apart all the same: the
+     * kit's components carry no margins of their own, so without it they touched (measured,
+     * 0px). A form of only a button, an action in a row, holds no field and is left alone. */
+    form:has(> .ui-field):not(.ui-form) { display: grid; gap: var(--ui-spacing-md); }
     .ui-field { display: grid; gap: var(--ui-spacing-xs); }
     .ui-field__label { font-weight: 600; }
     /* The same box as a button's (padding, line, type, border), so the two sit level. */
