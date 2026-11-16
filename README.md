@@ -216,18 +216,20 @@ Since 0.6.0, with no script:
 ```clojure
 (ui/button {:variant :outline-danger} "Discard")                          ; or :link, :block? true
 (ui/toggle-button request "/bold" {:label "Bold" :pressed? bold? :hidden {:on (not bold?)}})
-(ui/button-group {:label "Alignment"} (ui/button "Start") (ui/button "End"))
+(ui/button-group {:label "Alignment"} (ui/button "Start") (ui/button "End"))   ; a confirm too
 (ui/close-button request)
 (ui/field request {:id "wifi" :label "Wi-Fi" :type "switch" :value on?})  ; or "range"
 (ui/field request {:id "price" :label "Price in euros" :before "€" :size :lg})
 (ui/field request {:id "name" :label "Name" :floating? true :attrs {:placeholder "Name"}})
 (ui/input-group {:after (ui/button "Go")} [:input.ui-input {:aria-label "Search" :name "q"}])
 (ui/alert request :warning {:heading "Heads up" :dismiss-href "/orders"} "Something to read.")
+(ui/alert request :ok {:dismiss-param "outcome"} "Saved.")   ; back to this page and its query, without ?outcome=
 (ui/badge :danger {:corner? true :label "new"} 9)       ; in a ui-position-relative container
 (ui/progress {:value 0.4 :label "Upload"})               ; :striped? :animated?
 (ui/meter {:value 7 :max 10 :low 3 :high 8 :optimum 10 :label "Places taken"})
 (ui/spinner request) (ui/placeholder request {:lines 2})
 (ui/list-group {:items [["/" "Home"] [nil "Plain"]] :current "/"})        ; :flush?
+(ui/list-group {:items (for [c courses] [(path c) (:title c) {:id (str "course-" (:id c)) :data-course (:id c)}])})
 (ui/table {:rows rows :striped? true :hover? true})       ; :bordered? :compact?
 (ui/pager request {:previous p :next n :pages [["/?p=1" 1] ["/?p=2" 2]] :current 2})
 (ui/tabs-nav request {:label "Views" :style :pills :fill? true :items items :current here})
@@ -274,7 +276,15 @@ else wins, except what correctness needs, which no attribute changes:
 - `table`'s `:scroll-label` and `scroller`'s `:label` name a region the keyboard reaches;
   `time`'s `datetime` is its value's; a `secret` has no name, so no form sends it, and is
   never disabled.
-- `notice` and `alert` speak an error as an alert, and everything else as a status.
+- `notice` and `alert` speak an error as an alert, and everything else as a status. An
+  alert's way out is `:dismiss-href`, or `:dismiss-param`, never both: the request's own
+  `:uri` and `:query-string` with every pair of that name taken out and the others copied
+  as they came, nothing decoded. An empty pair, or one holding a backslash, whitespace or
+  a control character, is dropped rather than let `wb/link` refuse the whole link.
+- A `list-group` item's attrs, a map, go on its `<li>`, its `:class` joined to the
+  kit's; the link inside stays the kit's.
+- A `button-group` lets each item keep its own height, so an open `confirm` in it
+  stretches none of its neighbours.
 - `pager` names its links and itself in the reader's language (the kit's words, or yours,
   or English), so a link never goes unnamed; a label you give wins.
 - `button-group`, `progress`, `meter`, `scroller`, `carousel` and `scrollspy` are named by
@@ -337,12 +347,16 @@ unverified is written there, under `:not-verified`.
 (require '[dev.arkaitz.uikit-base.testing :as ut])
 (ut/actions html)   ; [{:path "/lessons/7/delete" :hidden {} :label "Yes, delete"
                     ;   :name "Yes, delete Week 1" :first {:label "Delete" :name "Delete Week 1"}} …]
+(ut/alerts html)    ; [{:kind :ok :role "status" :heading "Saved" :text "Order A1 is paid."
+                    ;   :dismiss {:href "/orders?day=2" :name "Close"}} …]
 (ut/unaudited-pairs html)   ; [] unless an element combines colour utilities basaku never audited
 ```
 
 A confirm is read in two places, its first step and its form; `actions` gives both.
 Assert `:name`, the name a screen reader hears: `:label` stays the same when a subject
-is lost. `unaudited-pairs` answers each element whose own classes put a text utility on a
+is lost. `alerts` answers each notice and alert by the kit's class, never by its role: its
+body's text without the heading or the way out, and where dismissing it goes. Pin that
+rather than the markup, which is the kit's to change. `unaudited-pairs` answers each element whose own classes put a text utility on a
 fill, a fill on a background utility, or two fills together, with the pairs it could
 paint. `(ui/sentence request :due (ui/time at shown))` puts a component inside a
 translated word.

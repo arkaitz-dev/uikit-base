@@ -73,17 +73,23 @@ that need a script, with the one script they need.
 
 **Added — CSS components**, with no script.
 - Buttons: `:variant` `:outline-<fill>` and `:link`, `:block? true`; `toggle-button`, its
-  `aria-pressed` the server's; `button-group`, named by a required `:label`; `close-button`,
+  `aria-pressed` the server's; `button-group`, named by a required `:label`, each item
+  keeping its own height, so a `confirm` that opens inside it stretches none of its
+  neighbours; `close-button`,
   named by the new kit word `:uikit-base/close`.
 - Forms: `field` `:size`, `:type "switch"` and `"range"`, `:before` and `:after` (an input
   group), `:floating? true` (a placeholder required); `input-group`. A text control is
   edged in danger once left invalid, and in success once a required one is filled, never
   before it was touched.
-- Feedback: `alert` (a `:heading`, a `:dismiss-href`); `badge` `:label` and `:corner?
+- Feedback: `alert` (a `:heading`; a way out, either `:dismiss-href` or `:dismiss-param
+  "outcome"`, which goes back to the request's own path and query with every pair of that
+  name taken out and the others kept as they came, so a page's `?day=` survives it);
+  `badge` `:label` and `:corner?
   true`; `progress` and `meter`, named by a required label, their numbers checked;
   `spinner` and `placeholder`, saying the kit word `:uikit-base/loading`. Every motion
   stops under reduced motion.
-- Lists: `list-group`; `table` `:striped?` `:hover?` `:bordered?` `:compact?`; `pager`
+- Lists: `list-group`, its items `[path content attrs?]`, the attrs on the item's `<li>`
+  (an `id`, `data-*`, `draggable`, a hook class) with the kit's class kept; `table` `:striped?` `:hover?` `:bordered?` `:compact?`; `pager`
   `:pages`, `:current` and `:size`; `tabs-nav` `:style :pills`, `:fill?` or `:justify?`.
 - Cards: `card` `:image` (an alt required unless `:decorative? true`) and `:nav`;
   `card-group`; `figure`, its caption required; `collapse` and `accordion` on the
@@ -120,6 +126,10 @@ browser of the floor lacks.
   `:loading`.
 
 **Added — testing.**
+- `testing/alerts`: every notice and alert of a page, in page order, as `{:kind :role
+  :heading :text :dismiss}`, the dismissal `{:href :name}` or nil: what the reader is told
+  and where its way out goes, read from the kit's markup, so a host's test pins those and
+  not the markup.
 - `testing/unaudited-pairs`: every element of a page whose own classes combine colour
   utilities into a pair basaku never audited — a text utility on a fill, a fill on a
   background utility, two fills.
@@ -166,6 +176,10 @@ the keyboard it gives it back to the button (measured).
 2. Rename the tokens in app.css, by the table above.
 3. Take the brand options you want into brand.edn, if any, and regenerate ui-colors.css
    with `build/write!`; your drift test goes green again.
+
+Optional: your hand-built literals of a notice or an alert in tests can become
+`testing/alerts`, and the dismiss paths your views compute (`(:uri request)` and its
+kin) can become `:dismiss-param "outcome"`, which also keeps the page's other parameters.
 
 Nothing else is required. A few keys that 0.5.0 passed through as attributes are options
 now: `badge`'s `:label` and `:corner?`, `card`'s `:image` and `:nav`, and `:block?` on
