@@ -982,13 +982,20 @@
            [nil "/orders" "no query: the bare path"]
            ["" "/orders" "an empty query: the bare path"]
            ["&&a=1&&outcome=2&=v&b&" "/orders?a=1&amp;=v&amp;b" "malformed: empty pairs dropped, a pair with no name copied, not judged"]
-           ["a=\\x&b=1&c=\tz&d=e f&g=1" "/orders?b=1&amp;g=1" "malformed: a pair a local path may not hold dropped, so the way out is never refused"]]]
+           ["a=\\x&b=1&c=\tz&d=e f&g=1" "/orders?b=1&amp;g=1" "malformed: a pair a local path may not hold dropped, so the way out is never refused"]
+           ["h=\u0001&b=1&i=\u007f" "/orders?b=1" "a control character that is no whitespace dropped too"]
+           ["Outcome=1&outcome=2" "/orders?Outcome=1" "a name's case is kept, as Ring keeps it"]
+           ["out%63ome=saved&b=1&outcome%3D=2" "/orders?b=1&amp;outcome%3D=2" "a name compared as Ring decodes it; one that decodes to another name stays"]
+           ["%zz=1&outcome=2" "/orders?%zz=1" "a name that does not decode is kept, as spelt"]]]
     (is (= (str "<div class=\"ui-notice ui-notice--ok ui-alert\" role=\"status\"><div class=\"ui-alert__body\">x</div>" (dismiss href "Close") "</div>")
            (html (ui/alert {:uri "/orders" :query-string qs} :ok {:dismiss-param "outcome"} "x")))
         (str why ": " (pr-str qs))))
   (is (= (str "<div class=\"ui-notice ui-notice--ok ui-alert\" role=\"status\"><div class=\"ui-alert__body\">x</div>" (dismiss "/?outcome=1" "Close") "</div>")
          (html (ui/alert {:uri "/" :query-string "outcome=1&day=3&day=4"} :ok {:dismiss-param "day"} "x")))
       "the name is the caller's: here day goes, outcome stays")
+  (is (= ["uikit-base: an alert's :dismiss-param builds its way out from the request's :uri, which this request lacks" {}]
+         (refusal #(ui/alert {} :ok {:dismiss-param "outcome"} "x")))
+      "no :uri: refused, never an alert with no way out")
   (is (= ["uikit-base: an alert's way out is :dismiss-href or :dismiss-param, never both" {}]
          (refusal #(ui/alert {:uri "/o"} :ok {:dismiss-href "/o" :dismiss-param "outcome"} "x"))))
   (doseq [p ["" "out come" "a&b" "a=b" :outcome 1]]

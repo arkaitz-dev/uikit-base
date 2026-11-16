@@ -279,7 +279,9 @@ else wins, except what correctness needs, which no attribute changes:
 - `notice` and `alert` speak an error as an alert, and everything else as a status. An
   alert's way out is `:dismiss-href`, or `:dismiss-param`, never both: the request's own
   `:uri` and `:query-string` with every pair of that name taken out and the others copied
-  as they came, nothing decoded. An empty pair, or one holding a backslash, whitespace or
+  as they came, nothing re-encoded; a pair's name is compared as Ring decodes it, so
+  `out%63ome` goes as `outcome` does, and one that does not decode is kept as spelt. A
+  request with no `:uri` is refused. An empty pair, or one holding a backslash, whitespace or
   a control character, is dropped rather than let `wb/link` refuse the whole link.
 - A `list-group` item's attrs, a map, go on its `<li>`, its `:class` joined to the
   kit's; the link inside stays the kit's.

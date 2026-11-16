@@ -97,3 +97,13 @@
         why))
   (is (= "uikit-base: an alert on the page is never closed: it is not the kit's"
          (try (doall (ut/alerts "<p class=\"ui-notice ui-notice--ok\">x")) nil (catch ExceptionInfo e (ex-message e))))))
+
+(deftest alerts-reads-a-heading-only-when-the-kit-drew-one-and-a-way-out-only-when-it-is-the-alerts
+  ;; Both found by a Phase-3 panel: a body that opens with a paragraph of its own is no
+  ;; heading, and a link after an alert with no way out is the page's, not the alert's.
+  (is (= [{:kind :ok :role "status" :heading nil :text "First para rest" :dismiss nil}]
+         (ut/alerts (page-of (fn [q] (ui/alert q :ok [:p "First para"] "rest")))))
+      "a body's own first paragraph is its text")
+  (is (= [{:kind :ok :role "status" :heading nil :text "Saved" :dismiss nil}]
+         (ut/alerts (page-of (fn [q] (list (ui/alert q :ok "Saved") [:a {:href "/x"} "y"])))))
+      "a link after the alert, the page's own, is no way out"))

@@ -433,11 +433,19 @@
     (into [:p (with-attrs {:class (str "ui-notice ui-notice--" (name kind)) :role (notice-roles kind)} attrs [:role])]
           body)))
 
+(defn- form-name
+  "A query pair's name as Ring's form decoding reads it, or as spelt when it does not decode."
+  [raw]
+  (try (java.net.URLDecoder/decode ^String raw java.nio.charset.StandardCharsets/UTF_8)
+       (catch IllegalArgumentException _ raw)))
+
 (defn- without-param
   "The request's own path and query with every pair named `param` taken out, the others
   kept in their order and copied byte for byte — nothing decoded, so nothing re-encoded
   differently; the bare path when none is left. A pair's name is what precedes its first
-  `=`, compared as the query spells it. An empty pair (`&&`, a leading or trailing `&`)
+  `=`, compared as Ring reads it — percent-decoded, `+` a space, case kept — so a name
+  spelt `out%63ome` goes as `outcome` does; one that does not decode is compared as it is
+  spelt. An empty pair (`&&`, a leading or trailing `&`)
   carries nothing and is dropped; so is one holding a backslash, whitespace or a control
   character, which `wb/link` would refuse the whole way out for — a crafted query must not
   turn the page into a refusal."
@@ -445,7 +453,7 @@
   (let [kept (for [pair (str/split (or query-string "") #"&")
                    :when (not= "" pair)
                    :when (not (re-find #"[\\\s\p{Cntrl}]" pair))
-                   :when (not= param (first (str/split pair #"=" 2)))]
+                   :when (not= param (form-name (first (str/split pair #"=" 2))))]
                pair)]
     (if (seq kept) (str uri "?" (str/join "&" kept)) uri)))
 
@@ -471,6 +479,8 @@
         _ (when (and (some? dismiss-param) (not (and (string? dismiss-param) (re-matches #"[A-Za-z0-9._~-]+" dismiss-param))))
             (throw (ex-info "uikit-base: an alert's :dismiss-param is a query parameter's name: letters, digits, -, ., _ or ~"
                             {:dismiss-param dismiss-param})))
+        _ (when (and (some? dismiss-param) (not (string? (:uri request))))
+            (throw (ex-info "uikit-base: an alert's :dismiss-param builds its way out from the request's :uri, which this request lacks" {})))
         dismiss-href (if (some? dismiss-param) (without-param request dismiss-param) dismiss-href)]
     (cond-> [:div (with-attrs {:class (str "ui-notice ui-notice--" (name kind) " ui-alert") :role (notice-roles kind)}
                     (dissoc opts :heading :dismiss-href :dismiss-param :dismiss-label) [:role])

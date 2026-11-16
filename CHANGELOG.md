@@ -83,7 +83,8 @@ that need a script, with the one script they need.
   before it was touched.
 - Feedback: `alert` (a `:heading`; a way out, either `:dismiss-href` or `:dismiss-param
   "outcome"`, which goes back to the request's own path and query with every pair of that
-  name taken out and the others kept as they came, so a page's `?day=` survives it);
+  name, as Ring decodes it, taken out and the others kept as they came, so a page's
+  `?day=` survives it);
   `badge` `:label` and `:corner?
   true`; `progress` and `meter`, named by a required label, their numbers checked;
   `spinner` and `placeholder`, saying the kit word `:uikit-base/loading`. Every motion
