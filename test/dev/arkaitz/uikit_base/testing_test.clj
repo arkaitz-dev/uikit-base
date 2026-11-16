@@ -66,3 +66,34 @@
     (is (= [{:tag "a" :class "x ui-link-primary  ui-text-bg-info" :pairs [[:info :link]]}]
            (ut/unaudited-pairs (str "<p class=\"ui-text-muted\">ok</p><a href=\"/\" class=\"x ui-link-primary  ui-text-bg-info\">" "</a><div class=\"ui-bg-surface\"></div>")))
         "only the element that combines them, read among others, its class kept as written")))
+
+(def ^:private alerts-page
+  (fn [q] (list (ui/notice :error "Refused <x> &" [:b " now"])
+                [:div {:role "alert"} "Not the kit's"]
+                [:p {:class "ui-notice-like" :role "status"} "Nor this"]
+                (ui/alert q :ok {:heading "Saved & sent" :dismiss-href "/orders?day=2&tab=a"} "The order " [:b "A1"] [:div [:div "nested"] "after"])
+                (ui/alert q :warning "Heads up")
+                (ui/alert q :info {:dismiss-href "/" :dismiss-label "Hide"} "Plain")
+                (ui/notice :ok {:role "none"} "Done."))))
+
+(deftest alerts-reads-every-kit-notice-and-alert-as-a-reader-meets-it
+  (let [html (page-of alerts-page)]
+    (is (str/includes? html "<div role=\"alert\">Not the kit&apos;s</div>") "witness: a role=alert the kit did not draw is on the page")
+    (is (= [{:kind :error :role "alert" :heading nil :text "Refused <x> & now" :dismiss nil}
+            {:kind :ok :role "status" :heading "Saved & sent" :text "The order A1 nested after" :dismiss {:href "/orders?day=2&tab=a" :name "Close"}}
+            {:kind :warning :role "status" :heading nil :text "Heads up" :dismiss nil}
+            {:kind :info :role "status" :heading nil :text "Plain" :dismiss {:href "/" :name "Hide"}}
+            {:kind :ok :role "status" :heading nil :text "Done." :dismiss nil}]
+           (ut/alerts html))
+        "in page order, notices and alerts alike: kind, role, heading, the body's text without heading or way out, and the way out's path and spoken name; a role=alert or a lookalike class is none")))
+
+(deftest a-ui-notice-the-kit-did-not-draw-is-refused
+  (doseq [[html why] [["<div class=\"ui-notice ui-notice--ok\">x</div>" "a div without ui-alert"]
+                      ["<p class=\"ui-notice ui-notice--ok ui-alert\">x</p>" "an alert drawn as a p"]
+                      ["<p class=\"ui-notice ui-notice--success\">x</p>" "a kind the kit has not"]
+                      ["<div class=\"ui-notice ui-notice--ok ui-alert\"><p>x</p></div>" "an alert without its body"]]]
+    (is (= "uikit-base: a ui-notice on the page is neither the kit's notice nor its alert"
+           (try (doall (ut/alerts html)) nil (catch ExceptionInfo e (ex-message e))))
+        why))
+  (is (= "uikit-base: an alert on the page is never closed: it is not the kit's"
+         (try (doall (ut/alerts "<p class=\"ui-notice ui-notice--ok\">x")) nil (catch ExceptionInfo e (ex-message e))))))

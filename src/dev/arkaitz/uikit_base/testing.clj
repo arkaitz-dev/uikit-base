@@ -6,6 +6,9 @@
   form its second step posts; `actions` answers both in one map. It reads the markup the
   kit writes, and needs nothing but Clojure.
 
+  `alerts` reads a page's notices and alerts the same way: what each tells the reader, and
+  where its way out goes.
+
   `unaudited-pairs` reads a page for colour utilities combined on one element into a pair
   basaku never audited: a text utility on a `ui-text-bg-*` fill, a fill on a background
   utility, two fills. A text utility on a background utility is always an audited pair,
@@ -67,6 +70,71 @@
                             (throw (ex-info "uikit-base: a confirm on the page has no form: it is not the kit's" {:html whole})))]
           (assoc (form-of fo fb) :first {:label (visible-label summary) :name (accessible-name summary)}))
         (assoc (form-of form-open form-body) :first nil)))))
+
+(defn- inner-end
+  "Where the element of `tag` whose open tag ends at `from` closes, as the index of its close
+  tag, counting the ones of the same tag nested in it."
+  [html tag from]
+  (let [m (re-matcher (re-pattern (str "(?i)<(/?)" tag "(?=[\\s>/])[^>]*>")) html)]
+    (.region m from (count html))
+    (loop [depth 1]
+      (if-not (.find m)
+        (throw (ex-info "uikit-base: an alert on the page is never closed: it is not the kit's" {:tag tag}))
+        (let [depth (if (= "/" (.group m 1)) (dec depth) (inc depth))]
+          (if (zero? depth) (.start m) (recur depth)))))))
+
+(defn- spoken
+  "What a screen reader says of a fragment: its accessible name, without what it hides."
+  [html]
+  (accessible-name (str/replace html #"(?s)<([a-zA-Z][\w-]*)[^>]*\saria-hidden=\"true\"[^>]*>.*?</\1>" "")))
+
+(defn- alert-of
+  "One `ui-notice` element, its open tag read into `tag` and `as`, its content `inner`."
+  [tag as inner]
+  (let [cls    (classes as)
+        kind   (some #(when (cls (str "ui-notice--" (name %))) %) [:ok :info :warning :error])
+        alert? (contains? cls "ui-alert")
+        not-kits! #(throw (ex-info "uikit-base: a ui-notice on the page is neither the kit's notice nor its alert" {:tag tag :class (get as "class")}))]
+    (when-not (and kind (if alert? (= "div" tag) (= "p" tag))) (not-kits!))
+    (if-not alert?
+      {:kind kind :role (get as "role") :heading nil :text (accessible-name inner) :dismiss nil}
+      (let [[open body-attrs] (or (re-find #"^<div(\s[^>]*)?>" inner) (not-kits!))
+            _        (when-not (contains? (classes (attrs (or body-attrs ""))) "ui-alert__body") (not-kits!))
+            body-end (inner-end inner "div" (count open))
+            body     (subs inner (count open) body-end)
+            [whole heading-attrs heading] (re-find #"(?s)^<p(\s[^>]*)?>(.*?)</p>" body)
+            heading? (contains? (classes (attrs (or heading-attrs ""))) "ui-alert__heading")
+            [_ link-attrs link-body] (re-find #"(?s)<a(\s[^>]*)>(.*?)</a>" (subs inner body-end))
+            link-as  (attrs (or link-attrs ""))]
+        {:kind    kind
+         :role    (get as "role")
+         :heading (when heading? (accessible-name heading))
+         :text    (accessible-name (if heading? (subs body (count whole)) body))
+         :dismiss (when (contains? (classes link-as) "ui-alert__dismiss")
+                    {:href (get link-as "href") :name (spoken link-body)})}))))
+
+(defn alerts
+  "Every `notice` and `alert` the kit drew on `html`, in page order, each `{:kind :role
+  :heading :text :dismiss}`: its kind (`:ok`, `:info`, `:warning`, `:error`), its role, an
+  alert's heading or nil, the text of its body as a reader reads it — tags dropped,
+  whitespace collapsed, without the heading and without the way out — and its way out,
+  `{:href :name}` (the path it goes back to and the name a screen reader hears), or nil.
+  An element is one by the kit's class, never by its role: a `role=alert` the kit did not
+  draw is not one, and a `ui-notice` drawn in another shape is refused.
+
+  A host's test pins this answer — what the reader is told, and where dismissing it goes —
+  rather than the markup, which is the kit's to change."
+  [html]
+  (let [html (str html)
+        m    (re-matcher #"<(p|div)(\s[^>]*)?>" html)]
+    (loop [found []]
+      (if-not (.find m)
+        found
+        (let [tag (.group m 1)
+              as  (attrs (or (.group m 2) ""))]
+          (recur (if (contains? (classes as) "ui-notice")
+                   (conj found (alert-of tag as (subs html (.end m) (inner-end html tag (.end m)))))
+                   found)))))))
 
 (def ^:private utility-colours
   "Each colour utility of the kit's file, by class, as the tokens it sets: `{\"color\"
