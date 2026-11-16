@@ -1006,6 +1006,19 @@
            (on-element rules {:classes rotate-classes} "display"))
         (str "a carousel never turns where reduced motion was asked for, so its button is not offered " (:motion env)))))
 
+(def ^:private group-classes
+  "The kit classes of a button-group's own element, as `button-group` renders it."
+  (some (fn [[_ _ classes]] (when (classes "ui-btn-group") classes))
+        (elements (ui/button-group {:label "g"} (ui/button "a") (ui/confirm req "/d" {:label "Delete" :confirm-label "Yes"})) ())))
+
+(deftest a-button-group-lets-each-item-keep-its-own-height
+  (is (= #{"ui-btn-group"} group-classes) "witness: the group's element carries the kit's class, and only it")
+  ;; A confirm opens below its summary; a row that stretched its items would draw every
+  ;; button beside it as tall as the open confirm (academy U-B2, measured in a browser).
+  (doseq [[env rules] @env-rules]
+    (is (= ["inline-flex" "flex-start"] (mapv #(on-element rules {:classes group-classes} %) ["display" "align-items"]))
+        (str "a button-group is a row that does not stretch its items to the tallest " (:width env) " " (:scheme env)))))
+
 (deftest no-text-travels-through-a-data-attribute
   ;; ui.js reads data-* as numbers and flags; text it shows is the server's, rendered and
   ;; escaped in the markup, never carried in an attribute for a script to place.

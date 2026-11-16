@@ -36,6 +36,9 @@
                    (ui/close-button r)]))
     (ui/button {:block? true :type "button"} "block")
     (ui/button-group {:label "Alignment"} (ui/button {:type "button"} "Start") (ui/button {:type "button"} "Centre") (ui/button {:type "button"} "End"))
+    (ui/button-group {:label "Lesson" :id "g-group-confirm"}
+      (ui/link-button "/" {:variant :secondary} "Edit")
+      (ui/confirm r "/do" {:label "Delete" :confirm-label "Yes, delete" :subject "the lesson"}))
     (ui/toggle-button r "/do" {:label "Bold" :pressed? true :hidden {:on "false"}})]
    ["forms"
     (ui/post-form r "/do"

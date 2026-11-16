@@ -104,8 +104,10 @@
     }
 
     /* A group: its buttons one control, the edges between them joined; the one hovered or
-     * focused lifted, so its edge and ring are not hidden under a neighbour's. */
-    .ui-btn-group { display: inline-flex; flex-wrap: wrap; }
+     * focused lifted, so its edge and ring are not hidden under a neighbour's. Each item keeps
+     * its own height: a confirm's open second step drops below its summary, and a stretched
+     * row would draw every button beside it that tall. */
+    .ui-btn-group { display: inline-flex; flex-wrap: wrap; align-items: flex-start; }
     .ui-btn-group > .ui-btn:not(:first-child), .ui-btn-group > :not(:first-child) > .ui-btn {
       margin-inline-start: -1px; border-start-start-radius: 0; border-end-start-radius: 0;
     }
