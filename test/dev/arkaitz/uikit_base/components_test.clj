@@ -986,6 +986,21 @@
   (is (= ["uikit-base: every item of a list-group has a label" {}] (refusal #(ui/list-group {:items [["/a" " "]]}))))
   (is (= ["web-base: link's href must be a path on this origin" {:wb/link :href}] (refusal #(ui/list-group {:items [["//evil" "A"]]})))))
 
+(deftest a-list-group-item-carries-its-own-attributes-on-its-li
+  (is (= (str "<ul class=\"ui-list-group\"><li class=\"ui-list-group__item product-1\" data-name=\"a&quot;&lt;b&gt;&amp;\" draggable=\"true\" id=\"p1\">"
+              (with-class (L "/p/1" nil "One") "ui-list-group__action") "</li>"
+              "<li class=\"ui-list-group__item\" data-role=\"admin\"><b>Two</b></li>"
+              "<li class=\"ui-list-group__item\">Three</li></ul>")
+         (html (ui/list-group {:items [["/p/1" "One" {:id "p1" :class "product-1" :data-name "a\"<b>&" "draggable" "true"}]
+                                       [nil [:b "Two"] {:data-role "admin"}]
+                                       [nil "Three" nil]]})))
+      "an item's attrs on its li, escaped, the kit's class first and the caller's joined; the link inside as it was; nil attrs are none")
+  (is (= ["uikit-base: a list-group item's attributes are a map" {:attributes "row-1"}]
+         (refusal #(ui/list-group {:items [["/a" "A"] [nil "B" "row-1"]]}))))
+  (is (= ["uikit-base: a list-group item's attributes are a map" {:attributes false}]
+         (refusal #(ui/list-group {:items [[nil "B" false]]})))
+      "false is not a map either, and is not read as none"))
+
 (deftest a-tables-variants-are-classes-of-the-table
   (is (= "<table class=\"ui-table ui-table--striped ui-table--hover ui-table--bordered ui-table--compact x\"><tbody><tr><td>a</td></tr></tbody></table>"
          (html (ui/table {:rows [["a"]] :striped? true :hover? true :bordered? true :compact? true :attrs {:class "x"}}))))

@@ -616,21 +616,25 @@
    (into [:ul] (for [[p l] items] [:li (wb/link p (when (= p current) {:aria-current "page"}) l)]))])
 
 (defn list-group
-  "`(list-group opts)` → items in one bordered column. `:items`, `[[path content] …]`: an
-  item with a path is a `wb/link` that fills its row, the one whose path is `:current`
+  "`(list-group opts)` → items in one bordered column. `:items`, `[[path content attrs?] …]`:
+  an item with a path is a `wb/link` that fills its row, the one whose path is `:current`
   marked `aria-current=page`; an item with a nil path holds its content as it is — text,
-  or an `action` whose button acts on it. `:flush? true` drops the outer edge and
-  corners, for a list inside a card; `:attrs` go on the list. No items, a current that is
-  no item's path, or an item with nothing in it, is refused."
+  or an `action` whose button acts on it. An item's `attrs`, a map, go on its `<li>` — an
+  `id`, `data-*`, `draggable` or a hook class a host's script and tests read — its `:class`
+  joined to the kit's. `:flush? true` drops the outer edge and corners, for a list inside
+  a card; `:attrs` go on the list. No items, a current that is no item's path, an item
+  with nothing in it, or an item's attrs that are not a map, is refused."
   [{:keys [items current flush? attrs]}]
   (when (empty? items)
     (throw (ex-info "uikit-base: a list-group's items are one or more" {})))
   (named-items! "list-group" items)
+  (when-let [bad (first (keep (fn [[_ _ a]] (when (and (some? a) (not (map? a))) [a])) items))]
+    (throw (ex-info "uikit-base: a list-group item's attributes are a map" {:attributes (first bad)})))
   (when (and (some? current) (not-any? #(= current (first %)) items))
     (throw (ex-info "uikit-base: a list-group's current is one of its items' paths" {:current current})))
   (into [:ul (with-attrs {:class (cond-> "ui-list-group" flush? (str " ui-list-group--flush"))} attrs [])]
-        (for [[p c] items]
-          [:li.ui-list-group__item
+        (for [[p c item-attrs] items]
+          [:li (with-attrs {:class "ui-list-group__item"} item-attrs [])
            (if (some? p) (wb/link p (cond-> {:class "ui-list-group__action"} (= p current) (assoc :aria-current "page")) c) c)])))
 
 (defn secret

@@ -61,7 +61,7 @@
     (ui/meter {:value 7 :max 10 :low 3 :high 8 :optimum 10 :label "Places taken"})
     (ui/spinner r) (ui/placeholder r {:lines 2})]
    ["lists"
-    (ui/list-group {:items [["/" "Home"] ["/l" "List"] [nil "Plain"]] :current "/"})
+    (ui/list-group {:items [["/" "Home"] ["/l" "List" {:id "g-row-list" :data-row "list"}] [nil "Plain"]] :current "/"})
     (ui/rows (ui/row "A row") (ui/row "Another"))
     (ui/empty "Nothing here yet.")
     (ui/pairs [["Status" "Open"] ["Owner" "Ada"]])
