@@ -433,20 +433,47 @@
     (into [:p (with-attrs {:class (str "ui-notice ui-notice--" (name kind)) :role (notice-roles kind)} attrs [:role])]
           body)))
 
+(defn- without-param
+  "The request's own path and query with every pair named `param` taken out, the others
+  kept in their order and copied byte for byte — nothing decoded, so nothing re-encoded
+  differently; the bare path when none is left. A pair's name is what precedes its first
+  `=`, compared as the query spells it. An empty pair (`&&`, a leading or trailing `&`)
+  carries nothing and is dropped; so is one holding a backslash, whitespace or a control
+  character, which `wb/link` would refuse the whole way out for — a crafted query must not
+  turn the page into a refusal."
+  [{:keys [uri query-string]} param]
+  (let [kept (for [pair (str/split (or query-string "") #"&")
+                   :when (not= "" pair)
+                   :when (not (re-find #"[\\\s\p{Cntrl}]" pair))
+                   :when (not= param (first (str/split pair #"=" 2)))]
+               pair)]
+    (if (seq kept) (str uri "?" (str/join "&" kept)) uri)))
+
 (defn alert
   "`(alert request kind opts? & body)` → a `notice` that may carry a heading and a way out.
-  `:heading` is drawn above the body; `:dismiss-href` is a `wb/link` back to the page
-  without the `?outcome=` that drew the alert, so it goes and a reload does not bring it
-  back — named by the kit's word `:uikit-base/close` in the reader's language, or by
-  `:dismiss-label`. Its kind and role are `notice`'s, and no attribute changes the role;
-  the rest of `opts` are its attributes."
+  `:heading` is drawn above the body. The way out is a `wb/link` back to the page without
+  the `?outcome=` that drew the alert, so it goes and a reload does not bring it back,
+  named by the kit's word `:uikit-base/close` in the reader's language, or by
+  `:dismiss-label`. Either the host computes it, as `:dismiss-href`, or the kit does, from
+  `:dismiss-param \"outcome\"`: the request's own `:uri` and `:query-string` with every
+  pair of that name taken out and every other one kept, so a page's `?day=` or filter
+  survives the dismissal. `(:uri request)` alone drops them. The name is one the query
+  spells one way only — letters, digits, `-`, `.`, `_`, `~` — and the two options are one
+  or the other. Its kind and role are `notice`'s, and no attribute changes the role; the
+  rest of `opts` are its attributes."
   [request kind & more]
   (when-not (notice-roles kind)
     (throw (ex-info "uikit-base: an alert is :ok, :info, :warning or :error" {:kind kind})))
   (let [[opts body] (split-attrs more)
-        {:keys [heading dismiss-href dismiss-label]} opts]
+        {:keys [heading dismiss-href dismiss-param dismiss-label]} opts
+        _ (when (and (some? dismiss-href) (some? dismiss-param))
+            (throw (ex-info "uikit-base: an alert's way out is :dismiss-href or :dismiss-param, never both" {})))
+        _ (when (and (some? dismiss-param) (not (and (string? dismiss-param) (re-matches #"[A-Za-z0-9._~-]+" dismiss-param))))
+            (throw (ex-info "uikit-base: an alert's :dismiss-param is a query parameter's name: letters, digits, -, ., _ or ~"
+                            {:dismiss-param dismiss-param})))
+        dismiss-href (if (some? dismiss-param) (without-param request dismiss-param) dismiss-href)]
     (cond-> [:div (with-attrs {:class (str "ui-notice ui-notice--" (name kind) " ui-alert") :role (notice-roles kind)}
-                    (dissoc opts :heading :dismiss-href :dismiss-label) [:role])
+                    (dissoc opts :heading :dismiss-href :dismiss-param :dismiss-label) [:role])
              (into (cond-> [:div.ui-alert__body] (some? heading) (conj [:p.ui-alert__heading heading])) body)]
       (some? dismiss-href) (conj (wb/link dismiss-href {:class "ui-close ui-alert__dismiss"}
                                           [:span {:aria-hidden "true"} "\u00d7"]

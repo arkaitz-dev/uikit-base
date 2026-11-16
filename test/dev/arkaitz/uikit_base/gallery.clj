@@ -58,6 +58,7 @@
    ["feedback"
     (ui/notice :ok "Saved.") (ui/notice :error "Refused.")
     (ui/alert r :warning {:heading "Heads up" :dismiss-href "/"} "Something to read.")
+    (ui/alert r :ok {:dismiss-param "outcome"} "Dismissed back to this page, its other parameters kept.")
     [:p (ui/badge :neutral "draft") " " (ui/badge :success "paid") " " (ui/badge :info {:label "unread"} 3)]
     [:p.ui-position-relative "Inbox" (ui/badge :danger {:corner? true :label "new"} 9)]
     (ui/progress {:value 0.4 :label "Upload"}) (ui/progress {:label "Working" :striped? true :animated? true})

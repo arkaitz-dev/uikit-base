@@ -971,6 +971,34 @@
 
 ;; --- K12: lists, tables, navigation -----------------------------------------------------
 
+(deftest an-alert-dismissed-by-its-param-goes-back-with-the-rest-of-the-query
+  (doseq [[qs href why]
+          [["day=2&outcome=saved&tab=a" "/orders?day=2&amp;tab=a" "the others kept, in their order"]
+           ["outcome=a&x=1&outcome=b&outcome" "/orders?x=1" "every occurrence taken out, a bare name too"]
+           ["outcomex=1&outcome=a&xoutcome=2&outcome.x=3" "/orders?outcomex=1&amp;xoutcome=2&amp;outcome.x=3" "a name is the whole name, never a prefix or a suffix"]
+           ["q=a%20b&outcome=1&r=%C3%A9+x&s=%26" "/orders?q=a%20b&amp;r=%C3%A9+x&amp;s=%26" "the pairs copied as the query spelt them, nothing decoded"]
+           ["a=1&b=x=y&c=" "/orders?a=1&amp;b=x=y&amp;c=" "without the param, the query as it came; a value holding = is the value"]
+           ["outcome=saved" "/orders" "nothing left: the bare path"]
+           [nil "/orders" "no query: the bare path"]
+           ["" "/orders" "an empty query: the bare path"]
+           ["&&a=1&&outcome=2&=v&b&" "/orders?a=1&amp;=v&amp;b" "malformed: empty pairs dropped, a pair with no name copied, not judged"]
+           ["a=\\x&b=1&c=\tz&d=e f&g=1" "/orders?b=1&amp;g=1" "malformed: a pair a local path may not hold dropped, so the way out is never refused"]]]
+    (is (= (str "<div class=\"ui-notice ui-notice--ok ui-alert\" role=\"status\"><div class=\"ui-alert__body\">x</div>" (dismiss href "Close") "</div>")
+           (html (ui/alert {:uri "/orders" :query-string qs} :ok {:dismiss-param "outcome"} "x")))
+        (str why ": " (pr-str qs))))
+  (is (= (str "<div class=\"ui-notice ui-notice--ok ui-alert\" role=\"status\"><div class=\"ui-alert__body\">x</div>" (dismiss "/?outcome=1" "Close") "</div>")
+         (html (ui/alert {:uri "/" :query-string "outcome=1&day=3&day=4"} :ok {:dismiss-param "day"} "x")))
+      "the name is the caller's: here day goes, outcome stays")
+  (is (= ["uikit-base: an alert's way out is :dismiss-href or :dismiss-param, never both" {}]
+         (refusal #(ui/alert {:uri "/o"} :ok {:dismiss-href "/o" :dismiss-param "outcome"} "x"))))
+  (doseq [p ["" "out come" "a&b" "a=b" :outcome 1]]
+    (is (= ["uikit-base: an alert's :dismiss-param is a query parameter's name: letters, digits, -, ., _ or ~" {:dismiss-param p}]
+           (refusal #(ui/alert {:uri "/o"} :ok {:dismiss-param p} "x")))
+        (pr-str p)))
+  (is (= ["web-base: link's href must be a path on this origin" {:wb/link :href}]
+         (refusal #(ui/alert {:uri "//evil.test/x" :query-string "outcome=1"} :ok {:dismiss-param "outcome"} "x")))
+      "the path is web-base's to judge, as for any link"))
+
 (defn- with-class [link cls] (str/replace link "<a href" (str "<a class=\"" cls "\" href")))
 
 (deftest a-list-group-links-its-items-marks-the-current-one-and-holds-the-rest
