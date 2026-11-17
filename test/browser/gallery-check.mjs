@@ -216,6 +216,8 @@ for (const [mode, init] of Object.entries(modes)) {
   const csp = await p.evaluate(() => window.__csp);
   r['no CSP violation, no script error'] = { pass: csp.length === 0 && errors.length === 0, seen: { csp, errors } };
   // The navbar, on pages of its own so the gallery's page above stays where its checks left it.
+  // fit() runs a frame after a resize, and a headless frame can stall: wait for frames, not for a fixed time.
+  const frames = (q) => q.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r)))));
   const pageAt = async (width, path) => {
     const q = await ctx.newPage(); await q.setViewportSize({ width, height: 740 });
     const errs = []; q.on('pageerror', e => errs.push(String(e)));
@@ -355,7 +357,7 @@ for (const [mode, init] of Object.entries(modes)) {
     const [q, errs] = await pageAt(700, '/second');
     const state = () => q.evaluate(() => { const bar = document.querySelector('.ui-navbar'), t = document.querySelector('.ui-navbar__toggle'), l = document.querySelector('.ui-navbar__link').getBoundingClientRect(), b = bar.getBoundingClientRect();
       return { collapsed: bar.classList.contains('ui-navbar--collapsed'), toggle: getComputedStyle(t).display !== 'none', linkInBar: l.height > 0 && l.top >= b.top && l.bottom <= b.bottom, h: b.height }; });
-    const at = async (w) => { await q.setViewportSize({ width: w, height: 740 }); await q.waitForTimeout(250); return state(); };
+    const at = async (w) => { await q.setViewportSize({ width: w, height: 740 }); await q.waitForTimeout(100); await frames(q); return state(); };
     const s700 = await state(), s690 = await at(690), s600 = await at(600), s320 = await at(320), back = await at(700), wide = await at(1024);
     await q.close(); return { s700, s690, s600, s320, back, wide, errs };
   }, s => !s.s700.collapsed && !s.s700.toggle && s.s700.linkInBar && s.s690.collapsed && s.s690.toggle && !s.s690.linkInBar
@@ -372,7 +374,7 @@ for (const [mode, init] of Object.entries(modes)) {
     await q.close(); return s;
   }, s => s.open && s.barTop >= 119 && Math.abs(s.under) <= 0.5 && s.bottom <= s.vh + 0.5 && s.overflows);
   // A ResizeObserver loop is reported as a window error event (Chromium), not always as a page error: both are read.
-  const growShrink = async (q, w) => { await q.setViewportSize({ width: w, height: 740 }); await q.waitForTimeout(150);
+  const growShrink = async (q, w) => { await q.setViewportSize({ width: w, height: 740 }); await q.waitForTimeout(100); await frames(q);
     for (let i = 0; i < 10; i++) {
       await q.evaluate(() => { document.querySelector('.ui-navbar__link[href="/second"]').textContent = 'Second page with a much longer name'; }); await q.waitForTimeout(60);
       await q.evaluate(() => { document.querySelector('.ui-navbar__link[href="/second"]').textContent = 'Second page'; }); await q.waitForTimeout(60);
@@ -384,7 +386,7 @@ for (const [mode, init] of Object.entries(modes)) {
   }, s => s.err.length === 0 && s.errs.length === 0);
   await check('navbar: wide, an item grown past the row collapses it, and shrunk back while collapsed it is inline again', async () => {
     const [q, errs] = await pageAt(1024, '/second');
-    const set = async (t) => { await q.evaluate(t => { document.querySelector('.ui-navbar__link[href="/second"]').textContent = t; }, t); await q.waitForTimeout(200);
+    const set = async (t) => { await q.evaluate(t => { document.querySelector('.ui-navbar__link[href="/second"]').textContent = t; }, t); await q.waitForTimeout(100); await frames(q);
       return q.evaluate(() => ({ collapsed: document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'), toggle: document.querySelector('.ui-navbar__toggle').checkVisibility() })); };
     const grown = await set('A second page whose name is far too long to share one row with all the others'), shrunk = await set('X');
     const err = await q.evaluate(() => window.__err); await q.close(); return { grown, shrunk, err, errs };
@@ -401,9 +403,46 @@ for (const [mode, init] of Object.entries(modes)) {
     const [q, errs] = await pageAt(720, '/second');
     await q.keyboard.press('Shift'); await q.evaluate(() => document.querySelector('.ui-navbar__link[href="/"]').focus());
     const before = await q.evaluate(() => document.activeElement.getAttribute('href'));
-    await q.setViewportSize({ width: 690, height: 740 }); await q.waitForTimeout(300);
+    await q.setViewportSize({ width: 690, height: 740 }); await q.waitForTimeout(100); await frames(q);
     const after = await q.evaluate(() => document.activeElement.className); await q.close(); return { before, after, errs };
   }, s => s.before === '/' && /ui-navbar__toggle/.test(s.after) && s.errs.length === 0);
+  await check('navbar: collapsed past its breakpoint, its toggle opens the panel and it stays open, through a change of its content too', async () => {
+    const [q, errs] = await pageAt(690, '/second'); await frames(q);
+    const collapsed = await q.evaluate(() => document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'));
+    await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(1000); await frames(q);
+    const opened = await q.evaluate(() => document.getElementById('g-nav').matches(':popover-open'));
+    await q.evaluate(() => document.querySelector('.ui-navbar__end').append(document.createElement('span'))); await q.waitForTimeout(300); await frames(q);
+    const afterEdit = await q.evaluate(() => document.getElementById('g-nav').matches(':popover-open'));
+    const err = await q.evaluate(() => window.__err); await q.close(); return { collapsed, opened, afterEdit, err, errs };
+  }, s => s.collapsed && s.opened && s.afterEdit && s.err.length === 0 && s.errs.length === 0);
+  await check('navbar: a stylesheet that widens its items collapses it, with no error', async () => {
+    const [q, errs] = await pageAt(1100, '/'); await frames(q);
+    const before = await q.evaluate(() => document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'));
+    await q.evaluate(() => { const sheet = new CSSStyleSheet(); sheet.replaceSync('.ui-navbar__items { font-size: 28px; }'); document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]; });
+    await q.waitForTimeout(300); await frames(q);
+    const after = await q.evaluate(() => document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'));
+    const err = await q.evaluate(() => window.__err); await q.close(); return { before, after, err, errs };
+  }, s => !s.before && s.after && s.err.length === 0 && s.errs.length === 0);
+  await check('navbar: a node added to it and removed in one task raises no error', async () => {
+    const [q, errs] = await pageAt(1024, '/'); await frames(q);
+    await q.evaluate(() => { const span = document.createElement('span'); document.querySelector('.ui-navbar__end').append(span); span.append(document.createElement('b')); span.remove(); });
+    await q.waitForTimeout(300); await frames(q);
+    const err = await q.evaluate(() => window.__err); await q.close(); return { err, errs };
+  }, s => s.err.length === 0 && s.errs.length === 0);
+  await check('navbar: a link\'s text edited in place collapses it when too long and lets it expand when short again', async () => {
+    const [q, errs] = await pageAt(1024, '/second'); await frames(q);
+    const set = async (t) => { await q.evaluate(t => { document.querySelector('.ui-navbar__link[href="/second"]').firstChild.data = t; }, t); await q.waitForTimeout(150); await frames(q);
+      return q.evaluate(() => document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed')); };
+    const grown = await set('A second page whose name is far too long to share one row with all the others'), shrunk = await set('X');
+    const err = await q.evaluate(() => window.__err); await q.close(); return { grown, shrunk, err, errs };
+  }, s => s.grown && !s.shrunk && s.err.length === 0 && s.errs.length === 0);
+  await check('navbar: a host\'s own inline style on its panel survives the bar fitting itself', async () => {
+    const [q, errs] = await pageAt(1024, '/'); await frames(q);
+    await q.evaluate(() => document.getElementById('g-nav').style.setProperty('outline-offset', '3px'));
+    await q.setViewportSize({ width: 1000, height: 740 }); await q.waitForTimeout(100); await frames(q);
+    await q.evaluate(() => document.querySelector('.ui-navbar__end').append(document.createElement('span'))); await q.waitForTimeout(100); await frames(q);
+    const kept = await q.evaluate(() => document.getElementById('g-nav').style.getPropertyValue('outline-offset')); await q.close(); return { kept, errs };
+  }, s => s.kept === '3px' && s.errs.length === 0);
   result.modes[mode] = r;
   await ctx.close();
 }

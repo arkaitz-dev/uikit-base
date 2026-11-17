@@ -5,8 +5,8 @@
 {:checked "2026-11-17"
  :files {"kit.css" "a042a7730221847a15d818a406e413564b43d87b46a4ef37bc42e31d07a0e1a8"
          "ui-utilities.css" "a13d081a7dacf810293c7e730b1e6da87d36c89af1336f9bb5dda55fc6f981e6"
-         "ui.js" "9d9e0539e10664f4ad304c79aa84b3113a948044bc7f5701fa0072b5b53f2600"
-         "gallery-check.mjs" "a878d5e4d0fe20bec785ce09d334cd48353cb6570e685aef09aab01df5253a5c"}
+         "ui.js" "dfe336f7cf42907bedf188c8e0b49d6b8d0be1761bffea71e2a1f1197674dae5"
+         "gallery-check.mjs" "ecdcebcf8252c832c7cf4280cb32a237447b1eaa4d7935fbe4d1112766f0ec50"}
  :runs [
   {:engine "webkit" :version "26.4"
    :modes {
@@ -44,7 +44,12 @@
      "navbar: its items growing and shrinking around the width they need raise no error" true
      "navbar: wide, an item grown past the row collapses it, and shrunk back while collapsed it is inline again" true
      "navbar: opened narrow, then widened, its inline panel keeps none of the placement written for the popover" true
-     "navbar: when it collapses while a link of its row has the focus, the focus goes to its toggle" true}
+     "navbar: when it collapses while a link of its row has the focus, the focus goes to its toggle" true
+     "navbar: collapsed past its breakpoint, its toggle opens the panel and it stays open, through a change of its content too" true
+     "navbar: a stylesheet that widens its items collapses it, with no error" true
+     "navbar: a node added to it and removed in one task raises no error" true
+     "navbar: a link's text edited in place collapses it when too long and lets it expand when short again" true
+     "navbar: a host's own inline style on its panel survives the bar fitting itself" true}
     "older-floor" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -79,7 +84,12 @@
      "navbar: its items growing and shrinking around the width they need raise no error" true
      "navbar: wide, an item grown past the row collapses it, and shrunk back while collapsed it is inline again" true
      "navbar: opened narrow, then widened, its inline panel keeps none of the placement written for the popover" true
-     "navbar: when it collapses while a link of its row has the focus, the focus goes to its toggle" true}}}
+     "navbar: when it collapses while a link of its row has the focus, the focus goes to its toggle" true
+     "navbar: collapsed past its breakpoint, its toggle opens the panel and it stays open, through a change of its content too" true
+     "navbar: a stylesheet that widens its items collapses it, with no error" true
+     "navbar: a node added to it and removed in one task raises no error" true
+     "navbar: a link's text edited in place collapses it when too long and lets it expand when short again" true
+     "navbar: a host's own inline style on its panel survives the bar fitting itself" true}}}
   {:engine "chromium" :version "145.0.7632.6"
    :modes {
     "native" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
@@ -116,7 +126,12 @@
      "navbar: its items growing and shrinking around the width they need raise no error" true
      "navbar: wide, an item grown past the row collapses it, and shrunk back while collapsed it is inline again" true
      "navbar: opened narrow, then widened, its inline panel keeps none of the placement written for the popover" true
-     "navbar: when it collapses while a link of its row has the focus, the focus goes to its toggle" true}
+     "navbar: when it collapses while a link of its row has the focus, the focus goes to its toggle" true
+     "navbar: collapsed past its breakpoint, its toggle opens the panel and it stays open, through a change of its content too" true
+     "navbar: a stylesheet that widens its items collapses it, with no error" true
+     "navbar: a node added to it and removed in one task raises no error" true
+     "navbar: a link's text edited in place collapses it when too long and lets it expand when short again" true
+     "navbar: a host's own inline style on its panel survives the bar fitting itself" true}
     "older-floor" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -151,7 +166,12 @@
      "navbar: its items growing and shrinking around the width they need raise no error" true
      "navbar: wide, an item grown past the row collapses it, and shrunk back while collapsed it is inline again" true
      "navbar: opened narrow, then widened, its inline panel keeps none of the placement written for the popover" true
-     "navbar: when it collapses while a link of its row has the focus, the focus goes to its toggle" true}
+     "navbar: when it collapses while a link of its row has the focus, the focus goes to its toggle" true
+     "navbar: collapsed past its breakpoint, its toggle opens the panel and it stays open, through a change of its content too" true
+     "navbar: a stylesheet that widens its items collapses it, with no error" true
+     "navbar: a node added to it and removed in one task raises no error" true
+     "navbar: a link's text edited in place collapses it when too long and lets it expand when short again" true
+     "navbar: a host's own inline style on its panel survives the bar fitting itself" true}
     "anchor-without-scope" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -186,7 +206,12 @@
      "navbar: its items growing and shrinking around the width they need raise no error" true
      "navbar: wide, an item grown past the row collapses it, and shrunk back while collapsed it is inline again" true
      "navbar: opened narrow, then widened, its inline panel keeps none of the placement written for the popover" true
-     "navbar: when it collapses while a link of its row has the focus, the focus goes to its toggle" true}}}]
+     "navbar: when it collapses while a link of its row has the focus, the focus goes to its toggle" true
+     "navbar: collapsed past its breakpoint, its toggle opens the panel and it stays open, through a change of its content too" true
+     "navbar: a stylesheet that widens its items collapses it, with no error" true
+     "navbar: a node added to it and removed in one task raises no error" true
+     "navbar: a link's text edited in place collapses it when too long and lets it expand when short again" true
+     "navbar: a host's own inline style on its panel survives the bar fitting itself" true}}}]
  :not-verified ["a dialog's closedby shim in a Chromium without it (131-133): Chromium's own closedby cannot be switched off; the shim's Esc decision is read from defaultPrevented, and WebKit 26.4, which lacks closedby, runs the shim for real"
                 "Firefox: no engine of it on this machine"
                 "a real Safari 18.x: its gaps are forced in WebKit 26.4 and Chromium, never run"]
