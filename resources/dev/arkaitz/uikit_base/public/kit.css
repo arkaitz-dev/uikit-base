@@ -601,7 +601,7 @@
      * start; inline it lies on the bar's bottom edge. */
     .ui-navbar .ui-navbar__items > li > a, .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn {
       position: relative; display: flex; align-items: center; gap: var(--ui-spacing-xs); padding: var(--ui-spacing-sm);
-      font: inherit; font-weight: var(--ui-font-weight-medium); color: var(--ui-text-muted-strong); text-decoration: none;
+      font: inherit; font-weight: var(--ui-font-weight-medium); color: var(--ui-text-muted); text-decoration: none;
       border-radius: var(--ui-radius-md);
       transition: color var(--ui-duration-fast) var(--ui-easing-ease-out), background-color var(--ui-duration-fast) var(--ui-easing-ease-out);
     }

@@ -1205,9 +1205,25 @@
       (is (= ["flex" "flex-start" "start"] (mapv #(cascaded rules nav-more [%]) ["display" "justify-content" "text-align"]))
           (str "and its text starts where a link's does " (:width env))))))
 
+(deftest a-navbars-quiet-ink-reads-weaker-than-its-current-ink-in-every-palette
+  ;; Measured in a browser: muted-strong, the first quiet ink, is darker than on-surface in the
+  ;; light schemes, so the quiet items read stronger than the current one. The quiet ink must
+  ;; stand off the bar's surface less than the current ink does, in every seed and scheme.
+  (let [rules  (@env-rules (first environments))
+        token  (fn [sel] (palette-var (cascaded rules sel ["color"])))
+        quiet  (token nav-link) current (token (str nav-link "[aria-current=\"page\"]"))
+        ground :surface
+        losers (for [[seed tokens] goldens [scheme i] [[:light 0] [:dark 1]]
+                     :let [q (wcag (get-in tokens [ground i]) (get-in tokens [quiet i]))
+                           c (wcag (get-in tokens [ground i]) (get-in tokens [current i]))]
+                     :when (not (< q c))] [seed scheme q c])]
+    (is (= [:text-muted :on-surface] [quiet current]) "witness: the quiet and current inks, read through the cascade")
+    (is (< 10 (count goldens)) "witness: the golden seeds were read")
+    (is (= [] losers) "quiet items contrast with the bar less than the current one, in every seed, light and dark")))
+
 (deftest a-navbars-items-are-quiet-and-its-brand-the-strongest-ink
   (doseq [[env rules] @env-rules]
-    (is (= ["var(--ui-text-muted-strong)" "var(--ui-font-weight-medium)"] [(cascaded rules nav-link ["color"]) (cascaded rules nav-link ["font-weight"])])
+    (is (= ["var(--ui-text-muted)" "var(--ui-font-weight-medium)"] [(cascaded rules nav-link ["color"]) (cascaded rules nav-link ["font-weight"])])
         (str "a link is navigation, not a hyperlink: the quiet ink, medium " (:width env)))
     (is (= "var(--ui-on-surface)" (cascaded rules (str nav-link ":hover") ["color"])) (str "and the strong ink under the pointer, never a weaker one " (:width env)))
     (is (= ["var(--ui-on-surface)" "var(--ui-font-weight-bold)"]
