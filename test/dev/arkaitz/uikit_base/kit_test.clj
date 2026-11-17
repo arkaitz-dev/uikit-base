@@ -1111,19 +1111,27 @@
       (is (= (if (>= (:width env) px) ["none" "flex" "static"] [nil nil "fixed"]) (seen rules bp))
           (str "expand " bp " at " (:width env) "px: [toggle display, panel display, panel position]; below, a nil display leaves the button's own and the user agent's closed popover, and the panel is fixed, as the user agent draws a popover")))))
 
+(declare decl-of)
+
 (deftest a-navbars-open-panel-ends-at-the-screens-bottom-and-scrolls-inside-itself
-  ;; WCAG 1.4.10: a panel taller than the screen would hide its last items. Fixed, with both
-  ;; block insets held — within the area under the bar natively, from the top ui.js writes to
-  ;; the viewport's bottom in the fallback — and a fit-content size, it is the content's height
-  ;; bounded by that span, and what is past it scrolls. Inline, all of it is undone.
-  (let [cases (for [env environments [bp px] [["sm" 640] ["md" 768] ["lg" 1024]]] [env bp px])]
+  ;; WCAG 1.4.10: a panel taller than the screen would hide its last items. Natively 100% is
+  ;; the anchor area under the bar, which ends at the viewport's bottom. In ui.js's fallback
+  ;; the containing block is the viewport and place() writes the top as the toggle's bottom
+  ;; plus its gap: the toggle spans the bar but its edge, so the top is the bar's least block
+  ;; size, less that edge, plus the gap, and the bound is the viewport less all of it. Both
+  ;; numbers are read from where they are decided: the gap from ui.js, the edge from the bar.
+  (let [gap   (some-> (re-find #"\bgap = (\d+)" (slurp (io/resource "dev/arkaitz/uikit_base/public/ui.js"))) second parse-long)
+        edge  (some-> (decl-of kit-parsed ".ui-navbar" "border-block-end") (str/split #"\s+") first (str/replace "px" "") parse-long)
+        row   (decl-of kit-parsed ".ui-navbar" "min-block-size")
+        bound (str "min(100%, calc(100dvh - " row " - " (- gap edge) "px))")
+        cases (for [env environments [bp px] [["sm" 640] ["md" 768] ["lg" 1024]]] [env bp px])]
+    (is (= [4 1] [gap edge]) "witness: place()'s gap and the bar's edge, read from ui.js and kit.css")
+    (is (some? row) "witness: the bar declares its least block size")
     (is (= 72 (count cases)) "witness: 24 environments, three breakpoints")
     (doseq [[env bp px] cases :let [rules (@env-rules env) sel (str ".ui-navbar--expand-" bp " .ui-navbar__panel")
-                                    got (mapv #(cascaded rules sel %) [["position"] ["inset-block-start" "inset-block" "inset"]
-                                                                       ["inset-block-end" "inset-block" "inset"] ["block-size" "height"]
-                                                                       ["overflow-y" "overflow"]])]]
-      (is (= (if (>= (:width env) px) ["static" "auto" "auto" "auto" "visible"] ["fixed" "0" "0" "fit-content" "auto"]) got)
-          (str "expand " bp " at " (:width env) "px: [position, block start, block end, block size, overflow-y]")))))
+                                    got (mapv #(cascaded rules sel %) [["position"] ["inset"] ["max-block-size" "max-height"] ["overflow-y" "overflow"]])]]
+      (is (= (if (>= (:width env) px) ["static" "auto" "none" "visible"] ["fixed" "auto" bound "auto"]) got)
+          (str "expand " bp " at " (:width env) "px: [position, inset, max block size, overflow-y]")))))
 
 (def ^:private wb-parsed
   "web-base's own stylesheet, as the shell's header is padded by it."

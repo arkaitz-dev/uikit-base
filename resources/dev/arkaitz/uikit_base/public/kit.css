@@ -558,12 +558,14 @@
       border-block-start: 2px solid var(--ui-border-strong);
     }
     /* Under the bar to the bottom of the screen at most, scrolling inside itself past that
-     * (WCAG 1.4.10): both block insets hold, natively within the area under the bar, and in
-     * the fallback from the top ui.js writes to the viewport's own bottom edge, and a
-     * fit-content size is the content's, bounded by that span. */
+     * (WCAG 1.4.10). Natively 100% is the area under the bar, which ends at the viewport's
+     * bottom. In ui.js's fallback the containing block is the viewport, and the top is the
+     * toggle's bottom — the bar's least block size less its 1px edge — plus place()'s 4px
+     * gap: so there the bound is the viewport less the bar less 3px. The lesser of the two. */
     .ui-navbar__panel {
-      position: fixed; position-anchor: --ui-navbar; position-area: block-end span-all; inset-block: 0; inset-inline: auto;
-      margin: 0; box-sizing: border-box; inline-size: 100%; block-size: fit-content; overflow-y: auto;
+      position: fixed; position-anchor: --ui-navbar; position-area: block-end span-all; inset: auto;
+      margin: 0; box-sizing: border-box; inline-size: 100%; overflow-y: auto;
+      max-block-size: min(100%, calc(100dvh - calc(var(--ui-font-size-lg) * var(--ui-line-height-normal) + 2 * var(--ui-spacing-sm) + 1px) - 3px));
       padding-block: var(--ui-spacing-sm); padding-inline: calc(var(--ui-spacing-md) - var(--ui-spacing-sm));
       color: var(--ui-on-surface); background: var(--ui-surface);
       border: 0; border-block-end: 1px solid var(--ui-border); box-shadow: var(--ui-shadow-md);
@@ -597,7 +599,7 @@
       .ui-navbar--expand-sm .ui-navbar__toggle { display: none; }
       .ui-navbar--expand-sm .ui-navbar__panel {
         display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-md); position: static; inset: auto;
-        inline-size: auto; block-size: auto; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
+        inline-size: auto; max-block-size: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
       }
       .ui-navbar--expand-sm .ui-navbar__items { flex-direction: row; flex-wrap: wrap; }
       .ui-navbar--expand-sm .ui-navbar__items .ui-dropdown > .ui-btn { inline-size: auto; }
@@ -607,7 +609,7 @@
       .ui-navbar--expand-md .ui-navbar__toggle { display: none; }
       .ui-navbar--expand-md .ui-navbar__panel {
         display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-md); position: static; inset: auto;
-        inline-size: auto; block-size: auto; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
+        inline-size: auto; max-block-size: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
       }
       .ui-navbar--expand-md .ui-navbar__items { flex-direction: row; flex-wrap: wrap; }
       .ui-navbar--expand-md .ui-navbar__items .ui-dropdown > .ui-btn { inline-size: auto; }
@@ -617,7 +619,7 @@
       .ui-navbar--expand-lg .ui-navbar__toggle { display: none; }
       .ui-navbar--expand-lg .ui-navbar__panel {
         display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-md); position: static; inset: auto;
-        inline-size: auto; block-size: auto; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
+        inline-size: auto; max-block-size: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
       }
       .ui-navbar--expand-lg .ui-navbar__items { flex-direction: row; flex-wrap: wrap; }
       .ui-navbar--expand-lg .ui-navbar__items .ui-dropdown > .ui-btn { inline-size: auto; }

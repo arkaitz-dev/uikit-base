@@ -116,11 +116,14 @@
 
 (defn- header
   "The navbar every gallery page carries as the shell's header, the page's own link current,
-  so a wb/link swap between the two pages shows nav.js moving the mark."
+  so a wb/link swap between the two pages shows nav.js moving the mark. Sticky, with a host's
+  own plain link among its items, so the browser checks see both."
   [request]
   (ui/navbar request {:id "g-nav" :brand ["/" "uikit-base"] :label "Gallery pages" :current (:uri request)
                       :items [["/" "Gallery"] ["/second" "Second page"]
-                              [nil (ui/dropdown {:id "g-nav-more" :label "More" :items [["/" "Back to the gallery"] ["/second" "The second page"]]})]]
+                              [nil (ui/dropdown {:id "g-nav-more" :label "More" :items [["/" "Back to the gallery"] ["/second" "The second page"]]})]
+                              [nil [:a {:id "g-nav-raw" :href "/second#second"} "A host's own link"]]]
+                      :sticky? true
                       :end (ui/button {:type "button" :variant :outline-primary :size :sm} "Sign out")}))
 
 (defn page [request]

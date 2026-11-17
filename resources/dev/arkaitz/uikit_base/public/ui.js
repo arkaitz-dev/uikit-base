@@ -174,15 +174,16 @@
     else go(carousel, button.classList.contains("ui-carousel__next") ? 1 : -1);
   });
 
-  // Scrollspies: the link whose section is in view is aria-current=location.
+  // Scrollspies: the link whose section is in view is aria-current=location. A band the root's
+  // scroll padding keeps clear — under a sticky bar — is no view: read as each spy is built.
   function spy(nav) {
-    var links = Array.from(nav.querySelectorAll("a[href^='#']")), seen = new Set();
-    var observer = new IntersectionObserver(function (entries) {
+    var links = Array.from(nav.querySelectorAll("a[href^='#']")), root = getComputedStyle(document.documentElement);
+    var seen = new Set(), observer = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) { seen[e.isIntersecting ? "add" : "delete"](e.target.id); });
       var here = links.find(function (a) { return seen.has(a.hash.slice(1)); });
       links.forEach(function (a) { if (here) a.toggleAttribute("aria-current", a === here); });
       if (here) here.setAttribute("aria-current", "location");
-    }, { rootMargin: "0px 0px -50% 0px" });
+    }, { rootMargin: -(parseFloat(root.scrollPaddingTop) || 0) + "px 0px -50% 0px" });
     var sections = links.map(function (a) { return document.getElementById(a.hash.slice(1)); });
     sections.forEach(function (section) { if (section) observer.observe(section); });
     return observer;
