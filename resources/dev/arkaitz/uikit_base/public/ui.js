@@ -68,27 +68,30 @@
   ["resize", "scroll"].forEach((name) => addEventListener(name, placeOpen, { capture: true, passive: true }));
   // Navbars are one row. Each fit drops the collapsed class, measures the bar inline and sets it
   // again only if the brand and the panel overflow: all in one task, which never paints, so no
-  // cached width is needed and a shrink anywhere expands it. Run after a frame, never inside the
-  // observer's delivery, whose observed sizes the class changes (a loop error). Watched: the
-  // bar's and panel's sizes (a resize, a late font) and the bar's nodes (a swap, an oob count).
-  // When the toggle goes, the panel closes and loses what place() wrote; when the bar collapses
-  // under the focus, the focus goes to the toggle rather than to the body.
+  // cached width is needed and a shrink anywhere expands it. An open panel sits in the top layer,
+  // out of the bar's flow, so it is never measured open: a panel open under a shown toggle is
+  // left as it is, and one whose toggle went is closed — and loses what place() wrote, and only
+  // that — before the bar is measured. A resize fits after a frame, never inside the observer's
+  // delivery, whose observed sizes the class changes (a loop error, measured on a stylesheet
+  // change); each bar's own MutationObserver fits it once per batch of node or text changes. When
+  // the bar collapses under the focus, the focus goes to the toggle rather than to the body.
   var fits = new ResizeObserver((entries) => requestAnimationFrame(() => entries.forEach((e) => fit(e.target))));
-  var edits = new MutationObserver((records) => records.forEach((r) => fit(r.target)));
-  var nodes = { childList: true, subtree: true };
+  var placed = ["position-area", "position-try-fallbacks", "margin", "top", "left", "max-block-size"];
   function fit(node) {
-    var bar = node.closest(".ui-navbar"), panel = bar.querySelector(".ui-navbar__panel");
-    var toggle = panel.previousElementSibling, held = panel.contains(document.activeElement);
+    var bar = node.closest(".ui-navbar"), panel = bar?.querySelector(".ui-navbar__panel");
+    var toggle = panel?.previousElementSibling, held = panel?.contains(document.activeElement);
+    if (!toggle || (panel.matches(":popover-open") && toggle.checkVisibility())) return;
     bar.classList.remove("ui-navbar--collapsed");
-    var inline = !toggle.checkVisibility(), brand = bar.querySelector(".ui-navbar__brand");
-    var cut = brand ? brand.scrollWidth - brand.clientWidth : 0;
-    var over = inline && bar.scrollWidth + cut > bar.clientWidth;
-    bar.classList.toggle("ui-navbar--collapsed", over);
-    if (over && held && !panel.matches(":popover-open")) toggle.focus();
-    if (inline && !over) { panel.removeAttribute("style"); panel.hidePopover(); }
+    var inline = !toggle.checkVisibility(), brand = bar.querySelector(".ui-navbar__brand") || bar;
+    if (inline) { panel.hidePopover(); placed.forEach((name) => panel.style.removeProperty(name)); }
+    // Without a brand the bar's own overflow counts twice, which changes no answer: over or not.
+    var over = inline && bar.scrollWidth + brand.scrollWidth - brand.clientWidth > bar.clientWidth;
+    if (bar.classList.toggle("ui-navbar--collapsed", over) && held) toggle.focus();
   }
   inits.push(() => document.querySelectorAll(".ui-navbar, .ui-navbar__panel").forEach((e) => fits.observe(e)));
-  inits.push(() => document.querySelectorAll(".ui-navbar").forEach((e) => edits.observe(e, nodes)));
+  inits.push(() => document.querySelectorAll(".ui-navbar").forEach((b) => {
+    (b.uiMo ||= new MutationObserver(() => fit(b))).observe(b, { childList: true, subtree: true, characterData: true });
+  }));
 
   // Tooltips: shown while the trigger or the tooltip is hovered or focused (WCAG 1.4.13).
   // 150 ms is a declared policy: a pointer crosses the few pixels to the tooltip in a frame or
