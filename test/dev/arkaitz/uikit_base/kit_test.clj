@@ -451,7 +451,7 @@
     (is (= [0 2 1] (specificity ".ui-pager a:focus-visible")) "witness: the test's specificity")
     (is (= #{".ui-btn--primary:hover" ".ui-btn--primary" ".ui-btn:hover" ".ui-btn"} (set (selectors-implied ".ui-btn--primary:hover")))
         "witness: a variant's hover is also the base's hover")
-    (is (= 193 (count pairs)) (str "witness: every painted pair found — the kit's 147 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one and the pressed one hovered, the close button in two; K10's floating label on three canvases and the input group's text; K12's stripe, hovered row, current page, current pill, the list group, its link on three canvases, hovered and current; K13's card nav, the figure's caption and the collapse's summary on three canvases each, the accordion and its open summary; K16's dialog; K17's menu and popover, the menu's link on three canvases and hovered, the tooltip; K18's toast; K19's scrollspy link on three canvases; N1's bar, its brand and its panel, its link on three canvases and hovered), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
+    (is (= 199 (count pairs)) (str "witness: every painted pair found — the kit's 153 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one and the pressed one hovered, the close button in two; K10's floating label on three canvases and the input group's text; K12's stripe, hovered row, current page, current pill, the list group, its link on three canvases, hovered and current; K13's card nav, the figure's caption and the collapse's summary on three canvases each, the accordion and its open summary; K16's dialog; K17's menu and popover, the menu's link on three canvases and hovered, the tooltip; K18's toast; K19's scrollspy link on three canvases; N1's bar, its brand and its panel, its link on three canvases and hovered; then a host's own link in the items on three canvases and hovered, and a dropdown's toggle drawn as a link and hovered), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
     (is (= 21.0 (wcag "#000000" "#ffffff")) "witness: the test's WCAG")
     (doseq [[s bg fg :as p] pairs]
       (testing s
@@ -481,7 +481,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 365 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 293 (0.5.0's 119; the striped progress with no value 2; K9's 42 outline, 4 link, 6 pressed (one hovered) and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6; K16's 7: dialog 4, backdrop 1, head and foot lines 2; K17's 10: menu and popover 4, the menu's link 3, the tooltip 3; K18's 9: the toast 5, its kinds 4; K19's 3: the scrollspy link's ink and edge, the current edge; N1's 21: the bar 3, the sticky header's ground 1, the brand 1, the bars' two edges 2, the panel 5, the link 1 and hovered 2, and at each of the three breakpoints the panel's border and shadow taken away 6) and the utilities' 72, a count measured once: " (count bearing)))
+    (is (= 369 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 297 (0.5.0's 119; the striped progress with no value 2; K9's 42 outline, 4 link, 6 pressed (one hovered) and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6; K16's 7: dialog 4, backdrop 1, head and foot lines 2; K17's 10: menu and popover 4, the menu's link 3, the tooltip 3; K18's 9: the toast 5, its kinds 4; K19's 3: the scrollspy link's ink and edge, the current edge; N1's 21: the bar 3, the sticky header's ground 1, the brand 1, the bars' two edges 2, the panel 5, the link 1 and hovered 2, and at each of the three breakpoints the panel's border and shadow taken away 6; then 4 for a dropdown's toggle drawn as a link, its ground and no edge, hovered ink and ground) and the utilities' 72, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -516,7 +516,7 @@
                           [s t]))
         edges (remove dividers found)]
     (is (= dividers (set (filter dividers found))) "every divider named is still drawn")
-    (is (= 75 (count edges)) (str "witness: the edges — the kit's 63 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text; K11's progress accent and the spinner's two; K12's list link's ring, its lines named dividers; K13's rings on the collapse's and the accordion's summaries and the scroller; K16's ring on a scrollable dialog's body, its lines named dividers; K17's ring on a menu's link, the menu's and popover's edges named dividers; K18's toast edge and its four kinds, the carousel viewport's ring, the toast's outer line a divider; K19's ring on a scrollspy link and the current one's edge, the others' a divider; N1's rings on the navbar's brand and links and the toggle's two bars, the bar's and the panel's lines named dividers), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
+    (is (= 76 (count edges)) (str "witness: the edges — the kit's 64 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text; K11's progress accent and the spinner's two; K12's list link's ring, its lines named dividers; K13's rings on the collapse's and the accordion's summaries and the scroller; K16's ring on a scrollable dialog's body, its lines named dividers; K17's ring on a menu's link, the menu's and popover's edges named dividers; K18's toast edge and its four kinds, the carousel viewport's ring, the toast's outer line a divider; K19's ring on a scrollspy link and the current one's edge, the others' a divider; N1's rings on the navbar's brand, its links and any link in its items, and the toggle's two bars, the bar's and the panel's lines named dividers), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
     (doseq [[s t] edges bg [:background :surface :surface-alt]]
       (testing (str s " " t)
         (is (= :ui (audited [bg t])) "an audited non-text pair")
@@ -927,7 +927,8 @@
    'carousel  [(ui/carousel req {:label "c" :slides ["a" "b"] :interval-ms 5000})]
    'scrollspy [(ui/scrollspy {:label "s" :items [["#a" "A"] ["#b" "B"]]})]
    'navbar    [(ui/navbar req {:id "n" :brand ["/" "B"] :label "Main" :current "/a" :sticky? true :end (ui/button "x")
-                               :items [["/a" "A"] ["/b" "B" {:id "b"}] [nil (ui/dropdown {:id "nm" :label "More" :items [["/c" "C"]]})]]})]})
+                               :items [["/a" "A"] ["/b" "B" {:id "b"}] [nil (ui/dropdown {:id "nm" :label "More" :items [["/c" "C"]]})]
+                                       [nil [:a {:href "/r" :hx-swap-oob "true"} "R"]]]})]})
 
 (defn- elements
   "Every element of a Hiccup tree as [tag attrs classes ancestors' classes]."
@@ -959,7 +960,7 @@
                  [tag classes (first ancestors)])]
     (is (= (set (keys fixtures)) (set (remove '#{words cell} (keys (ns-publics 'dev.arkaitz.uikit-base)))))
         "every public component is drawn here, so a new one needs its fixture")
-    (is (= 71 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close, K10's switch, range, floating input, a grouped field's input and button, and the input group's, K11's alert dismiss link, K12's pill, two list links and two numbered pages, K13's card nav link, a collapse's summary, an accordion's two and the scroller, K16's dialog close, scrollable body and footer button and its dialog-button, K17's offcanvas close and body, the dropdown's button, link and action, the popover's button and the tooltip's trigger, K18's two toast closes, the carousel's three buttons and its viewport, K19's two scrollspy links, N1's brand, toggle, two links, its dropdown's button and link and the end's button — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
+    (is (= 72 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close, K10's switch, range, floating input, a grouped field's input and button, and the input group's, K11's alert dismiss link, K12's pill, two list links and two numbered pages, K13's card nav link, a collapse's summary, an accordion's two and the scroller, K16's dialog close, scrollable body and footer button and its dialog-button, K17's offcanvas close and body, the dropdown's button, link and action, the popover's button and the tooltip's trigger, K18's two toast closes, the carousel's three buttons and its viewport, K19's two scrollspy links, N1's brand, toggle, two links, its dropdown's button and link, a host's own link and the end's button — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
     (is (= [] bare) "each wears the ring, through a class of its own or its kit ancestor's")
     (is (= [] (for [[sels decls] (leaf-rules) :let [v (get decls "outline")] :when v :when (not= :focus-ring (palette-var v))] [sels v]))
         "no rule takes the ring away: an outline is the ring")
@@ -1107,5 +1108,73 @@
         "witness: the toggle is a kit button")
     (doseq [[env bp px] cases :let [rules (@env-rules env)]]
       (is (= "inline-flex" (on-element rules {:classes #{"ui-btn"}} "display")) "witness: a kit button is shown")
-      (is (= (if (>= (:width env) px) ["none" "flex" "static"] [nil nil nil]) (seen rules bp))
-          (str "expand " bp " at " (:width env) "px: [toggle display, panel display, panel position]; below, nil leaves the button's own display and the user agent's closed popover")))))
+      (is (= (if (>= (:width env) px) ["none" "flex" "static"] [nil nil "fixed"]) (seen rules bp))
+          (str "expand " bp " at " (:width env) "px: [toggle display, panel display, panel position]; below, a nil display leaves the button's own and the user agent's closed popover, and the panel is fixed, as the user agent draws a popover")))))
+
+(deftest a-navbars-open-panel-ends-at-the-screens-bottom-and-scrolls-inside-itself
+  ;; WCAG 1.4.10: a panel taller than the screen would hide its last items. Fixed, with both
+  ;; block insets held — within the area under the bar natively, from the top ui.js writes to
+  ;; the viewport's bottom in the fallback — and a fit-content size, it is the content's height
+  ;; bounded by that span, and what is past it scrolls. Inline, all of it is undone.
+  (let [cases (for [env environments [bp px] [["sm" 640] ["md" 768] ["lg" 1024]]] [env bp px])]
+    (is (= 72 (count cases)) "witness: 24 environments, three breakpoints")
+    (doseq [[env bp px] cases :let [rules (@env-rules env) sel (str ".ui-navbar--expand-" bp " .ui-navbar__panel")
+                                    got (mapv #(cascaded rules sel %) [["position"] ["inset-block-start" "inset-block" "inset"]
+                                                                       ["inset-block-end" "inset-block" "inset"] ["block-size" "height"]
+                                                                       ["overflow-y" "overflow"]])]]
+      (is (= (if (>= (:width env) px) ["static" "auto" "auto" "auto" "visible"] ["fixed" "0" "0" "fit-content" "auto"]) got)
+          (str "expand " bp " at " (:width env) "px: [position, block start, block end, block size, overflow-y]")))))
+
+(def ^:private wb-parsed
+  "web-base's own stylesheet, as the shell's header is padded by it."
+  (parse-css (str/replace (slurp (io/resource "dev/arkaitz/web_base/public/wb.css")) #"(?s)/\*.*?\*/" "")))
+
+(defn- decl-of [parsed sel prop]
+  (some (fn [{:keys [selectors decls]}] (when (some #{sel} selectors) (get decls prop))) (:rules parsed)))
+
+(deftest a-navbar-bleeds-over-the-shells-header-padding-and-its-toggle-spans-the-bar
+  ;; The header's padding is wb.css's, unlayered, which no rule of the kit can take back: the
+  ;; bar's negative margins must be that very padding, read from web-base's own file, or a
+  ;; phone's bar sits inset while its panel spans the page. The toggle is as tall as the bar's
+  ;; content, so ui.js places the panel under the toggle at the bar's own edge.
+  (let [pad-inline (decl-of wb-parsed ".wb-header" "padding-inline") pad-block (decl-of wb-parsed ".wb-header" "padding-block")]
+    (is (and (some? pad-inline) (some? pad-block)) (str "witness: wb.css pads the shell's header " [pad-inline pad-block]))
+    (is (= [(str "calc(-1 * " pad-block ")") (str "calc(-1 * " pad-inline ")")]
+           [(decl-of kit-parsed ".wb-header > .ui-navbar" "margin-block") (decl-of kit-parsed ".wb-header > .ui-navbar" "margin-inline")])
+        "the bar's margins cancel the header's padding on both axes, exactly")
+    (doseq [[env rules] @env-rules]
+      (is (= ["stretch" "0"] [(cascaded rules ".ui-navbar__toggle" ["align-self"]) (first (str/split (cascaded rules ".ui-navbar" ["padding-block" "padding"]) #"\s+"))])
+          (str "the toggle stretches over a bar with no block padding of its own " (:width env))))))
+
+(deftest a-sticky-navbars-scroll-padding-is-the-bars-own-block-size
+  ;; WCAG 2.4.11: a fragment or a focus scrolled to must stop below a sticky bar. No number is
+  ;; invented: the bar is at least its brand's row — the brand's line box and block padding —
+  ;; and its one-pixel edge, and the scroll padding is that same sum.
+  (let [brand  (some (fn [{:keys [selectors decls]}] (when (= [".ui-navbar .ui-navbar__brand"] selectors) decls)) (:rules kit-parsed))
+        edge   (first (str/split (decl-of kit-parsed ".ui-navbar" "border-block-end") #"\s+"))
+        want   (str "calc(" (brand "font-size") " * " (brand "line-height") " + 2 * " (brand "padding-block") " + " edge ")")]
+    (is (every? some? (map brand ["font-size" "line-height" "padding-block"])) "witness: the brand declares its line and padding")
+    (is (= "1px" edge) "witness: the bar's edge")
+    (is (= [want want] [(decl-of kit-parsed ".ui-navbar" "min-block-size") (decl-of kit-parsed ":root:has(.ui-navbar--sticky)" "scroll-padding-block-start")])
+        "the bar's least block size, and a sticky bar's scroll padding, are the brand's row and the bar's edge")))
+
+(deftest a-navbars-items-and-end-share-one-inset-and-its-dropdown-reads-as-a-link
+  (doseq [[env rules] @env-rules]
+    (let [inline (fn [sel] (second (str/split (cascaded rules sel ["padding"]) #"\s+")))
+          link   (inline ".ui-navbar__link") toggle (inline ".ui-navbar__items .ui-dropdown > .ui-btn") end (inline ".ui-navbar__end")
+          bar    (second (str/split (cascaded rules ".ui-navbar" ["padding"]) #"\s+"))
+          panel  (cascaded rules ".ui-navbar__panel" ["padding-inline"])
+          ink    (fn [sel] (cascaded rules sel ["color"]))]
+      (is (some? link) "witness: a link's inset")
+      ;; DELIBERATE: below every breakpoint only, where the panel is a panel; inline, the end
+      ;; is pushed to the bar's end with no inset, and the bar's rhythm is the links' own.
+      (when (= 360 (:width env))
+        (is (= [link link] [toggle end]) "the dropdown's toggle and the end sit at the links' inset")
+        (is (= (str "calc(" bar " - " link ")") panel) "and the panel's edge plus that inset is the bar's, so they line up with the brand"))
+      (is (= (ink ".ui-navbar__link") (ink ".ui-navbar__items .ui-dropdown > .ui-btn")) (str "a dropdown's toggle in the items takes the links' ink " (:width env))))))
+
+(deftest a-navbar-marks-a-page-a-section-and-a-location-alike-and-so-does-its-dropdown
+  (doseq [[env rules] @env-rules v ["page" "true" "location"] base [".ui-navbar__link" ".ui-dropdown__item"]
+          :let [sel (str base "[aria-current=\"" v "\"]")]]
+    (is (= ["600" "underline"] [(cascaded rules sel ["font-weight"]) (cascaded rules sel ["text-decoration"])])
+        (str sel " is weighted and underlined, never colour alone " (:width env)))))

@@ -156,13 +156,13 @@
     if (carousel && !event.target.closest(".ui-carousel__rotate")) rotate(carousel, false);
   });
 
-  // A dropdown's item, or an open navbar panel's link, closes it (htmx may keep it); a toast's close
-  // removes it; a carousel turns.
+  // A dropdown's item closes it, and any link in an open navbar panel the panel with what it nests
+  // (htmx may keep them); a toast's close removes it; a carousel turns.
   on("click", function (event) {
     var item = event.target.closest(".ui-dropdown__menu a, .ui-dropdown__menu button, .ui-navbar :popover-open a");
     var close = event.target.closest(".ui-toast__close"), carousel = event.target.closest(".ui-carousel");
     var button = carousel && event.target.closest(".ui-carousel__controls button");
-    if (item) item.closest("[popover]").hidePopover();
+    if (item) (item.closest(".ui-navbar__panel:popover-open") || item.closest("[popover]")).hidePopover();
     if (close) dismiss(close);
     if (!button) return;
     if (button.classList.contains("ui-carousel__rotate")) rotate(carousel, !carousel.hasAttribute("data-ui-rotating"));

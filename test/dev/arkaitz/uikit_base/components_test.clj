@@ -1380,8 +1380,14 @@
     (is (= ["uikit-base: a navbar item's attributes are a map" {:attributes "x"}] (refusal #(ui/navbar {} (assoc ok :items [["/a" "A" "x"]])))))
     (is (= ["uikit-base: a navbar's items are each its own path" {}] (refusal #(ui/navbar {} (assoc ok :items [["/a" "A"] ["/a" "B"]])))))
     (is (some? (ui/navbar {} (assoc ok :items [[nil "x"] [nil "y"] ["/a" "A"]]))) "raw items have no path, and two are no duplicate")
-    (doseq [c ["/b" "" nil?]]
-      (is (= ["uikit-base: a navbar's current is one of its items' paths" {:current c}] (refusal #(ui/navbar {} (assoc ok :current c)))) (pr-str c)))
+    (doseq [c ["/b" "" 404]]
+      (is (= [nil false] (let [r (refusal #(html (ui/navbar {} (assoc ok :current c))))]
+                           [r (str/includes? (html (ui/navbar {} (assoc ok :current c))) "aria-current")]))
+          (str "a current that is no item's path — a page the nav does not list, a 404 — is taken and marks none: " (pr-str c))))
+    (is (str/includes? (html (ui/navbar {} (assoc ok :current "/a"))) "aria-current=\"page\"") "witness: an item's own path marks it")
+    (let [h (html (ui/navbar {} (assoc ok :current "/a" :items [["/a" "A" {:aria-current "true"}] ["/s" "S" {:aria-current "true"}] ["/l" "L" {:aria-current "location"}]])))]
+      (is (= ["page" "true" "location"] (map second (re-seq #"aria-current=\"([^\"]+)\"" h)))
+          "a section the host marks true or location is kept; the current page reads page"))
     (doseq [b [["/"] ["/" ""] ["/" nil] "/" ["/" "B" "C"]]]
       (is (= ["uikit-base: a navbar's brand is [path label], the label something to read" {}] (refusal #(ui/navbar {} (assoc ok :brand b)))) (pr-str b)))
     (is (= ["web-base: link's href must be a path on this origin" {:wb/link :href}] (refusal #(ui/navbar {} (assoc ok :items [["https://x.test/" "X"]])))))

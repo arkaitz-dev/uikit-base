@@ -26,7 +26,8 @@
     .ui-table-wrap:focus-visible, .ui-close:focus-visible, .ui-range:focus-visible, .ui-list-group__action:focus-visible,
     .ui-collapse__summary:focus-visible, .ui-accordion__summary:focus-visible, .ui-scroller:focus-visible, .ui-dialog__body:focus-visible,
     .ui-dropdown__item:focus-visible, .ui-carousel__viewport:focus-visible,
-    .ui-scrollspy a:focus-visible, .ui-navbar__brand:focus-visible, .ui-navbar__link:focus-visible {
+    .ui-scrollspy a:focus-visible, .ui-navbar__brand:focus-visible, .ui-navbar__link:focus-visible,
+    .ui-navbar__items a:focus-visible {
       outline: var(--ui-focus-outline-width) solid var(--ui-focus-ring);
       outline-offset: var(--ui-focus-outline-width);
       box-shadow: 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
@@ -516,27 +517,37 @@
     .ui-dropdown__item:hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
     .ui-dropdown__items > li > .ui-action { display: block; padding: var(--ui-spacing-xs) var(--ui-spacing-md); }
     /* Navbars: the bar on the surface, its brand at the start; below its breakpoint a toggle
-     * opens the items and the end as a popover the bar's width, under the toggle by anchor
-     * positioning, or by ui.js's placement where a browser has none; from it up the toggle is
-     * gone and the same panel is drawn inline. The current link is weighted and underlined,
-     * so the mark is never colour alone. */
+     * opens the items and the end as a popover under the bar, as wide as the page, by anchor
+     * positioning on the bar, or by ui.js's placement under the toggle where a browser has
+     * none; from it up the toggle is gone and the same panel is drawn inline. The current
+     * link is weighted and underlined, so the mark is never colour alone. */
+    /* The bar's block size is its brand's row and its line, which a sticky bar's scroll
+     * padding repeats: the brand's line box, its padding and the bar's one-pixel edge. */
     .ui-navbar {
-      display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-sm) var(--ui-spacing-md);
-      padding: var(--ui-spacing-sm) var(--ui-spacing-md); color: var(--ui-on-surface); background: var(--ui-surface);
-      border-block-end: 1px solid var(--ui-border); anchor-scope: --ui-navbar;
+      display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--ui-spacing-md); box-sizing: border-box;
+      min-block-size: calc(var(--ui-font-size-lg) * var(--ui-line-height-normal) + 2 * var(--ui-spacing-sm) + 1px); padding: 0 var(--ui-spacing-md);
+      color: var(--ui-on-surface); background: var(--ui-surface);
+      border-block-end: 1px solid var(--ui-border); anchor-name: --ui-navbar; anchor-scope: --ui-navbar;
     }
+    /* The shell pads its header with --wb-gap from wb.css, which is unlayered and so cannot be
+     * taken back from here: the bar bleeds over that padding instead, edge to edge on a phone,
+     * where its panel is as wide as the page. */
+    .wb-header > .ui-navbar { margin-block: calc(-1 * var(--wb-gap)); margin-inline: calc(-1 * var(--wb-gap)); }
     .ui-navbar--sticky { position: sticky; inset-block-start: 0; z-index: var(--ui-z-index-sticky); }
     /* The shell's header holds the bar and nothing else, so a bar sticky inside it has nowhere
      * to travel: the header sticks for it. wb.css sets none of these, so its unlayered rule does
-     * not take them back. */
+     * not take them back. A fragment or a focus scrolled to stops below the bar (WCAG 2.4.11). */
     .wb-header:has(> .ui-navbar--sticky) {
       position: sticky; inset-block-start: 0; z-index: var(--ui-z-index-sticky); background: var(--ui-background);
     }
+    :root:has(.ui-navbar--sticky) { scroll-padding-block-start: calc(var(--ui-font-size-lg) * var(--ui-line-height-normal) + 2 * var(--ui-spacing-sm) + 1px); }
     .ui-navbar .ui-navbar__brand {
-      margin-inline-end: auto; font-size: var(--ui-font-size-lg); font-weight: 600; color: var(--ui-on-surface); text-decoration: none;
+      margin-inline-end: auto; padding-block: var(--ui-spacing-sm); font-size: var(--ui-font-size-lg); line-height: var(--ui-line-height-normal);
+      font-weight: 600; color: var(--ui-on-surface); text-decoration: none;
     }
     .ui-navbar__collapse { display: contents; }
-    .ui-navbar__toggle { anchor-name: --ui-navbar; padding-inline: var(--ui-spacing-sm); }
+    /* As tall as the bar, so ui.js places the panel under the toggle at the bar's own edge. */
+    .ui-navbar__toggle { align-self: stretch; padding-inline: var(--ui-spacing-sm); border-block-width: 0; border-radius: 0; }
     /* Three bars drawn as edges, which forced colours keep, where a ground or a shadow goes. */
     .ui-navbar__bars {
       position: relative; display: block; inline-size: 1.25rem; block-size: 0.75rem;
@@ -546,24 +557,39 @@
       content: ""; position: absolute; inset-inline: 0; inset-block-start: calc(50% - 1px);
       border-block-start: 2px solid var(--ui-border-strong);
     }
+    /* Under the bar to the bottom of the screen at most, scrolling inside itself past that
+     * (WCAG 1.4.10): both block insets hold, natively within the area under the bar, and in
+     * the fallback from the top ui.js writes to the viewport's own bottom edge, and a
+     * fit-content size is the content's, bounded by that span. */
     .ui-navbar__panel {
-      position-anchor: --ui-navbar; position-area: block-end span-all; inset: auto; margin: 0;
-      margin-block-start: var(--ui-spacing-sm); box-sizing: border-box; inline-size: 100%; padding: var(--ui-spacing-sm) 0;
+      position: fixed; position-anchor: --ui-navbar; position-area: block-end span-all; inset-block: 0; inset-inline: auto;
+      margin: 0; box-sizing: border-box; inline-size: 100%; block-size: fit-content; overflow-y: auto;
+      padding-block: var(--ui-spacing-sm); padding-inline: calc(var(--ui-spacing-md) - var(--ui-spacing-sm));
       color: var(--ui-on-surface); background: var(--ui-surface);
       border: 0; border-block-end: 1px solid var(--ui-border); box-shadow: var(--ui-shadow-md);
     }
     .ui-navbar__items { display: flex; flex-direction: column; gap: var(--ui-spacing-xxs); list-style: none; margin: 0; padding: 0; }
-    .ui-navbar__items > li { padding-inline: var(--ui-spacing-sm); }
-    .ui-navbar__link {
+    /* Every link of the items — the kit's, a host's own [:a], a dropdown's toggle — is drawn
+     * alike, one inset from the panel's edge; a dropdown's menu keeps its own items. */
+    .ui-navbar__link, .ui-navbar__items a:not(.ui-btn):not(.ui-dropdown__item), .ui-navbar__items .ui-dropdown > .ui-btn {
       display: block; padding: var(--ui-spacing-xs) var(--ui-spacing-sm); color: var(--ui-link); text-decoration: none;
       border-radius: var(--ui-radius-md);
     }
-    .ui-navbar__link:hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
-    .ui-navbar__link[aria-current="page"] {
+    .ui-navbar__link:hover, .ui-navbar__items a:not(.ui-btn):not(.ui-dropdown__item):hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
+    .ui-navbar__items .ui-dropdown { display: block; }
+    .ui-navbar__items .ui-dropdown > .ui-btn {
+      inline-size: 100%; justify-content: flex-start; font-size: inherit; line-height: inherit; background: var(--ui-surface); border: 0;
+    }
+    .ui-navbar__items .ui-dropdown > .ui-btn:hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
+    /* The page, and a section a host marks as true or location, which nav.js leaves as it is. */
+    .ui-navbar__link[aria-current="page"], .ui-navbar__link[aria-current="true"], .ui-navbar__link[aria-current="location"],
+    .ui-navbar__items a:not(.ui-btn)[aria-current="page"], .ui-navbar__items a:not(.ui-btn)[aria-current="true"],
+    .ui-navbar__items a:not(.ui-btn)[aria-current="location"],
+    .ui-dropdown__item[aria-current="page"], .ui-dropdown__item[aria-current="true"], .ui-dropdown__item[aria-current="location"] {
       font-weight: 600; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.3em;
     }
     .ui-navbar__end {
-      display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-sm); padding: var(--ui-spacing-sm) var(--ui-spacing-md) 0;
+      display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-sm); padding: var(--ui-spacing-sm) var(--ui-spacing-sm) 0;
     }
     /* From the breakpoint up: author CSS outranks the user agent's display: none on a closed
      * popover, and these undo the rest of its popover look. */
@@ -571,30 +597,30 @@
       .ui-navbar--expand-sm .ui-navbar__toggle { display: none; }
       .ui-navbar--expand-sm .ui-navbar__panel {
         display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-md); position: static; inset: auto;
-        inline-size: auto; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
+        inline-size: auto; block-size: auto; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
       }
       .ui-navbar--expand-sm .ui-navbar__items { flex-direction: row; flex-wrap: wrap; }
-      .ui-navbar--expand-sm .ui-navbar__items > li { padding-inline: 0; }
+      .ui-navbar--expand-sm .ui-navbar__items .ui-dropdown > .ui-btn { inline-size: auto; }
       .ui-navbar--expand-sm .ui-navbar__end { margin-inline-start: auto; padding: 0; }
     }
     @media (min-width: 768px) {
       .ui-navbar--expand-md .ui-navbar__toggle { display: none; }
       .ui-navbar--expand-md .ui-navbar__panel {
         display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-md); position: static; inset: auto;
-        inline-size: auto; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
+        inline-size: auto; block-size: auto; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
       }
       .ui-navbar--expand-md .ui-navbar__items { flex-direction: row; flex-wrap: wrap; }
-      .ui-navbar--expand-md .ui-navbar__items > li { padding-inline: 0; }
+      .ui-navbar--expand-md .ui-navbar__items .ui-dropdown > .ui-btn { inline-size: auto; }
       .ui-navbar--expand-md .ui-navbar__end { margin-inline-start: auto; padding: 0; }
     }
     @media (min-width: 1024px) {
       .ui-navbar--expand-lg .ui-navbar__toggle { display: none; }
       .ui-navbar--expand-lg .ui-navbar__panel {
         display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-md); position: static; inset: auto;
-        inline-size: auto; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
+        inline-size: auto; block-size: auto; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
       }
       .ui-navbar--expand-lg .ui-navbar__items { flex-direction: row; flex-wrap: wrap; }
-      .ui-navbar--expand-lg .ui-navbar__items > li { padding-inline: 0; }
+      .ui-navbar--expand-lg .ui-navbar__items .ui-dropdown > .ui-btn { inline-size: auto; }
       .ui-navbar--expand-lg .ui-navbar__end { margin-inline-start: auto; padding: 0; }
     }
     /* A tooltip: above its trigger, centred, in the inverse surface. */

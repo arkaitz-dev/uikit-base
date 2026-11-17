@@ -662,18 +662,24 @@
   beside it would be a second landmark. `:brand`, `[path label]`, is a `wb/link` at its start.
   `:items`, `[[path content attrs?] …]`, are `wb/link`s in a nav named by `:label`, required,
   marked `data-wb-nav` so web-base's `nav.js` moves `aria-current=page` after every swap; the
-  one whose path is `:current` is marked so already. An item's `attrs`, a map, go on its link —
-  an id an out-of-band swap targets survives — its `:class` joined to the kit's. An item with
-  a nil path holds its content as it is: a `dropdown`, or an `[:a]` of the host's own that
-  carries htmx a `wb/link` refuses. `:end` — the identity, a sign-out form — sits after the nav.
+  one whose path is `:current` is marked so already, and a `:current` that is no item's path —
+  a page the nav does not list, a 404 — marks none, so `(:uri request)` serves every page. An
+  item's `attrs`, a map, go on its link — an id an out-of-band swap targets survives — its
+  `:class` joined to the kit's; `{:aria-current \"true\"}` or `\"location\"` there marks the
+  section a page belongs to, drawn as the current page is, and `nav.js` leaves it. An item
+  with a nil path holds its content as it is: a `dropdown`, drawn as one of the links, or an
+  `[:a]` of the host's own that carries htmx a `wb/link` refuses, painted as the kit's links
+  are. `:end` — the identity, a sign-out form — sits after the nav.
 
   Below `:expand`, `:sm`, `:md` (unless given) or `:lg`, the items and the end are a panel —
   the platform's popover, `:id` its one-word id — that a toggle named by the kit's word
   `:uikit-base/menu` opens under the bar; Esc and a click outside close it, and so does a link
-  chosen in it, by the plugin's `/ui/ui.js`. From that width up the toggle is gone and the
-  panel is drawn inline. `:sticky? true` keeps the bar at the top as the page scrolls.
-  `:attrs` go on the bar. No items, two with one path, a `:current` that is no item's path,
-  an item with nothing in it, or an `:expand` that is not one of the three, is refused."
+  chosen in it, by the plugin's `/ui/ui.js`; it reaches the bottom of the screen at most and
+  scrolls inside itself past that. From that width up the toggle is gone and the panel is
+  drawn inline. `:sticky? true` keeps the bar at the top as the page scrolls, and a fragment
+  or a focus scrolled to stops below it.
+  `:attrs` go on the bar. No items, two with one path, an item with nothing in it, or an
+  `:expand` that is not one of the three, is refused."
   [request {:keys [id brand label items current end expand sticky? attrs]}]
   (id! "a navbar" :id id)
   (named! "a navbar" label)
@@ -685,9 +691,7 @@
     (throw (ex-info "uikit-base: a navbar item's attributes are a map" {:attributes (first bad)})))
   (let [paths (keep first items)]
     (when-not (= (count paths) (count (distinct paths)))
-      (throw (ex-info "uikit-base: a navbar's items are each its own path" {})))
-    (when (and (some? current) (not-any? #{current} paths))
-      (throw (ex-info "uikit-base: a navbar's current is one of its items' paths" {:current current}))))
+      (throw (ex-info "uikit-base: a navbar's items are each its own path" {}))))
   (when-not (or (nil? brand) (and (vector? brand) (= 2 (count brand)) (not (nothing? (second brand)))))
     (throw (ex-info "uikit-base: a navbar's brand is [path label], the label something to read" {})))
   (let [class (str "ui-navbar ui-navbar--expand-" (name (or expand :md)) (when sticky? " ui-navbar--sticky"))]
