@@ -226,8 +226,8 @@ for (const [mode, init] of Object.entries(modes)) {
     const pr = panel.getBoundingClientRect(), br = bar.getBoundingClientRect();
     return { open: panel.matches(':popover-open'), shown: getComputedStyle(panel).display !== 'none' && pr.height > 0,
       toggleShown: getComputedStyle(toggle).display !== 'none', expanded: toggle.getAttribute('aria-expanded'),
-      // Under its toggle, which it is anchored to (a dropdown's own link to the page may be current too).
-      under: Math.round(pr.top - toggle.getBoundingClientRect().bottom), width: Math.round(pr.width), vw: document.documentElement.clientWidth,
+      // Under the bar, edge to edge with it (a dropdown's own link to the page may be current too).
+      under: pr.top - br.bottom, left: pr.left, width: pr.width, barLeft: br.left, barWidth: br.width, vw: document.documentElement.clientWidth,
       current: [...document.querySelectorAll('.ui-navbar__link[aria-current="page"]')].map(a => a.getAttribute('href')), path: location.pathname };
   });
   await check('navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open', async () => {
@@ -243,7 +243,7 @@ for (const [mode, init] of Object.entries(modes)) {
     const csp = await q.evaluate(() => window.__csp); await q.close();
     return { current: s.current, path: s.path, same, csp, errs };
   }, s => s.path === '/second' && s.current.length === 1 && s.current[0] === '/second' && s.same && s.csp.length === 0 && s.errs.length === 0);
-  await check('navbar: narrow, the panel hidden until its toggle opens it, under the bar and as wide as the page; Esc and a press outside close it', async () => {
+  await check('navbar: narrow, the panel hidden until its toggle opens it, under the bar, both as wide as the page; Esc and a press outside close it', async () => {
     const [q, errs] = await pageAt(360, '/');
     const before = await navState(q);
     await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150); const opened = await navState(q);
@@ -252,8 +252,8 @@ for (const [mode, init] of Object.entries(modes)) {
     await q.mouse.click(180, 700); await q.waitForTimeout(150); const outside = await navState(q);
     const csp = await q.evaluate(() => window.__csp); await q.close();
     return { before, opened, escaped, outside, csp, errs };
-  }, s => !s.before.shown && s.before.toggleShown && s.opened.open && s.opened.shown && s.opened.under >= 0 && s.opened.under <= 8
-        && s.opened.width === s.opened.vw && !s.escaped.open && !s.outside.open && s.csp.length === 0 && s.errs.length === 0);
+  }, s => !s.before.shown && s.before.toggleShown && s.opened.open && s.opened.shown && s.opened.under >= -0.5 && s.opened.under <= 4
+        && s.opened.barLeft === 0 && s.opened.barWidth === s.opened.vw && s.opened.left === 0 && s.opened.width === s.opened.vw && !s.escaped.open && !s.outside.open && s.csp.length === 0 && s.errs.length === 0);
   await check('navbar: narrow, its dropdown opens inside the open panel, and a link chosen closes the panel and swaps the page', async () => {
     const [q, errs] = await pageAt(360, '/');
     await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150);
@@ -264,6 +264,79 @@ for (const [mode, init] of Object.entries(modes)) {
     const after = await navState(q); const csp = await q.evaluate(() => window.__csp); await q.close();
     return { both, after, csp, errs };
   }, s => s.both[0] && s.both[1] && !s.after.open && s.after.current[0] === '/second' && s.csp.length === 0 && s.errs.length === 0);
+  await check('navbar: a link of its dropdown, inside the open panel, closes the panel too', async () => {
+    const [q, errs] = await pageAt(360, '/');
+    await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150);
+    await q.locator('[popovertarget="g-nav-more"]').click(); await q.waitForTimeout(150);
+    await q.locator('#g-nav-more a[href="/second"]').click(); await q.waitForFunction(() => location.pathname === '/second'); await q.waitForTimeout(200);
+    const open = await q.evaluate(() => ['g-nav', 'g-nav-more'].filter(id => document.getElementById(id).matches(':popover-open')));
+    await q.close(); return { open, errs };
+  }, s => s.open.length === 0 && s.errs.length === 0);
+  await check('navbar: opened narrow, then the window widens past its breakpoint: closed, its links inline in the bar', async () => {
+    const [q, errs] = await pageAt(360, '/');
+    await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150);
+    await q.setViewportSize({ width: 1024, height: 740 }); await q.waitForTimeout(250);
+    const s = await q.evaluate(() => {
+      const l = document.querySelector('.ui-navbar__link').getBoundingClientRect(), b = document.querySelector('.ui-navbar').getBoundingClientRect();
+      return { open: document.getElementById('g-nav').matches(':popover-open'), inBar: l.top >= b.top && l.bottom <= b.bottom };
+    });
+    await q.close(); return { ...s, errs };
+  }, s => !s.open && s.inBar && s.errs.length === 0);
+  await check('navbar: on a short screen with many links, the open panel ends at the screen\'s bottom and its last link is reached by scrolling it', async () => {
+    const q = await ctx.newPage(); await q.setViewportSize({ width: 320, height: 256 }); await q.goto(url);
+    await q.evaluate(() => { const ul = document.querySelector('.ui-navbar__items'), li = ul.querySelector('li');
+      for (let i = 0; i < 10; i++) { const c = li.cloneNode(true); c.querySelector('a').textContent = 'Extra ' + i; c.querySelector('a').removeAttribute('aria-current'); ul.append(c); } });
+    await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150);
+    const s = await q.evaluate(() => {
+      const panel = document.getElementById('g-nav'), r = panel.getBoundingClientRect(), overflows = panel.scrollHeight > panel.clientHeight;
+      panel.scrollTop = 1e6; const links = panel.querySelectorAll('.ui-navbar__items > li'), last = links[links.length - 1].getBoundingClientRect();
+      const bar = document.querySelector('.ui-navbar').getBoundingClientRect().bottom;
+      return { open: panel.matches(':popover-open'), bottom: r.bottom, vh: innerHeight, overflows, lastTop: last.top, lastBottom: last.bottom, top: r.top, under: r.top - bar };
+    });
+    await q.close(); return s;
+  }, s => s.open && s.under >= -0.5 && s.under <= 4 && s.bottom <= s.vh + 0.5 && s.overflows && s.lastTop >= s.top && s.lastBottom <= s.vh + 0.5);
+  await check('navbar: narrow, its links, its dropdown\'s button, its end and its brand start their text at one inset', async () => {
+    const [q, errs] = await pageAt(360, '/');
+    await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150);
+    const s = await q.evaluate(() => {
+      const start = (el) => { const r = el.getBoundingClientRect(), cs = getComputedStyle(el); return Math.round((r.left + parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth)) * 2) / 2; };
+      const end = document.querySelector('.ui-navbar__end'), endKid = end.firstElementChild;
+      return { brand: start(document.querySelector('.ui-navbar__brand')), link: start(document.querySelector('.ui-navbar__link')),
+        raw: start(document.getElementById('g-nav-raw')), more: start(document.querySelector('[popovertarget="g-nav-more"]')),
+        end: Math.round((end.getBoundingClientRect().left + parseFloat(getComputedStyle(end).paddingLeft)) * 2) / 2, endKid: Math.round(endKid.getBoundingClientRect().left * 2) / 2 };
+    });
+    await q.close(); return { ...s, errs };
+  }, s => s.brand === s.link && s.raw === s.link && s.more === s.link && s.end === s.link && s.endKid === s.link);
+  await check('navbar: a host\'s plain link is painted as its links are, and a section mark looks like the page mark', async () => {
+    const [q, errs] = await pageAt(1024, '/');
+    await q.keyboard.press('Shift');
+    const s = await q.evaluate(() => {
+      const link = document.querySelector('.ui-navbar__link[href="/second"]'), raw = document.getElementById('g-nav-raw');
+      const look = (el) => { const cs = getComputedStyle(el); return { color: cs.color, weight: cs.fontWeight, line: cs.textDecorationLine }; };
+      const ring = (el) => { el.focus(); const cs = getComputedStyle(el); const o = { style: cs.outlineStyle, color: cs.outlineColor, width: cs.outlineWidth, fv: el.matches(':focus-visible') }; el.blur(); return o; };
+      const page = look(document.querySelector('.ui-navbar__link[aria-current="page"]'));
+      const plain = look(link), rawLook = look(raw), linkRing = ring(link), rawRing = ring(raw);
+      link.setAttribute('aria-current', 'true'); const section = look(link);
+      link.setAttribute('aria-current', 'location'); const location = look(link);
+      return { page, plain, rawLook, section, location, linkRing, rawRing };
+    });
+    await q.close(); return { ...s, errs };
+  }, s => s.rawLook.color === s.plain.color && s.rawLook.weight === s.plain.weight
+        && s.linkRing.fv && s.rawRing.fv && s.linkRing.style !== 'none' && JSON.stringify(s.rawRing) === JSON.stringify(s.linkRing)
+        && s.page.weight === '600' && s.page.line.includes('underline') && s.plain.weight !== '600'
+        && JSON.stringify(s.section) === JSON.stringify(s.page) && JSON.stringify(s.location) === JSON.stringify(s.page));
+  await check('navbar: sticky, its header stays at the top as the page scrolls, and a jump to a section lands below it', async () => {
+    const [q, errs] = await pageAt(1024, '/');
+    const s = await q.evaluate(async () => {
+      const header = document.querySelector('.wb-header'), frame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      scrollTo(0, 2000); await frame(); const scrolledTop = header.getBoundingClientRect().top, scrolled = scrollY;
+      // A section from the middle, so the page can scroll it to the top: one near the end would sit low whatever the padding.
+      const all = [...document.querySelectorAll('main section[id]')], target = all[Math.floor(all.length / 2)];
+      scrollTo(0, 0); await frame(); location.hash = target.id; await frame();
+      return { scrolled, scrolledTop, targetTop: target.getBoundingClientRect().top, headerBottom: header.getBoundingClientRect().bottom, y: scrollY };
+    });
+    await q.close(); return { ...s, errs };
+  }, s => s.scrolled > 0 && Math.abs(s.scrolledTop) <= 0.5 && s.y > 0 && s.targetTop >= s.headerBottom - 0.5 && s.errs.length === 0);
   result.modes[mode] = r;
   await ctx.close();
 }
