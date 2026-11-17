@@ -215,6 +215,55 @@ for (const [mode, init] of Object.entries(modes)) {
   r['forced: native invoker commands were cancelled, so the script acted'] = { pass: mode !== 'older-floor' || cmd > 0, seen: cmd };
   const csp = await p.evaluate(() => window.__csp);
   r['no CSP violation, no script error'] = { pass: csp.length === 0 && errors.length === 0, seen: { csp, errors } };
+  // The navbar, on pages of its own so the gallery's page above stays where its checks left it.
+  const pageAt = async (width, path) => {
+    const q = await ctx.newPage(); await q.setViewportSize({ width, height: 740 });
+    const errs = []; q.on('pageerror', e => errs.push(String(e)));
+    await q.goto(new URL(path, url).href); return [q, errs];
+  };
+  const navState = (q) => q.evaluate(() => {
+    const panel = document.getElementById('g-nav'), toggle = document.querySelector('.ui-navbar__toggle'), bar = document.querySelector('.ui-navbar');
+    const pr = panel.getBoundingClientRect(), br = bar.getBoundingClientRect();
+    return { open: panel.matches(':popover-open'), shown: getComputedStyle(panel).display !== 'none' && pr.height > 0,
+      toggleShown: getComputedStyle(toggle).display !== 'none', expanded: toggle.getAttribute('aria-expanded'),
+      // Under its toggle, which it is anchored to (a dropdown's own link to the page may be current too).
+      under: Math.round(pr.top - toggle.getBoundingClientRect().bottom), width: Math.round(pr.width), vw: document.documentElement.clientWidth,
+      current: [...document.querySelectorAll('.ui-navbar__link[aria-current="page"]')].map(a => a.getAttribute('href')), path: location.pathname };
+  });
+  await check('navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open', async () => {
+    const [q, errs] = await pageAt(1024, '/'); const s = await navState(q);
+    const sameRow = await q.evaluate(() => { const l = document.querySelector('.ui-navbar__link').getBoundingClientRect(), b = document.querySelector('.ui-navbar').getBoundingClientRect(); return l.top >= b.top && l.bottom <= b.bottom; });
+    const csp = await q.evaluate(() => window.__csp); await q.close();
+    return { ...s, sameRow, csp, errs };
+  }, s => s.shown && !s.open && !s.toggleShown && s.sameRow && s.current.length === 1 && s.current[0] === '/' && s.csp.length === 0 && s.errs.length === 0);
+  await check('navbar: a link swaps <main> and the current mark moves with it, no reload', async () => {
+    const [q, errs] = await pageAt(1024, '/'); await q.evaluate(() => { window.__mark = 1; });
+    await q.locator('.ui-navbar__link[href="/second"]').click(); await q.waitForFunction(() => location.pathname === '/second'); await q.waitForTimeout(200);
+    const s = await navState(q), same = await q.evaluate(() => window.__mark === 1);
+    const csp = await q.evaluate(() => window.__csp); await q.close();
+    return { current: s.current, path: s.path, same, csp, errs };
+  }, s => s.path === '/second' && s.current.length === 1 && s.current[0] === '/second' && s.same && s.csp.length === 0 && s.errs.length === 0);
+  await check('navbar: narrow, the panel hidden until its toggle opens it, under the bar and as wide as the page; Esc and a press outside close it', async () => {
+    const [q, errs] = await pageAt(360, '/');
+    const before = await navState(q);
+    await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150); const opened = await navState(q);
+    await q.keyboard.press('Escape'); await q.waitForTimeout(100); const escaped = await navState(q);
+    await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150);
+    await q.mouse.click(180, 700); await q.waitForTimeout(150); const outside = await navState(q);
+    const csp = await q.evaluate(() => window.__csp); await q.close();
+    return { before, opened, escaped, outside, csp, errs };
+  }, s => !s.before.shown && s.before.toggleShown && s.opened.open && s.opened.shown && s.opened.under >= 0 && s.opened.under <= 8
+        && s.opened.width === s.opened.vw && !s.escaped.open && !s.outside.open && s.csp.length === 0 && s.errs.length === 0);
+  await check('navbar: narrow, its dropdown opens inside the open panel, and a link chosen closes the panel and swaps the page', async () => {
+    const [q, errs] = await pageAt(360, '/');
+    await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150);
+    await q.locator('[popovertarget="g-nav-more"]').click(); await q.waitForTimeout(150);
+    const both = await q.evaluate(() => [document.getElementById('g-nav').matches(':popover-open'), document.getElementById('g-nav-more').matches(':popover-open')]);
+    await q.keyboard.press('Escape'); await q.waitForTimeout(100);
+    await q.locator('.ui-navbar__link[href="/second"]').click(); await q.waitForFunction(() => location.pathname === '/second'); await q.waitForTimeout(200);
+    const after = await navState(q); const csp = await q.evaluate(() => window.__csp); await q.close();
+    return { both, after, csp, errs };
+  }, s => s.both[0] && s.both[1] && !s.after.open && s.after.current[0] === '/second' && s.csp.length === 0 && s.errs.length === 0);
   result.modes[mode] = r;
   await ctx.close();
 }

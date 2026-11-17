@@ -2,11 +2,11 @@
 ;; tree: the kit's behaviour no JVM test can see. browser_checks_test holds that every check
 ;; passed and that the files below are the bytes they were run against, so a change to any of
 ;; them reds until the checks are run again and this file regenerated.
-{:checked "2026-11-16"
- :files {"kit.css" "7218ca3cf77331134d383eb7839cb75bea93043ff404cb2297ea6d8f6c966c51"
+{:checked "2026-11-17"
+ :files {"kit.css" "cd209a3563739b0224f6ef23c135dc7c978a105be56cb051994656712849645d"
          "ui-utilities.css" "a13d081a7dacf810293c7e730b1e6da87d36c89af1336f9bb5dda55fc6f981e6"
-         "ui.js" "878114b96d396c64e6f22a94926abab1e6e042334bbf97947ea25d956c275daa"
-         "gallery-check.mjs" "602960ab126d474472ae83143103d268957b605aace75ac98ed5ae6112187093"}
+         "ui.js" "6902b6a0d30eb28a3922c64448ddc40c0f930d618933900d794a41e989b56e67"
+         "gallery-check.mjs" "3831943ca961332789fdd005813f39582cb039cc7d78feba9273037405df5b03"}
  :runs [
   {:engine "webkit" :version "26.4"
    :modes {
@@ -26,7 +26,11 @@
      "toasts: the timed one goes after its time, the x removes the other" true
      "scrollspy: the section in view is aria-current=location" true
      "forced: native invoker commands were cancelled, so the script acted" true
-     "no CSP violation, no script error" true}
+     "no CSP violation, no script error" true
+     "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
+     "navbar: a link swaps <main> and the current mark moves with it, no reload" true
+     "navbar: narrow, the panel hidden until its toggle opens it, under the bar and as wide as the page; Esc and a press outside close it" true
+     "navbar: narrow, its dropdown opens inside the open panel, and a link chosen closes the panel and swaps the page" true}
     "older-floor" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -43,7 +47,11 @@
      "toasts: the timed one goes after its time, the x removes the other" true
      "scrollspy: the section in view is aria-current=location" true
      "forced: native invoker commands were cancelled, so the script acted" true
-     "no CSP violation, no script error" true}}}
+     "no CSP violation, no script error" true
+     "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
+     "navbar: a link swaps <main> and the current mark moves with it, no reload" true
+     "navbar: narrow, the panel hidden until its toggle opens it, under the bar and as wide as the page; Esc and a press outside close it" true
+     "navbar: narrow, its dropdown opens inside the open panel, and a link chosen closes the panel and swaps the page" true}}}
   {:engine "chromium" :version "145.0.7632.6"
    :modes {
     "native" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
@@ -62,7 +70,11 @@
      "toasts: the timed one goes after its time, the x removes the other" true
      "scrollspy: the section in view is aria-current=location" true
      "forced: native invoker commands were cancelled, so the script acted" true
-     "no CSP violation, no script error" true}
+     "no CSP violation, no script error" true
+     "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
+     "navbar: a link swaps <main> and the current mark moves with it, no reload" true
+     "navbar: narrow, the panel hidden until its toggle opens it, under the bar and as wide as the page; Esc and a press outside close it" true
+     "navbar: narrow, its dropdown opens inside the open panel, and a link chosen closes the panel and swaps the page" true}
     "older-floor" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -79,7 +91,11 @@
      "toasts: the timed one goes after its time, the x removes the other" true
      "scrollspy: the section in view is aria-current=location" true
      "forced: native invoker commands were cancelled, so the script acted" true
-     "no CSP violation, no script error" true}
+     "no CSP violation, no script error" true
+     "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
+     "navbar: a link swaps <main> and the current mark moves with it, no reload" true
+     "navbar: narrow, the panel hidden until its toggle opens it, under the bar and as wide as the page; Esc and a press outside close it" true
+     "navbar: narrow, its dropdown opens inside the open panel, and a link chosen closes the panel and swaps the page" true}
     "anchor-without-scope" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -96,7 +112,11 @@
      "toasts: the timed one goes after its time, the x removes the other" true
      "scrollspy: the section in view is aria-current=location" true
      "forced: native invoker commands were cancelled, so the script acted" true
-     "no CSP violation, no script error" true}}}]
+     "no CSP violation, no script error" true
+     "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
+     "navbar: a link swaps <main> and the current mark moves with it, no reload" true
+     "navbar: narrow, the panel hidden until its toggle opens it, under the bar and as wide as the page; Esc and a press outside close it" true
+     "navbar: narrow, its dropdown opens inside the open panel, and a link chosen closes the panel and swaps the page" true}}}]
  :not-verified ["a dialog's closedby shim in a Chromium without it (131-133): Chromium's own closedby cannot be switched off; the shim's Esc decision is read from defaultPrevented, and WebKit 26.4, which lacks closedby, runs the shim for real"
                 "Firefox: no engine of it on this machine"
                 "a real Safari 18.x: its gaps are forced in WebKit 26.4 and Chromium, never run"]
