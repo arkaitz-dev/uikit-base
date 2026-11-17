@@ -252,7 +252,7 @@ for (const [mode, init] of Object.entries(modes)) {
     await q.mouse.click(180, 700); await q.waitForTimeout(150); const outside = await navState(q);
     const csp = await q.evaluate(() => window.__csp); await q.close();
     return { before, opened, escaped, outside, csp, errs };
-  }, s => !s.before.shown && s.before.toggleShown && s.opened.open && s.opened.shown && s.opened.under >= -0.5 && s.opened.under <= 4
+  }, s => !s.before.shown && s.before.toggleShown && s.opened.open && s.opened.shown && Math.abs(s.opened.under) <= 0.5
         && s.opened.barLeft === 0 && s.opened.barWidth === s.opened.vw && s.opened.left === 0 && s.opened.width === s.opened.vw && !s.escaped.open && !s.outside.open && s.csp.length === 0 && s.errs.length === 0);
   await check('navbar: narrow, its dropdown opens inside the open panel, and a link chosen closes the panel and swaps the page', async () => {
     const [q, errs] = await pageAt(360, '/');
@@ -294,16 +294,18 @@ for (const [mode, init] of Object.entries(modes)) {
       return { open: panel.matches(':popover-open'), bottom: r.bottom, vh: innerHeight, overflows, lastTop: last.top, lastBottom: last.bottom, top: r.top, under: r.top - bar };
     });
     await q.close(); return s;
-  }, s => s.open && s.under >= -0.5 && s.under <= 4 && s.bottom <= s.vh + 0.5 && s.overflows && s.lastTop >= s.top && s.lastBottom <= s.vh + 0.5);
+  }, s => s.open && Math.abs(s.under) <= 0.5 && s.bottom <= s.vh + 0.5 && s.overflows && s.lastTop >= s.top && s.lastBottom <= s.vh + 0.5);
   await check('navbar: narrow, its links, its dropdown\'s button, its end and its brand start their text at one inset', async () => {
     const [q, errs] = await pageAt(360, '/');
     await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150);
     const s = await q.evaluate(() => {
-      const start = (el) => { const r = el.getBoundingClientRect(), cs = getComputedStyle(el); return Math.round((r.left + parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth)) * 2) / 2; };
-      const end = document.querySelector('.ui-navbar__end'), endKid = end.firstElementChild;
+      // Where the text itself starts (a Range over its first text node), so a box at the inset with its text centred is caught.
+      const start = (el) => { const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: n => n.data.trim() ? 1 : 3 });
+        const r = document.createRange(); r.selectNodeContents(w.nextNode()); return Math.round(r.getBoundingClientRect().left * 2) / 2; };
+      const endKid = document.querySelector('.ui-navbar__end').firstElementChild;
       return { brand: start(document.querySelector('.ui-navbar__brand')), link: start(document.querySelector('.ui-navbar__link')),
         raw: start(document.getElementById('g-nav-raw')), more: start(document.querySelector('[popovertarget="g-nav-more"]')),
-        end: Math.round((end.getBoundingClientRect().left + parseFloat(getComputedStyle(end).paddingLeft)) * 2) / 2, endKid: Math.round(endKid.getBoundingClientRect().left * 2) / 2 };
+        end: Math.round(endKid.getBoundingClientRect().left * 2) / 2, endKid: Math.round(endKid.getBoundingClientRect().left * 2) / 2 };
     });
     await q.close(); return { ...s, errs };
   }, s => s.brand === s.link && s.raw === s.link && s.more === s.link && s.end === s.link && s.endKid === s.link);
@@ -337,6 +339,38 @@ for (const [mode, init] of Object.entries(modes)) {
     });
     await q.close(); return { ...s, errs };
   }, s => s.scrolled > 0 && Math.abs(s.scrolledTop) <= 0.5 && s.y > 0 && s.targetTop >= s.headerBottom - 0.5 && s.errs.length === 0);
+  await check('navbar: opened narrow, a resize that stays below its breakpoint leaves it open', async () => {
+    const [q, errs] = await pageAt(360, '/');
+    await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150);
+    await q.setViewportSize({ width: 420, height: 700 }); await q.waitForTimeout(250);
+    const open = await q.evaluate(() => document.getElementById('g-nav').matches(':popover-open')); await q.close(); return { open, errs };
+  }, s => s.open && s.errs.length === 0);
+  await check('navbar: its toggle a compact button, centred in the bar', async () => {
+    const [q, errs] = await pageAt(360, '/');
+    const s = await q.evaluate(() => { const t = document.querySelector('.ui-navbar__toggle').getBoundingClientRect(), b = document.querySelector('.ui-navbar').getBoundingClientRect();
+      return { h: t.height, bar: b.height, above: t.top - b.top, below: b.bottom - t.bottom }; });
+    await q.close(); return { ...s, errs };
+  }, s => s.h < s.bar - 4 && Math.abs(s.above - s.below) <= 1.5);
+  await check('navbar: past its breakpoint it collapses to its toggle while its items do not fit, inline once they do, and stays one row', async () => {
+    const [q, errs] = await pageAt(700, '/second');
+    const state = () => q.evaluate(() => { const bar = document.querySelector('.ui-navbar'), t = document.querySelector('.ui-navbar__toggle'), l = document.querySelector('.ui-navbar__link').getBoundingClientRect(), b = bar.getBoundingClientRect();
+      return { collapsed: bar.classList.contains('ui-navbar--collapsed'), toggle: getComputedStyle(t).display !== 'none', linkInBar: l.height > 0 && l.top >= b.top && l.bottom <= b.bottom, h: b.height }; });
+    const at = async (w) => { await q.setViewportSize({ width: w, height: 740 }); await q.waitForTimeout(250); return state(); };
+    const s700 = await state(), s690 = await at(690), s600 = await at(600), s320 = await at(320), back = await at(700), wide = await at(1024);
+    await q.close(); return { s700, s690, s600, s320, back, wide, errs };
+  }, s => !s.s700.collapsed && !s.s700.toggle && s.s700.linkInBar && s.s690.collapsed && s.s690.toggle && !s.s690.linkInBar
+        && s.s600.toggle && !s.s600.linkInBar && s.s320.toggle && !s.back.collapsed && !s.back.toggle && s.back.linkInBar && s.wide.linkInBar
+        && [s.s690, s.s600, s.s320, s.back, s.wide].every(x => Math.abs(x.h - s.s700.h) <= 0.5) && s.errs.length === 0);
+  await check('navbar: with a banner above its header and many links, the open panel starts at the bar and ends within the screen', async () => {
+    const q = await ctx.newPage(); await q.setViewportSize({ width: 320, height: 400 }); await q.goto(url);
+    await q.evaluate(() => { const ban = document.createElement('div'); ban.style.blockSize = '120px'; document.body.prepend(ban);
+      const ul = document.querySelector('.ui-navbar__items'), li = ul.querySelector('li');
+      for (let i = 0; i < 10; i++) { const c = li.cloneNode(true); c.querySelector('a').removeAttribute('aria-current'); ul.append(c); } });
+    await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150);
+    const s = await q.evaluate(() => { const p = document.getElementById('g-nav'), r = p.getBoundingClientRect(), b = document.querySelector('.ui-navbar').getBoundingClientRect();
+      return { open: p.matches(':popover-open'), under: r.top - b.bottom, barTop: b.top, bottom: r.bottom, vh: innerHeight, overflows: p.scrollHeight > p.clientHeight }; });
+    await q.close(); return s;
+  }, s => s.open && s.barTop >= 119 && Math.abs(s.under) <= 0.5 && s.bottom <= s.vh + 0.5 && s.overflows);
   result.modes[mode] = r;
   await ctx.close();
 }
