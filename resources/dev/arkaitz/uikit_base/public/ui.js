@@ -63,6 +63,11 @@
   function placeOpen() { if (!nativeAnchor) document.querySelectorAll(open).forEach(place); }
   on("toggle", function (event) { if (event.newState === "open") placeOpen(); }, true);
   ["resize", "scroll"].forEach((name) => addEventListener(name, placeOpen, { capture: true, passive: true }));
+  // A navbar's panel left open as the window widens past its breakpoint stays in the top layer, which
+  // no stylesheet can undo: with its toggle gone, it closes, and is drawn inline in the bar.
+  addEventListener("resize", () => document.querySelectorAll(".ui-navbar__panel:popover-open").forEach((panel) => {
+    if (!panel.previousElementSibling.checkVisibility()) panel.hidePopover();
+  }));
 
   // Tooltips: shown while the trigger or the tooltip is hovered or focused (WCAG 1.4.13).
   // 150 ms is a declared policy: a pointer crosses the few pixels to the tooltip in a frame or

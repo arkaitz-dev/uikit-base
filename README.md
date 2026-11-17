@@ -316,7 +316,7 @@ It writes no markup and no text: the server rendered both, escaped. It writes no
 style as a string, by attribute or by `style =`; it positions only through single CSSOM
 properties (`style.setProperty`), which `style-src 'self'` allows. It evaluates no
 string, sets no timer from a string and fetches nothing. The plugin loads it deferred, under
-the page's nonce, so a CSP of `script-src 'nonce-…'` needs nothing more. It is at most 150
+the page's nonce, so a CSP of `script-src 'nonce-…'` needs nothing more. It is at most 153
 lines of code, comments and blank lines excluded, never minified; `ui_js_test` holds that
 and every ban above.
 
