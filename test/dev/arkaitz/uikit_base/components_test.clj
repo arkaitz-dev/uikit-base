@@ -1310,7 +1310,7 @@
 
 (deftest every-word-of-the-kit-is-spoken-in-both-its-languages
   (let [ks (fn [l] (set (keys (get-in ui/words [l :uikit-base]))))]
-    (is (= 14 (count (ks :en))) "witness: the kit's words, a count measured once")
+    (is (= 15 (count (ks :en))) "witness: the kit's words, a count measured once — N1's :menu, the navbar toggle's name, the fifteenth")
     (is (= (ks :en) (ks :es)) "a word missing in Spanish would fall back to English mid-page")))
 
 ;; --- K19: scrollspy ------------------------------------------------------------------------
@@ -1327,3 +1327,64 @@
     (is (= ["uikit-base: a scrollspy's items are #fragments of this page, each one word, a letter first" {:items [f]}]
            (refusal #(ui/scrollspy {:label "S" :items [["#ok" "OK"] [f "X"]]}))) (pr-str f)))
   (is (= ["uikit-base: a scrollspy's items are each its own section" {}] (refusal #(ui/scrollspy {:label "S" :items [["#a" "A"] ["#a" "B"]]})))))
+
+;; --- N1: navbar ----------------------------------------------------------------------------
+
+(defn- nav-link
+  "A wb/link as hiccup2 writes it, its attributes in the order they sort: `before` href,
+  `after` the htmx ones."
+  ([before path body] (nav-link before path body ""))
+  ([before path body after]
+   (str "<a " before "href=\"" path "\" hx-get=\"" path "\" " nav-attrs after ">" body "</a>")))
+
+(def ^:private toggle-html
+  "<div class=\"ui-navbar__collapse\"><button class=\"ui-btn ui-navbar__toggle\" popovertarget=\"nav\" type=\"button\"><span aria-hidden=\"true\" class=\"ui-navbar__bars\"></span><span class=\"ui-sr-only\">Menu</span></button>")
+
+(deftest a-navbar-is-a-brand-a-toggle-and-a-panel-of-one-named-nav
+  (is (= (str "<div class=\"ui-navbar ui-navbar--expand-md ui-navbar--sticky mine\" data-x=\"1\">"
+              (nav-link "class=\"ui-navbar__brand\" " "/" "Sh&lt;op")
+              toggle-html
+              "<div class=\"ui-navbar__panel\" id=\"nav\" popover=\"auto\"><nav aria-label=\"Main &lt;&quot;x\" data-wb-nav=\"data-wb-nav\"><ul class=\"ui-navbar__items\">"
+              "<li>" (nav-link "class=\"ui-navbar__link\" " "/" "Home") "</li>"
+              "<li>" (nav-link "aria-current=\"page\" class=\"ui-navbar__link x\" " "/cart" "Ca&lt;rt") "</li>"
+              "<li><a href=\"/o\" hx-swap-oob=\"true\" id=\"cart\">O</a></li></ul></nav>"
+              "<div class=\"ui-navbar__end\"><b>me</b></div></div></div></div>")
+         (html (ui/navbar {} {:id "nav" :brand ["/" "Sh<op"] :label "Main <\"x" :current "/cart" :end [:b "me"] :sticky? true
+                              :attrs {:class "mine" :data-x 1}
+                              :items [["/" "Home"] ["/cart" "Ca<rt" {"CLASS" "x"}] [nil [:a {:href "/o" :hx-swap-oob "true" :id "cart"} "O"]]]})))
+      "the brand, the toggle naming its panel, one nav handed to nav.js, the current item marked, a raw item as it is, the end")
+  (is (= (str "<div class=\"ui-navbar ui-navbar--expand-lg\">" toggle-html
+              "<div class=\"ui-navbar__panel\" id=\"nav\" popover=\"auto\"><nav aria-label=\"M\" data-wb-nav=\"data-wb-nav\"><ul class=\"ui-navbar__items\">"
+              "<li>" (nav-link "class=\"ui-navbar__link\" " "/h" "H" " id=\"home\"") "</li></ul></nav></div></div></div>")
+         (html (ui/navbar {} {:id "nav" :label "M" :expand :lg :end " " :items [["/h" "H" {:id "home"}]]})))
+      "no brand, no current, a blank end left out; an item's id kept for an out-of-band swap")
+  (doseq [[x c] [[:sm "ui-navbar--expand-sm"] [:md "ui-navbar--expand-md"] [nil "ui-navbar--expand-md"]]]
+    (is (str/starts-with? (html (ui/navbar {} {:id "n" :label "M" :expand x :items [["/" "H"]]})) (str "<div class=\"ui-navbar " c "\">")) (pr-str x)))
+  (is (str/includes? (html (ui/navbar {:wb/tr (tr-for :es)} {:id "n" :label "M" :items [["/" "H"]]})) "<span class=\"ui-sr-only\">Menú</span>")
+      "the toggle is named in the reader's language"))
+
+(deftest a-navbar-refuses-what-would-leave-it-unnamed-ambiguous-or-unplaced
+  (let [ok {:id "n" :label "Main" :items [["/a" "A"]]}]
+    (is (some? (ui/navbar {} ok)) "witness: the base options are taken")
+    (doseq [l [nil "" " " :main]]
+      (is (= ["uikit-base: a navbar is named by its label" {:label l}] (refusal #(ui/navbar {} (assoc ok :label l)))) (pr-str l)))
+    (doseq [id [nil "" "two words" "1n"]]
+      (is (= ["uikit-base: a navbar's :id is one word, a letter first, that an element carries as its id" {:id id}]
+             (refusal #(ui/navbar {} (assoc ok :id id)))) (pr-str id)))
+    (doseq [x [:xl :xs "md" 768]]
+      (is (= ["uikit-base: a navbar's :expand is :sm, :md or :lg" {:expand x}] (refusal #(ui/navbar {} (assoc ok :expand x)))) (pr-str x)))
+    (doseq [items [[] nil]]
+      (is (= ["uikit-base: a navbar's items are one or more" {}] (refusal #(ui/navbar {} (assoc ok :items items)))) (pr-str items)))
+    (is (= ["uikit-base: every item of a navbar has a label" {}] (refusal #(ui/navbar {} (assoc ok :items [["/a" " "]])))))
+    (is (= ["uikit-base: every item of a navbar has a label" {}] (refusal #(ui/navbar {} (assoc ok :items [[nil nil]])))) "a raw item holds something")
+    (is (= ["uikit-base: a navbar item's attributes are a map" {:attributes "x"}] (refusal #(ui/navbar {} (assoc ok :items [["/a" "A" "x"]])))))
+    (is (= ["uikit-base: a navbar's items are each its own path" {}] (refusal #(ui/navbar {} (assoc ok :items [["/a" "A"] ["/a" "B"]])))))
+    (is (some? (ui/navbar {} (assoc ok :items [[nil "x"] [nil "y"] ["/a" "A"]]))) "raw items have no path, and two are no duplicate")
+    (doseq [c ["/b" "" nil?]]
+      (is (= ["uikit-base: a navbar's current is one of its items' paths" {:current c}] (refusal #(ui/navbar {} (assoc ok :current c)))) (pr-str c)))
+    (doseq [b [["/"] ["/" ""] ["/" nil] "/" ["/" "B" "C"]]]
+      (is (= ["uikit-base: a navbar's brand is [path label], the label something to read" {}] (refusal #(ui/navbar {} (assoc ok :brand b)))) (pr-str b)))
+    (is (= ["web-base: link's href must be a path on this origin" {:wb/link :href}] (refusal #(ui/navbar {} (assoc ok :items [["https://x.test/" "X"]])))))
+    (is (= ["web-base: link's attrs may not give an href or an htmx attribute" {:wb/link :attrs}]
+           (refusal #(ui/navbar {} (assoc ok :items [["/a" "A" {:hx-swap-oob "true"}]]))))
+        "an item that needs htmx of its own is a raw [:a]")))

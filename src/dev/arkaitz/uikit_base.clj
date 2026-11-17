@@ -561,11 +561,11 @@
   a dictionary, which a host's own overrides; a language the kit does not speak falls back
   to the English here, so no word of the kit is ever missing from a page."
   {:en {:uikit-base {:previous "Previous" :next "Next" :pages "Pages" :breadcrumbs "Breadcrumbs"
-                     :shown-once "Copy it now: it will not be shown again." :close "Close" :loading "Loading…"
+                     :shown-once "Copy it now: it will not be shown again." :close "Close" :loading "Loading…" :menu "Menu"
                      :carousel "carousel" :slide "slide" :slide-of "%1 of %2" :previous-slide "Previous slide"
                      :next-slide "Next slide" :stop-rotation "Stop automatic slide show" :start-rotation "Start automatic slide show"}}
    :es {:uikit-base {:previous "Anterior" :next "Siguiente" :pages "Páginas" :breadcrumbs "Ruta de navegación"
-                     :shown-once "Cópialo ahora: no se volverá a mostrar." :close "Cerrar" :loading "Cargando…"
+                     :shown-once "Cópialo ahora: no se volverá a mostrar." :close "Cerrar" :loading "Cargando…" :menu "Menú"
                      :carousel "carrusel" :slide "diapositiva" :slide-of "%1 de %2" :previous-slide "Diapositiva anterior"
                      :next-slide "Diapositiva siguiente" :stop-rotation "Detener el pase automático" :start-rotation "Iniciar el pase automático"}}})
 
@@ -651,6 +651,64 @@
                                              fill? (conj "ui-tabs--fill") justify? (conj "ui-tabs--justify")))
                      :aria-label label} attrs [:aria-label])
    (into [:ul] (for [[p l] items] [:li (wb/link p (when (= p current) {:aria-current "page"}) l)]))])
+
+(declare id!)
+
+(def ^:private expands #{:sm :md :lg})
+
+(defn navbar
+  "`(navbar request opts)` → the bar at the top of every page, passed as web-base's shell
+  `:header` with its `:nav` and `:identity` left empty: the bar holds both, and a second nav
+  beside it would be a second landmark. `:brand`, `[path label]`, is a `wb/link` at its start.
+  `:items`, `[[path content attrs?] …]`, are `wb/link`s in a nav named by `:label`, required,
+  marked `data-wb-nav` so web-base's `nav.js` moves `aria-current=page` after every swap; the
+  one whose path is `:current` is marked so already. An item's `attrs`, a map, go on its link —
+  an id an out-of-band swap targets survives — its `:class` joined to the kit's. An item with
+  a nil path holds its content as it is: a `dropdown`, or an `[:a]` of the host's own that
+  carries htmx a `wb/link` refuses. `:end` — the identity, a sign-out form — sits after the nav.
+
+  Below `:expand`, `:sm`, `:md` (unless given) or `:lg`, the items and the end are a panel —
+  the platform's popover, `:id` its one-word id — that a toggle named by the kit's word
+  `:uikit-base/menu` opens under the bar; Esc and a click outside close it, and so does a link
+  chosen in it, by the plugin's `/ui/ui.js`. From that width up the toggle is gone and the
+  panel is drawn inline. `:sticky? true` keeps the bar at the top as the page scrolls.
+  `:attrs` go on the bar. No items, two with one path, a `:current` that is no item's path,
+  an item with nothing in it, or an `:expand` that is not one of the three, is refused."
+  [request {:keys [id brand label items current end expand sticky? attrs]}]
+  (id! "a navbar" :id id)
+  (named! "a navbar" label)
+  (when-not (or (nil? expand) (expands expand))
+    (throw (ex-info "uikit-base: a navbar's :expand is :sm, :md or :lg" {:expand expand})))
+  (when (empty? items) (throw (ex-info "uikit-base: a navbar's items are one or more" {})))
+  (named-items! "navbar" items)
+  (when-let [bad (first (keep (fn [[_ _ a]] (when (and (some? a) (not (map? a))) [a])) items))]
+    (throw (ex-info "uikit-base: a navbar item's attributes are a map" {:attributes (first bad)})))
+  (let [paths (keep first items)]
+    (when-not (= (count paths) (count (distinct paths)))
+      (throw (ex-info "uikit-base: a navbar's items are each its own path" {})))
+    (when (and (some? current) (not-any? #{current} paths))
+      (throw (ex-info "uikit-base: a navbar's current is one of its items' paths" {:current current}))))
+  (when-not (or (nil? brand) (and (vector? brand) (= 2 (count brand)) (not (nothing? (second brand)))))
+    (throw (ex-info "uikit-base: a navbar's brand is [path label], the label something to read" {})))
+  (let [class (str "ui-navbar ui-navbar--expand-" (name (or expand :md)) (when sticky? " ui-navbar--sticky"))]
+    (cond-> [:div (with-attrs {:class class} attrs [])]
+      (some? brand) (conj (wb/link (first brand) {:class "ui-navbar__brand"} (second brand)))
+      ;; One box for the toggle and its panel, drawn as none, so ui.js places the panel under
+      ;; its parent's first child, the toggle, as it places a dropdown's menu.
+      true (conj [:div.ui-navbar__collapse
+                  [:button {:type "button" :class "ui-btn ui-navbar__toggle" :popovertarget id}
+                   [:span.ui-navbar__bars {:aria-hidden "true"}]
+                   [:span.ui-sr-only (kit-word request nil :uikit-base/menu)]]
+                  (cond-> [:div {:id id :popover "auto" :class "ui-navbar__panel"}
+                           [:nav {:aria-label label :data-wb-nav true}
+                            (into [:ul.ui-navbar__items]
+                                  (for [[p c item-attrs] items]
+                                    [:li (if (some? p)
+                                           (wb/link p (cond-> (with-attrs {:class "ui-navbar__link"} item-attrs [])
+                                                        (= p current) (assoc :aria-current "page"))
+                                                    c)
+                                           c)]))]]
+                    (not (nothing? end)) (conj [:div.ui-navbar__end end]))]))))
 
 (defn list-group
   "`(list-group opts)` → items in one bordered column. `:items`, `[[path content attrs?] …]`:

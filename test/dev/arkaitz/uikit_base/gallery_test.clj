@@ -55,3 +55,18 @@
         drawn (set (for [[_ v] (re-seq #"class=\"([^\"]*)\"" body) c (str/split v #"\s+") :when (str/starts-with? c "ui-")] c))]
     (is (< 60 (count drawn)) "witness: the page draws the kit's classes")
     (is (= #{} (set/difference drawn (defined-classes))) "classes drawn that no stylesheet of the kit defines")))
+
+(deftest every-gallery-page-carries-the-navbar-as-its-header-with-its-own-page-current
+  ;; The shell's :nav and :identity are left empty, so the header holds the one nav there is,
+  ;; the navbar's, and its current link is the page's own until nav.js moves it on a swap.
+  (doseq [path ["/" "/second"]]
+    (let [{:keys [status body]} ((gallery/handler) (mock/request :get path))
+          header  (re-find #"(?s)<header class=\"wb-header\">.*?</header>" (str body))
+          current (for [a (re-seq #"<a [^>]*aria-current=\"page\"[^>]*>" (str header))] (second (re-find #"href=\"([^\"]*)\"" a)))]
+      (is (= 200 status) path)
+      (is (some? header) (str "witness: " path " has the shell's header"))
+      (is (str/includes? header "class=\"ui-navbar ") (str path ": the header holds the navbar"))
+      (is (= 1 (count (re-seq #"<nav[\s>]" header))) (str path ": one nav in the header, never a second landmark beside it"))
+      (is (re-find #"<nav aria-label=\"Gallery pages\" data-wb-nav[ =>]" header) (str path ": that nav is named and handed to nav.js"))
+      (is (not (str/includes? body "wb-nav\"")) (str path ": the shell drew no nav or identity of its own"))
+      (is (= [path] current) (str path ": its own link, and only it, is current")))))

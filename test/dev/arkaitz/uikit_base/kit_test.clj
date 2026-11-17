@@ -451,7 +451,7 @@
     (is (= [0 2 1] (specificity ".ui-pager a:focus-visible")) "witness: the test's specificity")
     (is (= #{".ui-btn--primary:hover" ".ui-btn--primary" ".ui-btn:hover" ".ui-btn"} (set (selectors-implied ".ui-btn--primary:hover")))
         "witness: a variant's hover is also the base's hover")
-    (is (= 186 (count pairs)) (str "witness: every painted pair found — the kit's 140 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one and the pressed one hovered, the close button in two; K10's floating label on three canvases and the input group's text; K12's stripe, hovered row, current page, current pill, the list group, its link on three canvases, hovered and current; K13's card nav, the figure's caption and the collapse's summary on three canvases each, the accordion and its open summary; K16's dialog; K17's menu and popover, the menu's link on three canvases and hovered, the tooltip; K18's toast; K19's scrollspy link on three canvases), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
+    (is (= 193 (count pairs)) (str "witness: every painted pair found — the kit's 147 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one and the pressed one hovered, the close button in two; K10's floating label on three canvases and the input group's text; K12's stripe, hovered row, current page, current pill, the list group, its link on three canvases, hovered and current; K13's card nav, the figure's caption and the collapse's summary on three canvases each, the accordion and its open summary; K16's dialog; K17's menu and popover, the menu's link on three canvases and hovered, the tooltip; K18's toast; K19's scrollspy link on three canvases; N1's bar, its brand and its panel, its link on three canvases and hovered), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
     (is (= 21.0 (wcag "#000000" "#ffffff")) "witness: the test's WCAG")
     (doseq [[s bg fg :as p] pairs]
       (testing s
@@ -481,7 +481,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 344 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 272 (0.5.0's 119; the striped progress with no value 2; K9's 42 outline, 4 link, 6 pressed (one hovered) and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6; K16's 7: dialog 4, backdrop 1, head and foot lines 2; K17's 10: menu and popover 4, the menu's link 3, the tooltip 3; K18's 9: the toast 5, its kinds 4; K19's 3: the scrollspy link's ink and edge, the current edge) and the utilities' 72, a count measured once: " (count bearing)))
+    (is (= 365 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 293 (0.5.0's 119; the striped progress with no value 2; K9's 42 outline, 4 link, 6 pressed (one hovered) and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6; K16's 7: dialog 4, backdrop 1, head and foot lines 2; K17's 10: menu and popover 4, the menu's link 3, the tooltip 3; K18's 9: the toast 5, its kinds 4; K19's 3: the scrollspy link's ink and edge, the current edge; N1's 21: the bar 3, the sticky header's ground 1, the brand 1, the bars' two edges 2, the panel 5, the link 1 and hovered 2, and at each of the three breakpoints the panel's border and shadow taken away 6) and the utilities' 72, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -505,7 +505,7 @@
     [".ui-card__nav" :border] [".ui-accordion" :border] [".ui-accordion__item + .ui-accordion__item" :border]
     [".ui-dialog" :border] [".ui-dialog__head" :border] [".ui-dialog__foot" :border]
     [".ui-dropdown__menu" :border] [".ui-popover" :border] [".ui-toast" :border]
-    [".ui-scrollspy a" :border]})
+    [".ui-scrollspy a" :border] [".ui-navbar" :border] [".ui-navbar__panel" :border]})
 
 (deftest every-control-edge-is-visible
   (let [found (distinct (for [[sels decls] (leaf-rules) s sels
@@ -516,7 +516,7 @@
                           [s t]))
         edges (remove dividers found)]
     (is (= dividers (set (filter dividers found))) "every divider named is still drawn")
-    (is (= 71 (count edges)) (str "witness: the edges — the kit's 59 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text; K11's progress accent and the spinner's two; K12's list link's ring, its lines named dividers; K13's rings on the collapse's and the accordion's summaries and the scroller; K16's ring on a scrollable dialog's body, its lines named dividers; K17's ring on a menu's link, the menu's and popover's edges named dividers; K18's toast edge and its four kinds, the carousel viewport's ring, the toast's outer line a divider; K19's ring on a scrollspy link and the current one's edge, the others' a divider), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
+    (is (= 75 (count edges)) (str "witness: the edges — the kit's 63 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text; K11's progress accent and the spinner's two; K12's list link's ring, its lines named dividers; K13's rings on the collapse's and the accordion's summaries and the scroller; K16's ring on a scrollable dialog's body, its lines named dividers; K17's ring on a menu's link, the menu's and popover's edges named dividers; K18's toast edge and its four kinds, the carousel viewport's ring, the toast's outer line a divider; K19's ring on a scrollspy link and the current one's edge, the others' a divider; N1's rings on the navbar's brand and links and the toggle's two bars, the bar's and the panel's lines named dividers), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
     (doseq [[s t] edges bg [:background :surface :surface-alt]]
       (testing (str s " " t)
         (is (= :ui (audited [bg t])) "an audited non-text pair")
@@ -925,7 +925,9 @@
    'toasts    [(ui/toasts (ui/toast req {:kind :ok :timeout-ms 5000} "x"))]
    'toast     [(ui/toast req {:kind :error :heading "h"} "x")]
    'carousel  [(ui/carousel req {:label "c" :slides ["a" "b"] :interval-ms 5000})]
-   'scrollspy [(ui/scrollspy {:label "s" :items [["#a" "A"] ["#b" "B"]]})]})
+   'scrollspy [(ui/scrollspy {:label "s" :items [["#a" "A"] ["#b" "B"]]})]
+   'navbar    [(ui/navbar req {:id "n" :brand ["/" "B"] :label "Main" :current "/a" :sticky? true :end (ui/button "x")
+                               :items [["/a" "A"] ["/b" "B" {:id "b"}] [nil (ui/dropdown {:id "nm" :label "More" :items [["/c" "C"]]})]]})]})
 
 (defn- elements
   "Every element of a Hiccup tree as [tag attrs classes ancestors' classes]."
@@ -957,7 +959,7 @@
                  [tag classes (first ancestors)])]
     (is (= (set (keys fixtures)) (set (remove '#{words cell} (keys (ns-publics 'dev.arkaitz.uikit-base)))))
         "every public component is drawn here, so a new one needs its fixture")
-    (is (= 64 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close, K10's switch, range, floating input, a grouped field's input and button, and the input group's, K11's alert dismiss link, K12's pill, two list links and two numbered pages, K13's card nav link, a collapse's summary, an accordion's two and the scroller, K16's dialog close, scrollable body and footer button and its dialog-button, K17's offcanvas close and body, the dropdown's button, link and action, the popover's button and the tooltip's trigger, K18's two toast closes, the carousel's three buttons and its viewport, K19's two scrollspy links — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
+    (is (= 71 (count found)) (str "witness: the focusables — 0.5.0's 22, then K9's two buttons, the toggle, the group's two and the close, K10's switch, range, floating input, a grouped field's input and button, and the input group's, K11's alert dismiss link, K12's pill, two list links and two numbered pages, K13's card nav link, a collapse's summary, an accordion's two and the scroller, K16's dialog close, scrollable body and footer button and its dialog-button, K17's offcanvas close and body, the dropdown's button, link and action, the popover's button and the tooltip's trigger, K18's two toast closes, the carousel's three buttons and its viewport, K19's two scrollspy links, N1's brand, toggle, two links, its dropdown's button and link and the end's button — a count measured once: " (vec (map (juxt first #(nth % 2)) found))))
     (is (= [] bare) "each wears the ring, through a class of its own or its kit ancestor's")
     (is (= [] (for [[sels decls] (leaf-rules) :let [v (get decls "outline")] :when v :when (not= :focus-ring (palette-var v))] [sels v]))
         "no rule takes the ring away: an outline is the ring")
@@ -980,7 +982,7 @@
   ;; is: one that set neither would be white on a dark page.
   (let [top (distinct (for [[tag attrs classes] (mapcat #(elements % ()) (vals fixtures))
                             :when (or (= "dialog" tag) (contains? attrs :popover))] classes))]
-    (is (= 5 (count top)) (str "witness: the top-layer elements the kit draws, a count measured once: " (vec top)))
+    (is (= 6 (count top)) (str "witness: the top-layer elements the kit draws — the dialog, the offcanvas, the menu, the popover, the tooltip and, N1's, the navbar's panel — a count measured once: " (vec top)))
     (doseq [[env rules] @env-rules classes top]
       (let [own (fn [props] (some #(palette-var (on-element rules {:classes classes} %)) props))]
         (is (and (own ["color"]) (own backgrounds)) (str (vec (sort classes)) " sets both its ink and its ground " (:width env) " " (:scheme env)))))))
@@ -1024,7 +1026,8 @@
   ;; escaped in the markup, never carried in an attribute for a script to place.
   (let [data (for [[_ attrs] (mapcat #(elements % ()) (vals fixtures)) [k v] attrs
                    :when (re-find #"^data-" (name k))] [k v])]
-    (is (= #{:data-timeout-ms :data-interval-ms} (set (map first data))) "witness: the data attributes the kit emits")
+    (is (= #{:data-timeout-ms :data-interval-ms :data-wb-nav} (set (map first data)))
+        "witness: the data attributes the kit emits — two numbers, and N1's flag that hands a navbar's nav to web-base's nav.js")
     (is (= [] (remove (fn [[_ v]] (or (int? v) (true? v))) data)) "each a whole number or a flag")))
 
 (deftest the-disabled-look-wins-over-every-variant-by-coming-last
@@ -1089,3 +1092,20 @@
         leaks  (for [[s decls] parts :when (not (or (contains? decls "background") (contains? decls "background-image")))] s)]
     (is (<= 9 (count parts)) (str "witness: the meter's and the progress bar's painted parts were found, " (count parts)))
     (is (= [] leaks) "parts painted by background-color alone, under the user agent's image")))
+
+(deftest a-navbars-panel-is-inline-and-its-toggle-gone-from-its-breakpoint-up-and-only-there
+  ;; Below the breakpoint the panel is a closed popover the user agent hides, until the toggle
+  ;; opens it; from it up the kit's author rule outranks the user agent's display: none.
+  (let [cases (for [env environments [bp px] [["sm" 640] ["md" 768] ["lg" 1024]]] [env bp px])
+        seen  (fn [rules bp] (let [x (str ".ui-navbar--expand-" bp)]
+                               [(cascaded rules (str x " .ui-navbar__toggle") ["display"])
+                                (cascaded rules (str x " .ui-navbar__panel") ["display"])
+                                (cascaded rules (str x " .ui-navbar__panel") ["position"])]))]
+    (is (= 72 (count cases)) "witness: 24 environments, three breakpoints")
+    ;; The toggle is a .ui-btn too: where the navbar's rules set no display, the button's shows it.
+    (is (contains? (some (fn [[_ _ classes]] (when (classes "ui-navbar__toggle") classes)) (elements (first (fixtures 'navbar)) ())) "ui-btn")
+        "witness: the toggle is a kit button")
+    (doseq [[env bp px] cases :let [rules (@env-rules env)]]
+      (is (= "inline-flex" (on-element rules {:classes #{"ui-btn"}} "display")) "witness: a kit button is shown")
+      (is (= (if (>= (:width env) px) ["none" "flex" "static"] [nil nil nil]) (seen rules bp))
+          (str "expand " bp " at " (:width env) "px: [toggle display, panel display, panel position]; below, nil leaves the button's own display and the user agent's closed popover")))))

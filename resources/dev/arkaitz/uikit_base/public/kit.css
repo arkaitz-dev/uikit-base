@@ -26,7 +26,7 @@
     .ui-table-wrap:focus-visible, .ui-close:focus-visible, .ui-range:focus-visible, .ui-list-group__action:focus-visible,
     .ui-collapse__summary:focus-visible, .ui-accordion__summary:focus-visible, .ui-scroller:focus-visible, .ui-dialog__body:focus-visible,
     .ui-dropdown__item:focus-visible, .ui-carousel__viewport:focus-visible,
-    .ui-scrollspy a:focus-visible {
+    .ui-scrollspy a:focus-visible, .ui-navbar__brand:focus-visible, .ui-navbar__link:focus-visible {
       outline: var(--ui-focus-outline-width) solid var(--ui-focus-ring);
       outline-offset: var(--ui-focus-outline-width);
       box-shadow: 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
@@ -515,6 +515,88 @@
     .ui-dropdown__item { display: block; padding: var(--ui-spacing-xs) var(--ui-spacing-md); color: var(--ui-link); text-decoration: none; }
     .ui-dropdown__item:hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
     .ui-dropdown__items > li > .ui-action { display: block; padding: var(--ui-spacing-xs) var(--ui-spacing-md); }
+    /* Navbars: the bar on the surface, its brand at the start; below its breakpoint a toggle
+     * opens the items and the end as a popover the bar's width, under the toggle by anchor
+     * positioning, or by ui.js's placement where a browser has none; from it up the toggle is
+     * gone and the same panel is drawn inline. The current link is weighted and underlined,
+     * so the mark is never colour alone. */
+    .ui-navbar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-sm) var(--ui-spacing-md);
+      padding: var(--ui-spacing-sm) var(--ui-spacing-md); color: var(--ui-on-surface); background: var(--ui-surface);
+      border-block-end: 1px solid var(--ui-border); anchor-scope: --ui-navbar;
+    }
+    .ui-navbar--sticky { position: sticky; inset-block-start: 0; z-index: var(--ui-z-index-sticky); }
+    /* The shell's header holds the bar and nothing else, so a bar sticky inside it has nowhere
+     * to travel: the header sticks for it. wb.css sets none of these, so its unlayered rule does
+     * not take them back. */
+    .wb-header:has(> .ui-navbar--sticky) {
+      position: sticky; inset-block-start: 0; z-index: var(--ui-z-index-sticky); background: var(--ui-background);
+    }
+    .ui-navbar .ui-navbar__brand {
+      margin-inline-end: auto; font-size: var(--ui-font-size-lg); font-weight: 600; color: var(--ui-on-surface); text-decoration: none;
+    }
+    .ui-navbar__collapse { display: contents; }
+    .ui-navbar__toggle { anchor-name: --ui-navbar; padding-inline: var(--ui-spacing-sm); }
+    /* Three bars drawn as edges, which forced colours keep, where a ground or a shadow goes. */
+    .ui-navbar__bars {
+      position: relative; display: block; inline-size: 1.25rem; block-size: 0.75rem;
+      border-block: 2px solid var(--ui-border-strong);
+    }
+    .ui-navbar__bars::before {
+      content: ""; position: absolute; inset-inline: 0; inset-block-start: calc(50% - 1px);
+      border-block-start: 2px solid var(--ui-border-strong);
+    }
+    .ui-navbar__panel {
+      position-anchor: --ui-navbar; position-area: block-end span-all; inset: auto; margin: 0;
+      margin-block-start: var(--ui-spacing-sm); box-sizing: border-box; inline-size: 100%; padding: var(--ui-spacing-sm) 0;
+      color: var(--ui-on-surface); background: var(--ui-surface);
+      border: 0; border-block-end: 1px solid var(--ui-border); box-shadow: var(--ui-shadow-md);
+    }
+    .ui-navbar__items { display: flex; flex-direction: column; gap: var(--ui-spacing-xxs); list-style: none; margin: 0; padding: 0; }
+    .ui-navbar__items > li { padding-inline: var(--ui-spacing-sm); }
+    .ui-navbar__link {
+      display: block; padding: var(--ui-spacing-xs) var(--ui-spacing-sm); color: var(--ui-link); text-decoration: none;
+      border-radius: var(--ui-radius-md);
+    }
+    .ui-navbar__link:hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
+    .ui-navbar__link[aria-current="page"] {
+      font-weight: 600; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.3em;
+    }
+    .ui-navbar__end {
+      display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-sm); padding: var(--ui-spacing-sm) var(--ui-spacing-md) 0;
+    }
+    /* From the breakpoint up: author CSS outranks the user agent's display: none on a closed
+     * popover, and these undo the rest of its popover look. */
+    @media (min-width: 640px) {
+      .ui-navbar--expand-sm .ui-navbar__toggle { display: none; }
+      .ui-navbar--expand-sm .ui-navbar__panel {
+        display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-md); position: static; inset: auto;
+        inline-size: auto; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
+      }
+      .ui-navbar--expand-sm .ui-navbar__items { flex-direction: row; flex-wrap: wrap; }
+      .ui-navbar--expand-sm .ui-navbar__items > li { padding-inline: 0; }
+      .ui-navbar--expand-sm .ui-navbar__end { margin-inline-start: auto; padding: 0; }
+    }
+    @media (min-width: 768px) {
+      .ui-navbar--expand-md .ui-navbar__toggle { display: none; }
+      .ui-navbar--expand-md .ui-navbar__panel {
+        display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-md); position: static; inset: auto;
+        inline-size: auto; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
+      }
+      .ui-navbar--expand-md .ui-navbar__items { flex-direction: row; flex-wrap: wrap; }
+      .ui-navbar--expand-md .ui-navbar__items > li { padding-inline: 0; }
+      .ui-navbar--expand-md .ui-navbar__end { margin-inline-start: auto; padding: 0; }
+    }
+    @media (min-width: 1024px) {
+      .ui-navbar--expand-lg .ui-navbar__toggle { display: none; }
+      .ui-navbar--expand-lg .ui-navbar__panel {
+        display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-md); position: static; inset: auto;
+        inline-size: auto; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
+      }
+      .ui-navbar--expand-lg .ui-navbar__items { flex-direction: row; flex-wrap: wrap; }
+      .ui-navbar--expand-lg .ui-navbar__items > li { padding-inline: 0; }
+      .ui-navbar--expand-lg .ui-navbar__end { margin-inline-start: auto; padding: 0; }
+    }
     /* A tooltip: above its trigger, centred, in the inverse surface. */
     .ui-tooltip {
       margin-block: 0 var(--ui-spacing-xs); position-area: block-start; max-inline-size: 16rem;

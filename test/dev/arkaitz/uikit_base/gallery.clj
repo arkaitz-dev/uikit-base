@@ -114,17 +114,34 @@
     (ui/action r "/do" {:label "Archive" :subject "order 1" :hidden {:id "1"}})
     (ui/confirm r "/do" {:label "Delete" :confirm-label "Yes, delete" :subject "order 1" :hidden {:id "1"}})]])
 
+(defn- header
+  "The navbar every gallery page carries as the shell's header, the page's own link current,
+  so a wb/link swap between the two pages shows nav.js moving the mark."
+  [request]
+  (ui/navbar request {:id "g-nav" :brand ["/" "uikit-base"] :label "Gallery pages" :current (:uri request)
+                      :items [["/" "Gallery"] ["/second" "Second page"]
+                              [nil (ui/dropdown {:id "g-nav-more" :label "More" :items [["/" "Back to the gallery"] ["/second" "The second page"]]})]]
+                      :end (ui/button {:type "button" :variant :outline-primary :size :sm} "Sign out")}))
+
 (defn page [request]
   (response/ok
-    (shell/page {:request request :title "uikit-base gallery"
+    (shell/page {:request request :title "uikit-base gallery" :header (header request)
                  :content (into [:div.ui-stack]
                                 (for [[id & body] (fixtures request)]
                                   (into [:section {:id id :class "ui-stack"} [:h2 id]] body)))})))
+
+(defn- second-page
+  "A small page, so a link of the navbar has somewhere to swap to and back."
+  [request]
+  (response/ok
+    (shell/page {:request request :title "uikit-base gallery: second page" :header (header request)
+                 :content [:div.ui-stack {:id "second"} [:h2 "Second page"] [:p "A page to swap to."] (ui/link-button "/" "Back to the gallery")]})))
 
 (defn handler
   "The gallery's handler: the kit as a plugin, Spanish and English, the template's CSP."
   []
   (wb/handler {:routes  [["/" {:get page}]
+                         ["/second" {:get second-page}]
                          ["/do" {:post (fn [_] (response/see-other "/"))}]]
                :session {:key (byte-array 16 (byte 7))}
                :plugins [(web/plugin)]

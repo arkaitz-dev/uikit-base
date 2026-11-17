@@ -48,7 +48,7 @@
 
   // Where anchor positioning is missing: below the control (a tooltip above), flipped to fit.
   // A browser with anchor-name but no anchor-scope would apply the stylesheet's area too.
-  var open = ".ui-dropdown__menu:popover-open, .ui-popover:popover-open, .ui-tooltip:popover-open";
+  var open = ":is(.ui-dropdown__menu, .ui-popover, .ui-tooltip, .ui-navbar__panel):popover-open";
   function place(pop) {
     var a = pop.parentElement.firstElementChild.getBoundingClientRect(), p = pop.getBoundingClientRect();
     var tip = pop.classList.contains("ui-tooltip"), gap = 4, rtl = getComputedStyle(pop).direction === "rtl";
@@ -156,9 +156,10 @@
     if (carousel && !event.target.closest(".ui-carousel__rotate")) rotate(carousel, false);
   });
 
-  // A dropdown's item closes it, as htmx may keep it; a toast's close removes it; a carousel turns.
+  // A dropdown's item, or an open navbar panel's link, closes it (htmx may keep it); a toast's close
+  // removes it; a carousel turns.
   on("click", function (event) {
-    var item = event.target.closest(".ui-dropdown__menu a, .ui-dropdown__menu button");
+    var item = event.target.closest(".ui-dropdown__menu a, .ui-dropdown__menu button, .ui-navbar :popover-open a");
     var close = event.target.closest(".ui-toast__close"), carousel = event.target.closest(".ui-carousel");
     var button = carousel && event.target.closest(".ui-carousel__controls button");
     if (item) item.closest("[popover]").hidePopover();
