@@ -36,7 +36,7 @@ function pixels(png) {
 }
 
 const [engine, url = 'http://localhost:3010/'] = process.argv.slice(2);
-const base = `window.__csp=[];document.addEventListener("securitypolicyviolation",e=>window.__csp.push(e.violatedDirective));
+const base = `window.__err=[];addEventListener("error",e=>window.__err.push(String(e.message)));window.__csp=[];document.addEventListener("securitypolicyviolation",e=>window.__csp.push(e.violatedDirective));
   window.__esc=[];window.addEventListener('keydown',e=>{if(e.key==='Escape')window.__esc.push(e.defaultPrevented);});`;
 const noCommand = `window.__cmd=0;document.addEventListener('command',e=>{e.preventDefault();window.__cmd++;},true);
   delete HTMLButtonElement.prototype.commandForElement; delete HTMLButtonElement.prototype.command; delete HTMLDialogElement.prototype.closedBy;`;
@@ -371,6 +371,39 @@ for (const [mode, init] of Object.entries(modes)) {
       return { open: p.matches(':popover-open'), under: r.top - b.bottom, barTop: b.top, bottom: r.bottom, vh: innerHeight, overflows: p.scrollHeight > p.clientHeight }; });
     await q.close(); return s;
   }, s => s.open && s.barTop >= 119 && Math.abs(s.under) <= 0.5 && s.bottom <= s.vh + 0.5 && s.overflows);
+  // A ResizeObserver loop is reported as a window error event (Chromium), not always as a page error: both are read.
+  const growShrink = async (q, w) => { await q.setViewportSize({ width: w, height: 740 }); await q.waitForTimeout(150);
+    for (let i = 0; i < 10; i++) {
+      await q.evaluate(() => { document.querySelector('.ui-navbar__link[href="/second"]').textContent = 'Second page with a much longer name'; }); await q.waitForTimeout(60);
+      await q.evaluate(() => { document.querySelector('.ui-navbar__link[href="/second"]').textContent = 'Second page'; }); await q.waitForTimeout(60);
+    } };
+  await check('navbar: its items growing and shrinking around the width they need raise no error', async () => {
+    const [q, errs] = await pageAt(720, '/second');
+    for (const w of [690, 698, 720]) await growShrink(q, w);
+    const err = await q.evaluate(() => window.__err); await q.close(); return { err, errs };
+  }, s => s.err.length === 0 && s.errs.length === 0);
+  await check('navbar: wide, an item grown past the row collapses it, and shrunk back while collapsed it is inline again', async () => {
+    const [q, errs] = await pageAt(1024, '/second');
+    const set = async (t) => { await q.evaluate(t => { document.querySelector('.ui-navbar__link[href="/second"]').textContent = t; }, t); await q.waitForTimeout(200);
+      return q.evaluate(() => ({ collapsed: document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'), toggle: document.querySelector('.ui-navbar__toggle').checkVisibility() })); };
+    const grown = await set('A second page whose name is far too long to share one row with all the others'), shrunk = await set('X');
+    const err = await q.evaluate(() => window.__err); await q.close(); return { grown, shrunk, err, errs };
+  }, s => s.grown.collapsed && s.grown.toggle && !s.shrunk.collapsed && !s.shrunk.toggle && s.err.length === 0 && s.errs.length === 0);
+  await check('navbar: opened narrow, then widened, its inline panel keeps none of the placement written for the popover', async () => {
+    const [q, errs] = await pageAt(360, '/');
+    await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150);
+    await q.setViewportSize({ width: 1024, height: 740 }); await q.waitForTimeout(300);
+    const s = await q.evaluate(() => { const p = document.getElementById('g-nav'), cs = getComputedStyle(p);
+      return { inline: p.style.length, max: cs.maxBlockSize, position: cs.position, open: p.matches(':popover-open') }; });
+    await q.close(); return { ...s, errs };
+  }, s => s.inline === 0 && s.max === 'none' && s.position === 'static' && !s.open && s.errs.length === 0);
+  await check('navbar: when it collapses while a link of its row has the focus, the focus goes to its toggle', async () => {
+    const [q, errs] = await pageAt(720, '/second');
+    await q.keyboard.press('Shift'); await q.evaluate(() => document.querySelector('.ui-navbar__link[href="/"]').focus());
+    const before = await q.evaluate(() => document.activeElement.getAttribute('href'));
+    await q.setViewportSize({ width: 690, height: 740 }); await q.waitForTimeout(300);
+    const after = await q.evaluate(() => document.activeElement.className); await q.close(); return { before, after, errs };
+  }, s => s.before === '/' && /ui-navbar__toggle/.test(s.after) && s.errs.length === 0);
   result.modes[mode] = r;
   await ctx.close();
 }
