@@ -443,6 +443,53 @@ for (const [mode, init] of Object.entries(modes)) {
     await q.evaluate(() => document.querySelector('.ui-navbar__end').append(document.createElement('span'))); await q.waitForTimeout(100); await frames(q);
     const kept = await q.evaluate(() => document.getElementById('g-nav').style.getPropertyValue('outline-offset')); await q.close(); return { kept, errs };
   }, s => s.kept === '3px' && s.errs.length === 0);
+  await check('navbar: without a brand it still collapses when its items do not fit and expands when they do, with no error', async () => {
+    const [q, errs] = await pageAt(1024, '/second'); await frames(q);
+    await q.evaluate(() => document.querySelector('.ui-navbar__brand').remove()); await q.waitForTimeout(100); await frames(q);
+    const set = async (t) => { await q.evaluate(t => { document.querySelector('.ui-navbar__link[href="/second"]').textContent = t; }, t); await q.waitForTimeout(100); await frames(q);
+      return q.evaluate(() => document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed')); };
+    const grown = await set('A second page whose name is far too long to share one row with all the others'), shrunk = await set('X');
+    const err = await q.evaluate(() => window.__err); await q.close(); return { grown, shrunk, err, errs };
+  }, s => s.grown && !s.shrunk && s.err.length === 0 && s.errs.length === 0);
+  await check('navbar: a collapse leaves alone a focus that was not in its row', async () => {
+    const [q, errs] = await pageAt(720, '/second'); await frames(q);
+    await q.evaluate(() => { const i = document.createElement('input'); i.id = 'outside'; document.querySelector('main').prepend(i); i.focus(); });
+    await q.setViewportSize({ width: 690, height: 740 }); await q.waitForTimeout(100); await frames(q);
+    const s = await q.evaluate(() => ({ collapsed: document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'), focus: document.activeElement.id }));
+    await q.close(); return { ...s, errs };
+  }, s => s.collapsed && s.focus === 'outside' && s.errs.length === 0);
+  await check('navbar: swaps of the page leave one content observer on its bar', async () => {
+    const q = await ctx.newPage(); await q.setViewportSize({ width: 1024, height: 740 });
+    await q.addInitScript(() => { const observe = MutationObserver.prototype.observe; window.__barObservers = new Set();
+      MutationObserver.prototype.observe = function (target, options) { if (target.matches && target.matches('.ui-navbar')) window.__barObservers.add(this); return observe.call(this, target, options); }; });
+    await q.goto(url); await frames(q);
+    for (const path of ['/second', '/', '/second']) { await q.locator(`.ui-navbar__link[href="${path}"]`).click(); await q.waitForFunction(p => location.pathname === p, path); await frames(q); }
+    const n = await q.evaluate(() => window.__barObservers.size); await q.close(); return { n };
+  }, s => s.n === 1);
+  // What each frame paints: a ResizeObserver on a 1px element that every frame's first rAF resizes is
+  // delivered after every rAF callback (the kit's deferred fit too) and after layout, just before
+  // paint. A frame counts when the bar is drawn inline, overflows or cuts its brand, and lacks the
+  // class, once ui.js has started (bar.uiMo): a frame painted before a deferred script runs is no
+  // script's to prevent.
+  await check('navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs', async () => {
+    const sampler = `window.__paint=[];(function(){let d,k=0;const ro=new ResizeObserver(()=>{const bar=document.querySelector('.ui-navbar');if(!bar)return;
+      const t=bar.querySelector('.ui-navbar__toggle'),b=bar.querySelector('.ui-navbar__brand');
+      const over=!t.checkVisibility()&&(bar.scrollWidth>bar.clientWidth||(b&&b.scrollWidth>b.clientWidth))&&!bar.classList.contains('ui-navbar--collapsed');
+      window.__paint.push([over?1:0,bar.uiMo?1:0]);});
+      (function tick(){if(!d&&document.body){d=document.createElement('div');d.style.setProperty('position','absolute');d.style.setProperty('height','1px');document.body.append(d);ro.observe(d);}
+        if(d)d.style.setProperty('width',(1+(k++%2))+'px');requestAnimationFrame(tick);})();})();`;
+    const loads = [];
+    for (let i = 0; i < 4; i++) {
+      const c = await browser.newContext({ viewport: { width: 650, height: 700 } }); await c.addInitScript(base + init); await c.addInitScript(sampler);
+      if (process.env.MUT_PATH) { const fs = await import('node:fs'); const body = fs.readFileSync(process.env.MUT_FILE, 'utf8'); await c.route('**' + process.env.MUT_PATH, rt => rt.fulfill({ status: 200, contentType: 'text/javascript', body })); }
+      const q = await c.newPage(); await q.goto(new URL('/second', url).href);
+      await q.waitForFunction(() => window.__paint.length > 40, null, { timeout: 10000 });
+      loads.push(await q.evaluate(() => ({ frames: window.__paint.length, overAfterUi: window.__paint.filter(x => x[0] && x[1]).length,
+        collapsed: document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'), err: window.__err.length })));
+      await c.close();
+    }
+    return loads;
+  }, s => s.every(l => l.frames > 40 && l.overAfterUi === 0 && l.collapsed && l.err === 0));
   result.modes[mode] = r;
   await ctx.close();
 }

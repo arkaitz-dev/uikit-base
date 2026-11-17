@@ -2,11 +2,11 @@
 ;; tree: the kit's behaviour no JVM test can see. browser_checks_test holds that every check
 ;; passed and that the files below are the bytes they were run against, so a change to any of
 ;; them reds until the checks are run again and this file regenerated.
-{:checked "2026-11-17"
+{:checked "2026-11-18"
  :files {"kit.css" "a042a7730221847a15d818a406e413564b43d87b46a4ef37bc42e31d07a0e1a8"
          "ui-utilities.css" "a13d081a7dacf810293c7e730b1e6da87d36c89af1336f9bb5dda55fc6f981e6"
-         "ui.js" "dfe336f7cf42907bedf188c8e0b49d6b8d0be1761bffea71e2a1f1197674dae5"
-         "gallery-check.mjs" "ecdcebcf8252c832c7cf4280cb32a237447b1eaa4d7935fbe4d1112766f0ec50"}
+         "ui.js" "429e8cb222d498f3255aff49c896e5672750fa07b81ba6e22bef7b5b29a3cfeb"
+         "gallery-check.mjs" "f43400d8e4388489f9f18b9e2626b254a54403d416a25583c1a8bdaac2a7d0ca"}
  :runs [
   {:engine "webkit" :version "26.4"
    :modes {
@@ -49,7 +49,11 @@
      "navbar: a stylesheet that widens its items collapses it, with no error" true
      "navbar: a node added to it and removed in one task raises no error" true
      "navbar: a link's text edited in place collapses it when too long and lets it expand when short again" true
-     "navbar: a host's own inline style on its panel survives the bar fitting itself" true}
+     "navbar: a host's own inline style on its panel survives the bar fitting itself" true
+     "navbar: without a brand it still collapses when its items do not fit and expands when they do, with no error" true
+     "navbar: a collapse leaves alone a focus that was not in its row" true
+     "navbar: swaps of the page leave one content observer on its bar" true
+     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true}
     "older-floor" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -89,7 +93,11 @@
      "navbar: a stylesheet that widens its items collapses it, with no error" true
      "navbar: a node added to it and removed in one task raises no error" true
      "navbar: a link's text edited in place collapses it when too long and lets it expand when short again" true
-     "navbar: a host's own inline style on its panel survives the bar fitting itself" true}}}
+     "navbar: a host's own inline style on its panel survives the bar fitting itself" true
+     "navbar: without a brand it still collapses when its items do not fit and expands when they do, with no error" true
+     "navbar: a collapse leaves alone a focus that was not in its row" true
+     "navbar: swaps of the page leave one content observer on its bar" true
+     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true}}}
   {:engine "chromium" :version "145.0.7632.6"
    :modes {
     "native" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
@@ -131,7 +139,11 @@
      "navbar: a stylesheet that widens its items collapses it, with no error" true
      "navbar: a node added to it and removed in one task raises no error" true
      "navbar: a link's text edited in place collapses it when too long and lets it expand when short again" true
-     "navbar: a host's own inline style on its panel survives the bar fitting itself" true}
+     "navbar: a host's own inline style on its panel survives the bar fitting itself" true
+     "navbar: without a brand it still collapses when its items do not fit and expands when they do, with no error" true
+     "navbar: a collapse leaves alone a focus that was not in its row" true
+     "navbar: swaps of the page leave one content observer on its bar" true
+     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true}
     "older-floor" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -171,7 +183,11 @@
      "navbar: a stylesheet that widens its items collapses it, with no error" true
      "navbar: a node added to it and removed in one task raises no error" true
      "navbar: a link's text edited in place collapses it when too long and lets it expand when short again" true
-     "navbar: a host's own inline style on its panel survives the bar fitting itself" true}
+     "navbar: a host's own inline style on its panel survives the bar fitting itself" true
+     "navbar: without a brand it still collapses when its items do not fit and expands when they do, with no error" true
+     "navbar: a collapse leaves alone a focus that was not in its row" true
+     "navbar: swaps of the page leave one content observer on its bar" true
+     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true}
     "anchor-without-scope" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -211,7 +227,11 @@
      "navbar: a stylesheet that widens its items collapses it, with no error" true
      "navbar: a node added to it and removed in one task raises no error" true
      "navbar: a link's text edited in place collapses it when too long and lets it expand when short again" true
-     "navbar: a host's own inline style on its panel survives the bar fitting itself" true}}}]
+     "navbar: a host's own inline style on its panel survives the bar fitting itself" true
+     "navbar: without a brand it still collapses when its items do not fit and expands when they do, with no error" true
+     "navbar: a collapse leaves alone a focus that was not in its row" true
+     "navbar: swaps of the page leave one content observer on its bar" true
+     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true}}}]
  :not-verified ["a dialog's closedby shim in a Chromium without it (131-133): Chromium's own closedby cannot be switched off; the shim's Esc decision is read from defaultPrevented, and WebKit 26.4, which lacks closedby, runs the shim for real"
                 "Firefox: no engine of it on this machine"
                 "a real Safari 18.x: its gaps are forced in WebKit 26.4 and Chromium, never run"]
