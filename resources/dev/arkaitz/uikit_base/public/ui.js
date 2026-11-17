@@ -195,5 +195,8 @@
 
   function init() { inits.forEach(function (f) { f(); }); }
   on("htmx:after:swap", init);
+  // Again on load, when the stylesheets have applied (WebKit may run a deferred script before
+  // them, and a scrollspy built then reads no scroll padding): every init is idempotent.
+  addEventListener("load", init);
   init();
 })();
