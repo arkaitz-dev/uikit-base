@@ -481,7 +481,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 383 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 311 (0.5.0's 119; the striped progress with no value 2; K9's 42 outline, 4 link, 6 pressed (one hovered) and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6; K16's 7: dialog 4, backdrop 1, head and foot lines 2; K17's 10: menu and popover 4, the menu's link 3, the tooltip 3; K18's 9: the toast 5, its kinds 4; K19's 3: the scrollspy link's ink and edge, the current edge; N1's 21: the bar 3, the sticky header's ground 1, the brand 1, the bars' two edges 2, the panel 5, the link 1 and hovered 2, and at each of the three breakpoints the panel's border and shadow taken away 6; then 4 for a dropdown's toggle drawn as a link, its ground and no edge, hovered ink and ground; then the rail design's net 14: 7 in place of the old link rules' 7, then at each breakpoint the inline hover ground, the rail's start edge taken away and its bottom edge, and the current rail's colour, 12, and the caret's two edges in the button's ink, 2) and the utilities' 72, a count measured once: " (count bearing)))
+    (is (= 386 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 314 (0.5.0's 119; the striped progress with no value 2; K9's 42 outline, 4 link, 6 pressed (one hovered) and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6; K16's 7: dialog 4, backdrop 1, head and foot lines 2; K17's 10: menu and popover 4, the menu's link 3, the tooltip 3; K18's 9: the toast 5, its kinds 4; K19's 3: the scrollspy link's ink and edge, the current edge; N1's 21: the bar 3, the sticky header's ground 1, the brand 1, the bars' two edges 2, the panel 5, the link 1 and hovered 2, and at each of the three breakpoints the panel's border and shadow taken away 6; then 4 for a dropdown's toggle drawn as a link, its ground and no edge, hovered ink and ground; then the rail design's net 14: 7 in place of the old link rules' 7, then at each breakpoint the inline hover ground, the rail's start edge taken away and its bottom edge, and the current rail's colour, 12, and the caret's two edges in the button's ink, 2; then the inline items' ring drawn inside them, its inset halo at each breakpoint, 3) and the utilities' 72, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -1242,15 +1242,30 @@
     (is (= "1px" edge) "witness: the bar's divider")
     (doseq [[env rules] @env-rules [bp px] [["sm" 640] ["md" 768] ["lg" 1024]] :when (>= (:width env) px)
             :let [x (str ".ui-navbar--expand-" bp ":not(.ui-navbar--collapsed) .ui-navbar__items > li > a")]]
-      (is (= [(str "auto -" edge) "var(--ui-spacing-sm)" "stretch" "0"]
+      ;; The panel is the bar's own flex item (its wrapper is display: contents) and the bar
+      ;; centres its items: unless the panel itself stretches, the whole chain starts short of
+      ;; the bar's edge (measured: items 8.6 to 36.1 in a bar 0 to 45.8, in Chromium). And a
+      ;; stretch applies only to an auto block size, which the user agent's [popover] sets to
+      ;; fit-content, outside this model: measured 0 to 27.5 until the kit set it back.
+      (is (= "auto" (cascaded rules (str ".ui-navbar--expand-" bp ":not(.ui-navbar--collapsed) .ui-navbar__panel") ["block-size" "height"]))
+          (str "inline, the panel's block size is auto again, or it cannot stretch, expand " bp " at " (:width env)))
+      (is (= [(str "auto -" edge) "var(--ui-spacing-sm)" "center" "stretch" "stretch" "0"]
              [(cascaded rules (str x "::after") ["inset-block"]) (cascaded rules (str x "::after") ["inset-inline"])
+              (cascaded rules ".ui-navbar" ["align-items"])
+              (cascaded rules (str ".ui-navbar--expand-" bp ":not(.ui-navbar--collapsed) .ui-navbar__panel") ["align-self"])
               (cascaded rules (str ".ui-navbar--expand-" bp ":not(.ui-navbar--collapsed) .ui-navbar__panel") ["align-items"])
               (cascaded rules x ["padding-block"])])
           (str "the rail ends the divider's width below an item that spans the bar's row, inset to its text, expand " bp " at " (:width env)))
       (is (= [:border-strong "1"] [(palette-var (cascaded rules (str x "::after") ["border-block-end"])) (cascaded rules (str x ":hover::after") ["opacity"])])
           (str "a hovered item previews its rail in the strong edge, expand " bp " at " (:width env)))
       (is (str/starts-with? (str (cascaded rules (str x "::after") ["border-block-end"])) "var(--ui-border-width-thick) solid")
-          (str "the rail is the kit's thick edge " (:width env))))))
+          (str "the rail is the kit's thick edge " (:width env)))
+      (is (= "var(--ui-radius-sm)" (cascaded rules x ["border-radius"])) (str "and the item rounded, so the ring is too " (:width env)))
+      ;; The item spans the bar's whole row from its top edge, so a ring drawn outside it was cut
+      ;; there (seen in Chromium at 1024px): inline, its two bands are drawn inside it.
+      (is (= ["calc(-2 * var(--ui-focus-outline-width))" "inset 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo)"]
+             [(cascaded rules (str x ":focus-visible") ["outline-offset"]) (cascaded rules (str x ":focus-visible") ["box-shadow"])])
+          (str "a focused item's ring and halo are drawn inside it, expand " bp " at " (:width env))))))
 
 (deftest a-dropdowns-caret-is-a-chevron-that-turns-over-while-its-menu-is-open
   (doseq [[env rules] @env-rules :let [c ".ui-dropdown > .ui-btn::before"]]

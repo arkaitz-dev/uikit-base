@@ -517,13 +517,18 @@
     .ui-dropdown__item:hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
     .ui-dropdown__items > li > .ui-action { display: block; padding: var(--ui-spacing-xs) var(--ui-spacing-md); }
     /* A dropdown's caret: a chevron of two edges in the button's ink, after its label, turned
-     * over while its menu is open; CSS alone, so a screen reader never reads it. */
+     * over while its menu is open; CSS alone, so a screen reader never reads it. Its square's side
+     * s is 0.35em and one thick edge; turned 45 degrees it overhangs its box by (sqrt 2 - 1) / 2 s
+     * on each side, which the margin gives back, so the gap starts at the chevron's ink; and the V
+     * fills one half of the diamond, its centre sqrt 2 / 4 s off the box's — below pointing down,
+     * above turned over — which the translate takes back, centring it on the line. */
     .ui-dropdown > .ui-btn::before {
       content: ""; order: 1; flex-shrink: 0; inline-size: 0.35em; block-size: 0.35em; rotate: 45deg;
+      margin-inline-start: calc(0.20710678 * (0.35em + var(--ui-border-width-thick))); translate: 0 calc(-0.35355339 * (0.35em + var(--ui-border-width-thick)));
       border-block-end: var(--ui-border-width-thick) solid; border-inline-end: var(--ui-border-width-thick) solid;
-      transition: rotate var(--ui-duration-fast) var(--ui-easing-ease-out);
+      transition: rotate var(--ui-duration-fast) var(--ui-easing-ease-out), translate var(--ui-duration-fast) var(--ui-easing-ease-out);
     }
-    .ui-dropdown:has(> .ui-dropdown__menu:popover-open) > .ui-btn::before { rotate: 225deg; }
+    .ui-dropdown:has(> .ui-dropdown__menu:popover-open) > .ui-btn::before { rotate: 225deg; translate: 0 calc(0.35355339 * (0.35em + var(--ui-border-width-thick))); }
     /* The inline end is the left there: the same chevron turned the other way points down too. */
     .ui-dropdown > .ui-btn:dir(rtl)::before { rotate: -45deg; }
     .ui-dropdown:has(> .ui-dropdown__menu:popover-open) > .ui-btn:dir(rtl)::before { rotate: -225deg; }
@@ -586,6 +591,9 @@
       border: 0; border-block-end: 1px solid var(--ui-border); box-shadow: var(--ui-shadow-md);
     }
     .ui-navbar__items { display: flex; flex-direction: column; gap: var(--ui-spacing-xxs); list-style: none; margin: 0; padding: 0; }
+    /* Inline, an item spans the bar's whole row, so the kit's ring, drawn outside a box, would be
+     * cut at the bar's top: there the same two bands are drawn inside it, the halo at its edge
+     * and the ring within. */
     /* Every item — the kit's link, a host's own [:a], a dropdown's toggle — is drawn alike, in
      * the quiet ink, one inset from the panel's edge; a dropdown's menu keeps its own items. The
      * current one is the strongest ink and weight, and the rail marks it: an edge, which forced
@@ -625,15 +633,18 @@
     @media (min-width: 640px) {
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__toggle { display: none; }
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__panel {
-        display: flex; flex: 1 1 auto; flex-wrap: nowrap; align-items: stretch; gap: var(--ui-spacing-md); position: static; inset: auto;
-        inline-size: auto; max-block-size: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
+        display: flex; flex: 1 1 auto; flex-wrap: nowrap; align-self: stretch; align-items: stretch; gap: var(--ui-spacing-md); position: static; inset: auto;
+        inline-size: auto; block-size: auto; max-block-size: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
       }
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items { flex-direction: row; flex-wrap: nowrap; white-space: nowrap; }
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown > .ui-btn { inline-size: auto; }
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__end { align-self: center; margin-inline-start: auto; padding: 0; flex-wrap: nowrap; white-space: nowrap; }
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__panel > nav, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown { display: flex; }
-      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn { padding-block: 0; padding-inline: var(--ui-spacing-sm); border-radius: 0; }
+      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn { padding-block: 0; padding-inline: var(--ui-spacing-sm); border-radius: var(--ui-radius-sm); }
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible { background: var(--ui-surface); }
+      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible {
+        outline-offset: calc(-2 * var(--ui-focus-outline-width)); box-shadow: inset 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
+      }
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a::after, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn::after {
         inset-block: auto -1px; inset-inline: var(--ui-spacing-sm); border-inline-start: 0;
         border-block-end: var(--ui-border-width-thick) solid var(--ui-border-strong);
@@ -646,15 +657,18 @@
     @media (min-width: 768px) {
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__toggle { display: none; }
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__panel {
-        display: flex; flex: 1 1 auto; flex-wrap: nowrap; align-items: stretch; gap: var(--ui-spacing-md); position: static; inset: auto;
-        inline-size: auto; max-block-size: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
+        display: flex; flex: 1 1 auto; flex-wrap: nowrap; align-self: stretch; align-items: stretch; gap: var(--ui-spacing-md); position: static; inset: auto;
+        inline-size: auto; block-size: auto; max-block-size: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
       }
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items { flex-direction: row; flex-wrap: nowrap; white-space: nowrap; }
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown > .ui-btn { inline-size: auto; }
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__end { align-self: center; margin-inline-start: auto; padding: 0; flex-wrap: nowrap; white-space: nowrap; }
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__panel > nav, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown { display: flex; }
-      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn { padding-block: 0; padding-inline: var(--ui-spacing-sm); border-radius: 0; }
+      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn { padding-block: 0; padding-inline: var(--ui-spacing-sm); border-radius: var(--ui-radius-sm); }
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible { background: var(--ui-surface); }
+      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible {
+        outline-offset: calc(-2 * var(--ui-focus-outline-width)); box-shadow: inset 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
+      }
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a::after, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn::after {
         inset-block: auto -1px; inset-inline: var(--ui-spacing-sm); border-inline-start: 0;
         border-block-end: var(--ui-border-width-thick) solid var(--ui-border-strong);
@@ -667,15 +681,18 @@
     @media (min-width: 1024px) {
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__toggle { display: none; }
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__panel {
-        display: flex; flex: 1 1 auto; flex-wrap: nowrap; align-items: stretch; gap: var(--ui-spacing-md); position: static; inset: auto;
-        inline-size: auto; max-block-size: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
+        display: flex; flex: 1 1 auto; flex-wrap: nowrap; align-self: stretch; align-items: stretch; gap: var(--ui-spacing-md); position: static; inset: auto;
+        inline-size: auto; block-size: auto; max-block-size: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
       }
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items { flex-direction: row; flex-wrap: nowrap; white-space: nowrap; }
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown > .ui-btn { inline-size: auto; }
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__end { align-self: center; margin-inline-start: auto; padding: 0; flex-wrap: nowrap; white-space: nowrap; }
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__panel > nav, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown { display: flex; }
-      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn { padding-block: 0; padding-inline: var(--ui-spacing-sm); border-radius: 0; }
+      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn { padding-block: 0; padding-inline: var(--ui-spacing-sm); border-radius: var(--ui-radius-sm); }
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible { background: var(--ui-surface); }
+      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible {
+        outline-offset: calc(-2 * var(--ui-focus-outline-width)); box-shadow: inset 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
+      }
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a::after, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn::after {
         inset-block: auto -1px; inset-inline: var(--ui-spacing-sm); border-inline-start: 0;
         border-block-end: var(--ui-border-width-thick) solid var(--ui-border-strong);
