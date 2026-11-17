@@ -451,7 +451,7 @@
     (is (= [0 2 1] (specificity ".ui-pager a:focus-visible")) "witness: the test's specificity")
     (is (= #{".ui-btn--primary:hover" ".ui-btn--primary" ".ui-btn:hover" ".ui-btn"} (set (selectors-implied ".ui-btn--primary:hover")))
         "witness: a variant's hover is also the base's hover")
-    (is (= 199 (count pairs)) (str "witness: every painted pair found — the kit's 153 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one and the pressed one hovered, the close button in two; K10's floating label on three canvases and the input group's text; K12's stripe, hovered row, current page, current pill, the list group, its link on three canvases, hovered and current; K13's card nav, the figure's caption and the collapse's summary on three canvases each, the accordion and its open summary; K16's dialog; K17's menu and popover, the menu's link on three canvases and hovered, the tooltip; K18's toast; K19's scrollspy link on three canvases; N1's bar, its brand and its panel, its link on three canvases and hovered; then a host's own link in the items on three canvases and hovered, and a dropdown's toggle drawn as a link and hovered), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
+    (is (= 210 (count pairs)) (str "witness: every painted pair found — the kit's 164 (0.5.0's 80; K9's six outlines in three states, the link button in three, the pressed one and the pressed one hovered, the close button in two; K10's floating label on three canvases and the input group's text; K12's stripe, hovered row, current page, current pill, the list group, its link on three canvases, hovered and current; K13's card nav, the figure's caption and the collapse's summary on three canvases each, the accordion and its open summary; K16's dialog; K17's menu and popover, the menu's link on three canvases and hovered, the tooltip; K18's toast; K19's scrollspy link on three canvases; N1's bar, its brand and its panel, its link on three canvases and hovered; then a host's own link in the items on three canvases and hovered, and a dropdown's toggle drawn as a link and hovered; then the rail design's 24 navbar pairs in place of those 13: the bar, its brand and its panel, the quiet ink of a link and of a dropdown's toggle on the bar, both hovered and focused on the hover ground, a link current as page, true or location, and inline both hovered and focused on the bar's ground at each of three breakpoints), then the utilities' 46: seven fills, five link and eight text inks on three canvases each — a count measured once: " (count pairs)))
     (is (= 21.0 (wcag "#000000" "#ffffff")) "witness: the test's WCAG")
     (doseq [[s bg fg :as p] pairs]
       (testing s
@@ -481,7 +481,7 @@
                              (when-let [[_ n] (re-matches #"var\(--ui-([a-z0-9-]+)\)" t)] (or (palette (keyword n)) (scales (keyword n))))))
         tokens   (fn [v] (map first (re-seq #"[^\s(]+(\([^)]*\))?" v)))
         bearing  (filter (fn [[_ k]] (re-find colour-bearing k)) decls)]
-    (is (= 369 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 297 (0.5.0's 119; the striped progress with no value 2; K9's 42 outline, 4 link, 6 pressed (one hovered) and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6; K16's 7: dialog 4, backdrop 1, head and foot lines 2; K17's 10: menu and popover 4, the menu's link 3, the tooltip 3; K18's 9: the toast 5, its kinds 4; K19's 3: the scrollspy link's ink and edge, the current edge; N1's 21: the bar 3, the sticky header's ground 1, the brand 1, the bars' two edges 2, the panel 5, the link 1 and hovered 2, and at each of the three breakpoints the panel's border and shadow taken away 6; then 4 for a dropdown's toggle drawn as a link, its ground and no edge, hovered ink and ground) and the utilities' 72, a count measured once: " (count bearing)))
+    (is (= 383 (count bearing)) (str "witness: the colour-bearing declarations, the kit's 311 (0.5.0's 119; the striped progress with no value 2; K9's 42 outline, 4 link, 6 pressed (one hovered) and 5 close; K10's 13: touched edges, switch, range, floating label, group text; K11's 19: progress 6, meter 10, spinner 2, placeholder 1; K12's 21: table 5, pager 2, pills 5, list group 9; K13's 12: card nav 4, figure 1, collapse 1, accordion 6; K16's 7: dialog 4, backdrop 1, head and foot lines 2; K17's 10: menu and popover 4, the menu's link 3, the tooltip 3; K18's 9: the toast 5, its kinds 4; K19's 3: the scrollspy link's ink and edge, the current edge; N1's 21: the bar 3, the sticky header's ground 1, the brand 1, the bars' two edges 2, the panel 5, the link 1 and hovered 2, and at each of the three breakpoints the panel's border and shadow taken away 6; then 4 for a dropdown's toggle drawn as a link, its ground and no edge, hovered ink and ground; then the rail design's net 14: 7 in place of the old link rules' 7, then at each breakpoint the inline hover ground, the rail's start edge taken away and its bottom edge, and the current rail's colour, 12, and the caret's two edges in the button's ink, 2) and the utilities' 72, a count measured once: " (count bearing)))
     (is (= [] (for [[sels k v] bearing t (tokens v) :when (not (token-ok t))] [sels k t]))
         "a colour is a palette token: no literal, no keyword, nothing else")
     (is (= [] (for [[sels k v] bearing :when (#{"color" "background" "background-color"} k) :when (not (palette-var v))] [sels k v]))
@@ -516,7 +516,7 @@
                           [s t]))
         edges (remove dividers found)]
     (is (= dividers (set (filter dividers found))) "every divider named is still drawn")
-    (is (= 76 (count edges)) (str "witness: the edges — the kit's 64 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text; K11's progress accent and the spinner's two; K12's list link's ring, its lines named dividers; K13's rings on the collapse's and the accordion's summaries and the scroller; K16's ring on a scrollable dialog's body, its lines named dividers; K17's ring on a menu's link, the menu's and popover's edges named dividers; K18's toast edge and its four kinds, the carousel viewport's ring, the toast's outer line a divider; K19's ring on a scrollspy link and the current one's edge, the others' a divider; N1's rings on the navbar's brand, its links and any link in its items, and the toggle's two bars, the bar's and the panel's lines named dividers), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
+    (is (= 93 (count edges)) (str "witness: the edges — the kit's 81 (0.5.0's 27; K9's six outline edges, the pressed edge and the close button's ring; K10's touched edges in success and danger, the switch's two, the range's accent and ring, the group's text; K11's progress accent and the spinner's two; K12's list link's ring, its lines named dividers; K13's rings on the collapse's and the accordion's summaries and the scroller; K16's ring on a scrollable dialog's body, its lines named dividers; K17's ring on a menu's link, the menu's and popover's edges named dividers; K18's toast edge and its four kinds, the carousel viewport's ring, the toast's outer line a divider; K19's ring on a scrollspy link and the current one's edge, the others' a divider; N1's rings on the navbar's brand, its links and any link in its items, and the toggle's two bars, the bar's and the panel's lines named dividers; the rail: its start edge in primary-border on a link and on a dropdown's toggle, 2, and inline at each breakpoint its bottom edge in border-strong on both, 6, and in primary-border on a link current as page, true or location, 9), then the utilities' five borders, six edge colours and the ring — a count measured once: " (count edges)))
     (doseq [[s t] edges bg [:background :surface :surface-alt]]
       (testing (str s " " t)
         (is (= :ui (audited [bg t])) "an audited non-text pair")
@@ -609,7 +609,7 @@
   (let [moving (distinct (for [[sels decls _ _ conds] (leaf-rules)
                                :when (not-any? #(str/includes? % "prefers-reduced-motion") conds)
                                s sels [k v] decls :when (motion-props k) :when (not= "none" v)] [s k]))]
-    (is (= 15 (count moving)) (str "witness: what moves — the button, the fades of the dialog, the menu, the popover, the tooltip and the toast, the switch's knob, the floating label, the icon link's arrow, the progress stripes twice and twice more with no value, the spinner and the placeholder; a count measured once: " (vec moving)))
+    (is (= 20 (count moving)) (str "witness: what moves — the button, the fades of the dialog, the menu, the popover, the tooltip and the toast, the switch's knob, the floating label, the icon link's arrow, the progress stripes twice and twice more with no value, the spinner and the placeholder; then a navbar link's and a dropdown toggle's ink, their rails, and the dropdown's caret; a count measured once: " (vec moving)))
     (doseq [env environments :when (= :reduce (:motion env)) :let [rules (in-env (leaf-rules) env)] [s k] moving]
       (is (= "none" (cascaded rules s [k])) (str s " still has " k " where reduced motion was asked for, " (:width env) " " (:scheme env))))))
 
@@ -1180,11 +1180,19 @@
     (is (= [want want] [(decl-of kit-parsed ".ui-navbar" "min-block-size") (decl-of kit-parsed ":root:has(.ui-navbar--sticky)" "scroll-padding-block-start")])
         "the bar's least block size, and a sticky bar's scroll padding, are the brand's row and the bar's edge")))
 
+(def ^:private nav-link ".ui-navbar .ui-navbar__items > li > a")
+(def ^:private nav-more ".ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn")
+
+(defn- inline-of
+  "The inline value of a padding shorthand: its second token, or its only one."
+  [v]
+  (let [t (str/split (str v) #"\s+")] (get t 1 (first t))))
+
 (deftest a-navbars-items-and-end-share-one-inset-and-its-dropdown-reads-as-a-link
   (doseq [[env rules] @env-rules]
-    (let [inline (fn [sel] (second (str/split (cascaded rules sel ["padding"]) #"\s+")))
-          link   (inline ".ui-navbar__link") toggle (inline ".ui-navbar__items .ui-dropdown > .ui-btn") end (inline ".ui-navbar__end")
-          bar    (second (str/split (cascaded rules ".ui-navbar" ["padding"]) #"\s+"))
+    (let [inline (fn [sel] (inline-of (cascaded rules sel ["padding"])))
+          link   (inline nav-link) toggle (inline nav-more) end (inline ".ui-navbar__end")
+          bar    (inline ".ui-navbar")
           panel  (cascaded rules ".ui-navbar__panel" ["padding-inline"])
           ink    (fn [sel] (cascaded rules sel ["color"]))]
       (is (some? link) "witness: a link's inset")
@@ -1193,13 +1201,65 @@
       (when (= 360 (:width env))
         (is (= [link link] [toggle end]) "the dropdown's toggle and the end sit at the links' inset")
         (is (= (str "calc(" bar " - " link ")") panel) "and the panel's edge plus that inset is the bar's, so they line up with the brand"))
-      (is (= (ink ".ui-navbar__link") (ink ".ui-navbar__items .ui-dropdown > .ui-btn")) (str "a dropdown's toggle in the items takes the links' ink " (:width env)))
-      ;; A button drawn as a block centres its text by the user agent's own rule.
-      (is (= ["block" "start"] (mapv #(cascaded rules ".ui-navbar__items .ui-dropdown > .ui-btn" [%]) ["display" "text-align"]))
+      (is (= (ink nav-link) (ink nav-more)) (str "a dropdown's toggle in the items takes the links' ink " (:width env)))
+      (is (= ["flex" "flex-start" "start"] (mapv #(cascaded rules nav-more [%]) ["display" "justify-content" "text-align"]))
           (str "and its text starts where a link's does " (:width env))))))
 
-(deftest a-navbar-marks-a-page-a-section-and-a-location-alike-and-so-does-its-dropdown
-  (doseq [[env rules] @env-rules v ["page" "true" "location"] base [".ui-navbar__link" ".ui-dropdown__item"]
-          :let [sel (str base "[aria-current=\"" v "\"]")]]
-    (is (= ["600" "underline"] [(cascaded rules sel ["font-weight"]) (cascaded rules sel ["text-decoration"])])
-        (str sel " is weighted and underlined, never colour alone " (:width env)))))
+(deftest a-navbars-items-are-quiet-and-its-brand-the-strongest-ink
+  (doseq [[env rules] @env-rules]
+    (is (= ["var(--ui-text-muted-strong)" "var(--ui-font-weight-medium)"] [(cascaded rules nav-link ["color"]) (cascaded rules nav-link ["font-weight"])])
+        (str "a link is navigation, not a hyperlink: the quiet ink, medium " (:width env)))
+    (is (= "var(--ui-on-surface)" (cascaded rules (str nav-link ":hover") ["color"])) (str "and the strong ink under the pointer, never a weaker one " (:width env)))
+    (is (= ["var(--ui-on-surface)" "var(--ui-font-weight-bold)"]
+           [(cascaded rules ".ui-navbar .ui-navbar__brand" ["color"]) (cascaded rules ".ui-navbar .ui-navbar__brand" ["font-weight"])])
+        (str "the brand is the bar's strongest ink and weight " (:width env)))))
+
+(deftest a-navbar-marks-the-current-item-with-weight-and-a-rail-never-colour-alone
+  ;; Forced colours drop inks: the mark is the weight and the rail, an edge, which they keep.
+  (let [cases (for [env environments [bp px] [["sm" 640] ["md" 768] ["lg" 1024]] v ["page" "true" "location"]] [env bp px v])]
+    (is (= 216 (count cases)) "witness: 24 environments, three breakpoints, three values")
+    (doseq [[env bp px v] cases
+            :let [rules (@env-rules env) cur (str "[aria-current=\"" v "\"]")
+                  x (str ".ui-navbar--expand-" bp ":not(.ui-navbar--collapsed) .ui-navbar__items > li > a" cur "::after")]]
+      (is (= ["var(--ui-on-surface)" "var(--ui-font-weight-semibold)" "1"]
+             [(cascaded rules (str nav-link cur) ["color"]) (cascaded rules (str nav-link cur) ["font-weight"]) (cascaded rules (str nav-link cur "::after") ["opacity"])])
+          (str v ": the strong ink, semibold, and its rail shown " (:width env)))
+      (if (>= (:width env) px)
+        (is (= [:primary-border "0"] [(palette-var (cascaded rules x ["border-block-end-color" "border-block-end"])) (cascaded rules x ["border-inline-start"])])
+            (str v ", inline: the rail on the bar's edge in primary, none at its start, expand " bp " at " (:width env)))
+        (is (= :primary-border (palette-var (cascaded rules (str nav-link cur "::after") ["border-inline-start"])))
+            (str v ", in the panel: the rail at the row's start in primary " (:width env)))))
+    (doseq [[env rules] @env-rules v ["page" "true" "location"] :let [sel (str ".ui-dropdown__item[aria-current=\"" v "\"]")]]
+      (is (= ["600" "underline"] [(cascaded rules sel ["font-weight"]) (cascaded rules sel ["text-decoration"])])
+          (str sel " is weighted and underlined, never colour alone " (:width env))))))
+
+(deftest a-navbars-rail-lies-on-the-bars-bottom-edge
+  ;; Inline, an item stretches to the bar's content box (no block padding on the bar, the panel,
+  ;; its nav, list and items), so its bottom is the top of the bar's own divider. The rail ends
+  ;; that divider's width below it — read from the bar, never invented — so its thick edge
+  ;; covers the divider beneath the item and lies flush on the bar's bottom edge.
+  (let [edge (first (str/split (decl-of kit-parsed ".ui-navbar" "border-block-end") #"\s+"))]
+    (is (= "1px" edge) "witness: the bar's divider")
+    (doseq [[env rules] @env-rules [bp px] [["sm" 640] ["md" 768] ["lg" 1024]] :when (>= (:width env) px)
+            :let [x (str ".ui-navbar--expand-" bp ":not(.ui-navbar--collapsed) .ui-navbar__items > li > a")]]
+      (is (= [(str "auto -" edge) "var(--ui-spacing-sm)" "stretch" "0"]
+             [(cascaded rules (str x "::after") ["inset-block"]) (cascaded rules (str x "::after") ["inset-inline"])
+              (cascaded rules (str ".ui-navbar--expand-" bp ":not(.ui-navbar--collapsed) .ui-navbar__panel") ["align-items"])
+              (cascaded rules x ["padding-block"])])
+          (str "the rail ends the divider's width below an item that spans the bar's row, inset to its text, expand " bp " at " (:width env)))
+      (is (= [:border-strong "1"] [(palette-var (cascaded rules (str x "::after") ["border-block-end"])) (cascaded rules (str x ":hover::after") ["opacity"])])
+          (str "a hovered item previews its rail in the strong edge, expand " bp " at " (:width env)))
+      (is (str/starts-with? (str (cascaded rules (str x "::after") ["border-block-end"])) "var(--ui-border-width-thick) solid")
+          (str "the rail is the kit's thick edge " (:width env))))))
+
+(deftest a-dropdowns-caret-is-a-chevron-that-turns-over-while-its-menu-is-open
+  (doseq [[env rules] @env-rules :let [c ".ui-dropdown > .ui-btn::before"]]
+    (is (= ["1" "45deg" "var(--ui-border-width-thick) solid" "var(--ui-border-width-thick) solid"]
+           (mapv #(cascaded rules c [%]) ["order" "rotate" "border-block-end" "border-inline-end"]))
+        (str "after the label, two edges in the button's own ink, turned to point down " (:width env)))
+    (is (= ["225deg" "-45deg" "-225deg"]
+           [(cascaded rules ".ui-dropdown:has(> .ui-dropdown__menu:popover-open) > .ui-btn::before" ["rotate"])
+            (cascaded rules ".ui-dropdown > .ui-btn:dir(rtl)::before" ["rotate"])
+            (cascaded rules ".ui-dropdown:has(> .ui-dropdown__menu:popover-open) > .ui-btn:dir(rtl)::before" ["rotate"])])
+        (str "turned over while its menu is open, and the other way in a right-to-left page " (:width env)))))
+

@@ -516,6 +516,17 @@
     .ui-dropdown__item { display: block; padding: var(--ui-spacing-xs) var(--ui-spacing-md); color: var(--ui-link); text-decoration: none; }
     .ui-dropdown__item:hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
     .ui-dropdown__items > li > .ui-action { display: block; padding: var(--ui-spacing-xs) var(--ui-spacing-md); }
+    /* A dropdown's caret: a chevron of two edges in the button's ink, after its label, turned
+     * over while its menu is open; CSS alone, so a screen reader never reads it. */
+    .ui-dropdown > .ui-btn::before {
+      content: ""; order: 1; flex-shrink: 0; inline-size: 0.35em; block-size: 0.35em; rotate: 45deg;
+      border-block-end: var(--ui-border-width-thick) solid; border-inline-end: var(--ui-border-width-thick) solid;
+      transition: rotate var(--ui-duration-fast) var(--ui-easing-ease-out);
+    }
+    .ui-dropdown:has(> .ui-dropdown__menu:popover-open) > .ui-btn::before { rotate: 225deg; }
+    /* The inline end is the left there: the same chevron turned the other way points down too. */
+    .ui-dropdown > .ui-btn:dir(rtl)::before { rotate: -45deg; }
+    .ui-dropdown:has(> .ui-dropdown__menu:popover-open) > .ui-btn:dir(rtl)::before { rotate: -225deg; }
     /* Navbars: the bar on the surface, its brand at the start; below its breakpoint a toggle
      * opens the items and the end as a popover under the bar, as wide as the page, by anchor
      * positioning on the bar, or by ui.js's placement under the toggle where a browser has
@@ -545,13 +556,14 @@
     }
     :root:has(.ui-navbar--sticky) { scroll-padding-block-start: calc(var(--ui-font-size-lg) * var(--ui-line-height-normal) + 2 * var(--ui-spacing-sm) + 1px); }
     .ui-navbar .ui-navbar__brand {
-      margin-inline-end: auto; padding-block: var(--ui-spacing-sm); font-size: var(--ui-font-size-lg); line-height: var(--ui-line-height-normal);
-      font-weight: 600; color: var(--ui-on-surface); text-decoration: none;
+      margin-inline-end: calc(var(--ui-spacing-lg) - var(--ui-spacing-md)); padding-block: var(--ui-spacing-sm);
+      font-size: var(--ui-font-size-lg); line-height: var(--ui-line-height-normal); font-weight: var(--ui-font-weight-bold);
+      letter-spacing: -0.01em; color: var(--ui-on-surface); text-decoration: none;
       min-inline-size: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .ui-navbar__collapse { display: contents; }
     /* A compact icon button, centred in the bar; the panel is placed against the bar, not it. */
-    .ui-navbar__toggle { flex-shrink: 0; padding-inline: var(--ui-spacing-sm); }
+    .ui-navbar__toggle { flex-shrink: 0; margin-inline-start: auto; padding-inline: var(--ui-spacing-sm); }
     /* Three bars drawn as edges, which forced colours keep, where a ground or a shadow goes. */
     .ui-navbar__bars {
       position: relative; display: block; inline-size: 1.25rem; block-size: 0.75rem;
@@ -574,22 +586,34 @@
       border: 0; border-block-end: 1px solid var(--ui-border); box-shadow: var(--ui-shadow-md);
     }
     .ui-navbar__items { display: flex; flex-direction: column; gap: var(--ui-spacing-xxs); list-style: none; margin: 0; padding: 0; }
-    /* Every link of the items — the kit's, a host's own [:a], a dropdown's toggle — is drawn
-     * alike, one inset from the panel's edge; a dropdown's menu keeps its own items. */
-    .ui-navbar__link, .ui-navbar__items a:not(.ui-btn):not(.ui-dropdown__item), .ui-navbar__items .ui-dropdown > .ui-btn {
-      display: block; padding: var(--ui-spacing-xs) var(--ui-spacing-sm); color: var(--ui-link); text-decoration: none;
+    /* Every item — the kit's link, a host's own [:a], a dropdown's toggle — is drawn alike, in
+     * the quiet ink, one inset from the panel's edge; a dropdown's menu keeps its own items. The
+     * current one is the strongest ink and weight, and the rail marks it: an edge, which forced
+     * colours keep, so the mark is never colour alone. In the panel the rail is at the row's
+     * start; inline it lies on the bar's bottom edge. */
+    .ui-navbar .ui-navbar__items > li > a, .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn {
+      position: relative; display: flex; align-items: center; gap: var(--ui-spacing-xs); padding: var(--ui-spacing-sm);
+      font: inherit; font-weight: var(--ui-font-weight-medium); color: var(--ui-text-muted-strong); text-decoration: none;
       border-radius: var(--ui-radius-md);
+      transition: color var(--ui-duration-fast) var(--ui-easing-ease-out), background-color var(--ui-duration-fast) var(--ui-easing-ease-out);
     }
-    .ui-navbar__link:hover, .ui-navbar__items a:not(.ui-btn):not(.ui-dropdown__item):hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
+    .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn {
+      inline-size: 100%; justify-content: flex-start; text-align: start; background: var(--ui-surface); border: 0;
+    }
+    .ui-navbar .ui-navbar__items > li > a:hover, .ui-navbar .ui-navbar__items > li > a:focus-visible, .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover, .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible {
+      color: var(--ui-on-surface); background: var(--ui-surface-hover);
+    }
+    .ui-navbar .ui-navbar__items > li > a[aria-current="page"], .ui-navbar .ui-navbar__items > li > a[aria-current="true"], .ui-navbar .ui-navbar__items > li > a[aria-current="location"] {
+      color: var(--ui-on-surface); font-weight: var(--ui-font-weight-semibold);
+    }
+    .ui-navbar .ui-navbar__items > li > a::after, .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn::after {
+      content: ""; position: absolute; inset-block: 20%; inset-inline-start: 0; opacity: 0;
+      border-inline-start: var(--ui-border-width-thick) solid var(--ui-primary-border);
+      transition: opacity var(--ui-duration-fast) var(--ui-easing-ease-out), border-color var(--ui-duration-fast) var(--ui-easing-ease-out);
+    }
+    .ui-navbar .ui-navbar__items > li > a[aria-current="page"]::after, .ui-navbar .ui-navbar__items > li > a[aria-current="true"]::after, .ui-navbar .ui-navbar__items > li > a[aria-current="location"]::after { opacity: 1; }
     .ui-navbar__items .ui-dropdown { display: block; }
-    .ui-navbar__items .ui-dropdown > .ui-btn {
-      inline-size: 100%; justify-content: flex-start; text-align: start; font-size: inherit; line-height: inherit; background: var(--ui-surface); border: 0;
-    }
-    .ui-navbar__items .ui-dropdown > .ui-btn:hover { color: var(--ui-on-surface); background: var(--ui-surface-hover); }
-    /* The page, and a section a host marks as true or location, which nav.js leaves as it is. */
-    .ui-navbar__link[aria-current="page"], .ui-navbar__link[aria-current="true"], .ui-navbar__link[aria-current="location"],
-    .ui-navbar__items a:not(.ui-btn)[aria-current="page"], .ui-navbar__items a:not(.ui-btn)[aria-current="true"],
-    .ui-navbar__items a:not(.ui-btn)[aria-current="location"],
+    /* A section of a dropdown's menu marked current: weighted and underlined. */
     .ui-dropdown__item[aria-current="page"], .ui-dropdown__item[aria-current="true"], .ui-dropdown__item[aria-current="location"] {
       font-weight: 600; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.3em;
     }
@@ -601,32 +625,65 @@
     @media (min-width: 640px) {
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__toggle { display: none; }
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__panel {
-        display: flex; flex: 1 1 auto; flex-wrap: nowrap; align-items: center; gap: var(--ui-spacing-md); position: static; inset: auto;
+        display: flex; flex: 1 1 auto; flex-wrap: nowrap; align-items: stretch; gap: var(--ui-spacing-md); position: static; inset: auto;
         inline-size: auto; max-block-size: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
       }
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items { flex-direction: row; flex-wrap: nowrap; white-space: nowrap; }
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown > .ui-btn { inline-size: auto; }
-      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__end { margin-inline-start: auto; padding: 0; flex-wrap: nowrap; white-space: nowrap; }
+      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__end { align-self: center; margin-inline-start: auto; padding: 0; flex-wrap: nowrap; white-space: nowrap; }
+      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__panel > nav, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown { display: flex; }
+      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn { padding-block: 0; padding-inline: var(--ui-spacing-sm); border-radius: 0; }
+      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible { background: var(--ui-surface); }
+      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a::after, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn::after {
+        inset-block: auto -1px; inset-inline: var(--ui-spacing-sm); border-inline-start: 0;
+        border-block-end: var(--ui-border-width-thick) solid var(--ui-border-strong);
+      }
+      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover::after, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover::after { opacity: 1; }
+      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="page"]::after, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="true"]::after, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="location"]::after {
+        border-block-end-color: var(--ui-primary-border);
+      }
     }
     @media (min-width: 768px) {
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__toggle { display: none; }
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__panel {
-        display: flex; flex: 1 1 auto; flex-wrap: nowrap; align-items: center; gap: var(--ui-spacing-md); position: static; inset: auto;
+        display: flex; flex: 1 1 auto; flex-wrap: nowrap; align-items: stretch; gap: var(--ui-spacing-md); position: static; inset: auto;
         inline-size: auto; max-block-size: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
       }
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items { flex-direction: row; flex-wrap: nowrap; white-space: nowrap; }
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown > .ui-btn { inline-size: auto; }
-      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__end { margin-inline-start: auto; padding: 0; flex-wrap: nowrap; white-space: nowrap; }
+      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__end { align-self: center; margin-inline-start: auto; padding: 0; flex-wrap: nowrap; white-space: nowrap; }
+      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__panel > nav, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown { display: flex; }
+      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn { padding-block: 0; padding-inline: var(--ui-spacing-sm); border-radius: 0; }
+      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible { background: var(--ui-surface); }
+      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a::after, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn::after {
+        inset-block: auto -1px; inset-inline: var(--ui-spacing-sm); border-inline-start: 0;
+        border-block-end: var(--ui-border-width-thick) solid var(--ui-border-strong);
+      }
+      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover::after, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover::after { opacity: 1; }
+      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="page"]::after, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="true"]::after, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="location"]::after {
+        border-block-end-color: var(--ui-primary-border);
+      }
     }
     @media (min-width: 1024px) {
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__toggle { display: none; }
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__panel {
-        display: flex; flex: 1 1 auto; flex-wrap: nowrap; align-items: center; gap: var(--ui-spacing-md); position: static; inset: auto;
+        display: flex; flex: 1 1 auto; flex-wrap: nowrap; align-items: stretch; gap: var(--ui-spacing-md); position: static; inset: auto;
         inline-size: auto; max-block-size: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible;
       }
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items { flex-direction: row; flex-wrap: nowrap; white-space: nowrap; }
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown > .ui-btn { inline-size: auto; }
-      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__end { margin-inline-start: auto; padding: 0; flex-wrap: nowrap; white-space: nowrap; }
+      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__end { align-self: center; margin-inline-start: auto; padding: 0; flex-wrap: nowrap; white-space: nowrap; }
+      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__panel > nav, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown { display: flex; }
+      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn { padding-block: 0; padding-inline: var(--ui-spacing-sm); border-radius: 0; }
+      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible { background: var(--ui-surface); }
+      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a::after, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn::after {
+        inset-block: auto -1px; inset-inline: var(--ui-spacing-sm); border-inline-start: 0;
+        border-block-end: var(--ui-border-width-thick) solid var(--ui-border-strong);
+      }
+      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover::after, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover::after { opacity: 1; }
+      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="page"]::after, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="true"]::after, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="location"]::after {
+        border-block-end-color: var(--ui-primary-border);
+      }
     }
     /* A tooltip: above its trigger, centred, in the inverse surface. */
     .ui-tooltip {
@@ -715,6 +772,7 @@
     @media (prefers-reduced-motion: reduce) {
       .ui-btn, .ui-switch::before, .ui-field--floating > .ui-field__label, .ui-dialog,
       .ui-dropdown__menu, .ui-popover, .ui-tooltip, .ui-toast { transition: none; }
+      .ui-navbar .ui-navbar__items > li > a, .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn, .ui-navbar .ui-navbar__items > li > a::after, .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn::after, .ui-dropdown > .ui-btn::before { transition: none; }
       .ui-carousel__rotate { display: none; }
       .ui-progress--animated::-webkit-progress-value { animation: none; }
       .ui-progress--animated:indeterminate, .ui-progress--animated:indeterminate::-webkit-progress-bar { animation: none; }
