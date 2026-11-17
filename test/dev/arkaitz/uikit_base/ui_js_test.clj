@@ -3,7 +3,7 @@
   browser checks do), but what it is allowed to contain is decided here. It writes no
   markup and no text — the server rendered both, escaped — evaluates no string, fetches
   nothing, and positions through single CSSOM properties, which `style-src 'self'` allows.
-  Its size is the user's bound: 168 lines of code. Every class and data attribute it names
+  Its size is the user's bound: 169 lines of code. Every class and data attribute it names
   is one the kit's stylesheet or its markup carries."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
@@ -110,13 +110,13 @@
   (is (= [] (found source)) "constructs found in ui.js, comments included, each with why it is banned"))
 
 (deftest the-script-is-within-its-bound
-  ;; The user's bound is 168 lines of code: a comment or a blank line is not one. Counted by
+  ;; The user's bound is 169 lines of code: a comment or a blank line is not one. Counted by
   ;; newlines, since splitting into lines drops the empty ones at the end.
   (let [lines (str/split source #"\n" -1)
         code  (remove #(re-matches #"\s*(//.*)?" %) lines)]
     (is (= "" (last lines)) "witness: the file ends with a newline, so the count is of whole lines")
     (is (< 20 (count code)) (str "witness: the script was read, " (count code) " lines of code"))
-    (is (<= (count code) 168) (str "ui.js is " (count code) " lines of code (" (dec (count lines)) " in all); the user's bound is 168, readable, never minified — raised from 150 to 153 for S2: an open navbar panel cannot leave the top layer by CSS when the window widens past its breakpoint (user decision 2026-11-17); then raised to 154: in WebKit a deferred ui.js can run before kit.css applies, so a scrollspy under a sticky navbar read no scroll-padding; every init re-runs on load, as they already do on each swap (user decision 2026-11-17); then raised to 162: a navbar collapses to its toggle when its items do not fit on its one row, which only a measurement can tell (a ResizeObserver; no CSS on the two-year floor exposes a content's natural width), and the fallback places its panel against the bar, bounded by its measured top (user decision 2026-11-17); then raised to 168: a navbar re-fits when its content changes (a late font, an out-of-band count, a link shortened while collapsed) without a ResizeObserver loop error, clears place()'s inline bound once inline, and keeps the focus on its toggle when a collapse hides the focused link (user decision 2026-11-17)"))
+    (is (<= (count code) 169) (str "ui.js is " (count code) " lines of code (" (dec (count lines)) " in all); the user's bound is 169, readable, never minified — raised from 150 to 153 for S2: an open navbar panel cannot leave the top layer by CSS when the window widens past its breakpoint (user decision 2026-11-17); then raised to 154: in WebKit a deferred ui.js can run before kit.css applies, so a scrollspy under a sticky navbar read no scroll-padding; every init re-runs on load, as they already do on each swap (user decision 2026-11-17); then raised to 162: a navbar collapses to its toggle when its items do not fit on its one row, which only a measurement can tell (a ResizeObserver; no CSS on the two-year floor exposes a content's natural width), and the fallback places its panel against the bar, bounded by its measured top (user decision 2026-11-17); then raised to 168: a navbar re-fits when its content changes (a late font, an out-of-band count, a link shortened while collapsed) without a ResizeObserver loop error, clears place()'s inline bound once inline, and keeps the focus on its toggle when a collapse hides the focused link (user decision 2026-11-17); then raised to 169: a navbar is fitted as ui.js starts, so a page loaded at a width where its items do not fit paints no overflowing frame (user decision 2026-11-17)"))
     (is (= [] (filter #(< 120 (count %)) (str/split source #"\n"))) "lines crammed past 120 characters")))
 
 (deftest the-fallback-placement-undoes-the-stylesheets-anchor-area

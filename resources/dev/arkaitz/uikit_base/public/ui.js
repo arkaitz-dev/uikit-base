@@ -89,8 +89,12 @@
     if (bar.classList.toggle("ui-navbar--collapsed", over) && held) toggle.focus();
   }
   inits.push(() => document.querySelectorAll(".ui-navbar, .ui-navbar__panel").forEach((e) => fits.observe(e)));
+  // Fitted at once as well, in this task and never in an observer's delivery, so a page loaded
+  // where its items do not fit paints no overflowing frame; before the stylesheets apply (WebKit)
+  // the toggle still shows and this fit is a no-op, and the init on load fits it for real.
   inits.push(() => document.querySelectorAll(".ui-navbar").forEach((b) => {
     (b.uiMo ||= new MutationObserver(() => fit(b))).observe(b, { childList: true, subtree: true, characterData: true });
+    fit(b);
   }));
 
   // Tooltips: shown while the trigger or the tooltip is hovered or focused (WCAG 1.4.13).
