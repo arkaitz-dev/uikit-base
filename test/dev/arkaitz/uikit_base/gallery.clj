@@ -117,18 +117,22 @@
 (defn- header
   "The navbar every gallery page carries as the shell's header, the page's own link current,
   so a wb/link swap between the two pages shows nav.js moving the mark. Sticky, with a host's
-  own plain link among its items, so the browser checks see both."
-  [request]
-  (ui/navbar request {:id "g-nav" :brand ["/" "uikit-base"] :label "Gallery pages" :current (:uri request)
-                      :items [["/" "Gallery"] ["/second" "Second page"]
-                              [nil (ui/dropdown {:id "g-nav-more" :label "More" :items [["/" "Back to the gallery"] ["/second" "The second page"]]})]
-                              [nil [:a {:id "g-nav-raw" :href "/second#second"} "A host's own link"]]]
+  own plain link among its items, so the browser checks see both. `extra` items go after
+  them and `expand` is the navbar's own: `/second` loaded as a page draws its bar from `:sm`
+  with more items than its row holds below their need, so it collapses by fit from 640px
+  up to that need. A swap keeps the header it came from, as any host's."
+  [request expand extra]
+  (ui/navbar request {:id "g-nav" :brand ["/" "uikit-base"] :label "Gallery pages" :current (:uri request) :expand expand
+                      :items (into [["/" "Gallery"] ["/second" "Second page"]
+                                    [nil (ui/dropdown {:id "g-nav-more" :label "More" :items [["/" "Back to the gallery"] ["/second" "The second page"]]})]
+                                    [nil [:a {:id "g-nav-raw" :href "/second#second"} "A host's own link"]]]
+                                   extra)
                       :sticky? true
                       :end (ui/button {:type "button" :variant :outline-primary :size :sm} "Sign out")}))
 
 (defn page [request]
   (response/ok
-    (shell/page {:request request :title "uikit-base gallery" :header (header request)
+    (shell/page {:request request :title "uikit-base gallery" :header (header request :md nil)
                  :content (into [:div.ui-stack]
                                 (for [[id & body] (fixtures request)]
                                   (into [:section {:id id :class "ui-stack"} [:h2 id]] body)))})))
@@ -137,8 +141,9 @@
   "A small page, so a link of the navbar has somewhere to swap to and back."
   [request]
   (response/ok
-    (shell/page {:request request :title "uikit-base gallery: second page" :header (header request)
-                 :content [:div.ui-stack {:id "second"} [:h2 "Second page"] [:p "A page to swap to."] (ui/link-button "/" "Back to the gallery")]})))
+    (shell/page {:request request :title "uikit-base gallery: second page"
+                 :header (header request :sm [[nil [:a {:href "#more"} "More of it"]]])
+                 :content [:div.ui-stack {:id "second"} [:h2 "Second page"] [:p "A page to swap to."] (ui/link-button "/" "Back to the gallery") [:p {:id "more"} "More of it."]]})))
 
 (defn handler
   "The gallery's handler: the kit as a plugin, Spanish and English, the template's CSP."

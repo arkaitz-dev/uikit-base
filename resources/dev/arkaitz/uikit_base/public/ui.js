@@ -47,27 +47,40 @@
   }
 
   // Where anchor positioning is missing: below the control (a tooltip above), flipped to fit.
-  // A browser with anchor-name but no anchor-scope would apply the stylesheet's area too.
+  // A browser with anchor-name but no anchor-scope would apply the stylesheet's area too. A
+  // navbar's panel is placed against its bar, at its very edge, never flipped (no room above),
+  // and bounded by the screen's bottom from the top measured here, as the stylesheet's 100% is.
   var open = ":is(.ui-dropdown__menu, .ui-popover, .ui-tooltip, .ui-navbar__panel):popover-open";
   function place(pop) {
-    var a = pop.parentElement.firstElementChild.getBoundingClientRect(), p = pop.getBoundingClientRect();
-    var tip = pop.classList.contains("ui-tooltip"), gap = 4, rtl = getComputedStyle(pop).direction === "rtl";
-    var below = a.bottom + gap, above = a.top - gap - p.height;
+    var bar = pop.matches(".ui-navbar__panel") && pop.closest(".ui-navbar"), p = pop.getBoundingClientRect();
+    var a = (bar || pop.parentElement.firstElementChild).getBoundingClientRect();
+    var tip = pop.classList.contains("ui-tooltip"), gap = bar ? 0 : 4, rtl = getComputedStyle(pop).direction === "rtl";
+    var below = a.bottom + gap, above = bar ? -1 : a.top - gap - p.height;
     var top = tip ? (above < 0 ? below : above) : (below + p.height > innerHeight && above >= 0 ? above : below);
     var left = tip ? a.left + (a.width - p.width) / 2 : (rtl ? a.right - p.width : a.left);
     left = Math.max(0, Math.min(left, document.documentElement.clientWidth - p.width));
     var props = { "position-area": "none", "position-try-fallbacks": "none", margin: "0" };
-    Object.assign(props, { top: top + "px", left: left + "px" });
+    Object.assign(props, { top: top + "px", left: left + "px", "max-block-size": bar ? innerHeight - top + "px" : "" });
     Object.keys(props).forEach(function (name) { pop.style.setProperty(name, props[name]); });
   }
   function placeOpen() { if (!nativeAnchor) document.querySelectorAll(open).forEach(place); }
   on("toggle", function (event) { if (event.newState === "open") placeOpen(); }, true);
   ["resize", "scroll"].forEach((name) => addEventListener(name, placeOpen, { capture: true, passive: true }));
-  // A navbar's panel left open as the window widens past its breakpoint stays in the top layer, which
-  // no stylesheet can undo: with its toggle gone, it closes, and is drawn inline in the bar.
-  addEventListener("resize", () => document.querySelectorAll(".ui-navbar__panel:popover-open").forEach((panel) => {
-    if (!panel.previousElementSibling.checkVisibility()) panel.hidePopover();
-  }));
+  // Navbars are one row. Where the brand and the inline panel do not fit it, the bar collapses
+  // to its toggle, and expands again only once it is as wide as they needed: measured inline,
+  // never collapsed and measured, so it cannot flicker. A panel still open when the toggle goes
+  // closes, as the top layer would keep it (no stylesheet can). The bar and its panel are
+  // watched, so a late font, which reshapes the panel, is seen; a swap leaves the header alone.
+  var fits = new ResizeObserver((entries) => entries.forEach((e) => fit(e.target.closest(".ui-navbar"))));
+  function fit(bar) {
+    if (bar.clientWidth >= (bar.uiNeed || 0)) bar.classList.remove("ui-navbar--collapsed");
+    var brand = bar.querySelector(".ui-navbar__brand"), cut = brand ? brand.scrollWidth - brand.clientWidth : 0;
+    if (bar.querySelector(".ui-navbar__toggle").checkVisibility()) return;
+    bar.uiNeed = bar.scrollWidth + cut;
+    if (bar.uiNeed > bar.clientWidth) bar.classList.add("ui-navbar--collapsed");
+    else bar.querySelector(".ui-navbar__panel:popover-open")?.hidePopover();
+  }
+  inits.push(() => document.querySelectorAll(".ui-navbar, .ui-navbar__panel").forEach((e) => fits.observe(e)));
 
   // Tooltips: shown while the trigger or the tooltip is hovered or focused (WCAG 1.4.13).
   // 150 ms is a declared policy: a pointer crosses the few pixels to the tooltip in a frame or

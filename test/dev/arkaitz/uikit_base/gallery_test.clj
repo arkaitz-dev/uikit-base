@@ -70,3 +70,19 @@
       (is (re-find #"<nav aria-label=\"Gallery pages\" data-wb-nav[ =>]" header) (str path ": that nav is named and handed to nav.js"))
       (is (not (str/includes? body "wb-nav\"")) (str path ": the shell drew no nav or identity of its own"))
       (is (= [path] current) (str path ": its own link, and only it, is current")))))
+
+(deftest the-second-page-carries-a-navbar-that-collapses-by-fit
+  ;; The browser checks measure a collapse by fit on /second without injecting anything: its
+  ;; bar expands from :sm with one item more than its row holds between 640px and its need
+  ;; (measured 698px in WebKit 26.4 and Chromium 145), while / keeps the md bar.
+  (let [bar   (fn [path] (let [body (:body ((gallery/handler) (mock/request :get path)))
+                               header (re-find #"(?s)<header class=\"wb-header\">.*?</header>" (str body))]
+                           [(second (re-find #"class=\"(ui-navbar [^\"]*)\"" (str header)))
+                            (count (re-seq #"<li>(?!<a class=\"ui-dropdown__item\")" (str (re-find #"(?s)<ul class=\"ui-navbar__items\">.*?</ul></nav>" (str header)))))
+                            body]))
+        [home-class home-items] (bar "/")
+        [second-class second-items second-body] (bar "/second")]
+    (is (= ["ui-navbar ui-navbar--expand-md ui-navbar--sticky" 4] [home-class home-items]) "/ keeps the md bar and its four items")
+    (is (= ["ui-navbar ui-navbar--expand-sm ui-navbar--sticky" 5] [second-class second-items]) "/second expands from sm with a fifth item")
+    (is (and (str/includes? second-body "<a href=\"#more\">More of it</a>") (str/includes? second-body "id=\"more\""))
+        "its extra item is a host's own link to a part of /second, which nav.js never marks")))

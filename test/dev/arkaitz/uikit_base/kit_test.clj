@@ -1094,43 +1094,55 @@
     (is (<= 9 (count parts)) (str "witness: the meter's and the progress bar's painted parts were found, " (count parts)))
     (is (= [] leaks) "parts painted by background-color alone, under the user agent's image")))
 
-(deftest a-navbars-panel-is-inline-and-its-toggle-gone-from-its-breakpoint-up-and-only-there
+(deftest a-navbars-panel-is-inline-and-its-toggle-gone-from-its-breakpoint-up-unless-collapsed
   ;; Below the breakpoint the panel is a closed popover the user agent hides, until the toggle
-  ;; opens it; from it up the kit's author rule outranks the user agent's display: none.
+  ;; opens it; from it up the kit's author rule outranks the user agent's display: none — unless
+  ;; ui.js found the row too narrow and set ui-navbar--collapsed. The model reads a selector's
+  ;; :not() as a state the element may lack, so `X:not(.collapsed) .panel` is a bar without the
+  ;; class, and plain `X .panel` reaches only the rules no :not() gates: a bar with it.
   (let [cases (for [env environments [bp px] [["sm" 640] ["md" 768] ["lg" 1024]]] [env bp px])
-        seen  (fn [rules bp] (let [x (str ".ui-navbar--expand-" bp)]
-                               [(cascaded rules (str x " .ui-navbar__toggle") ["display"])
-                                (cascaded rules (str x " .ui-navbar__panel") ["display"])
-                                (cascaded rules (str x " .ui-navbar__panel") ["position"])]))]
+        seen  (fn [rules x] [(cascaded rules (str x " .ui-navbar__toggle") ["display"])
+                             (cascaded rules (str x " .ui-navbar__panel") ["display"])
+                             (cascaded rules (str x " .ui-navbar__panel") ["position"])])]
     (is (= 72 (count cases)) "witness: 24 environments, three breakpoints")
     ;; The toggle is a .ui-btn too: where the navbar's rules set no display, the button's shows it.
     (is (contains? (some (fn [[_ _ classes]] (when (classes "ui-navbar__toggle") classes)) (elements (first (fixtures 'navbar)) ())) "ui-btn")
         "witness: the toggle is a kit button")
-    (doseq [[env bp px] cases :let [rules (@env-rules env)]]
+    (doseq [[env bp px] cases :let [rules (@env-rules env) x (str ".ui-navbar--expand-" bp)]]
       (is (= "inline-flex" (on-element rules {:classes #{"ui-btn"}} "display")) "witness: a kit button is shown")
-      (is (= (if (>= (:width env) px) ["none" "flex" "static"] [nil nil "fixed"]) (seen rules bp))
-          (str "expand " bp " at " (:width env) "px: [toggle display, panel display, panel position]; below, a nil display leaves the button's own and the user agent's closed popover, and the panel is fixed, as the user agent draws a popover")))))
+      (is (= (if (>= (:width env) px) ["none" "flex" "static"] [nil nil "fixed"]) (seen rules (str x ":not(.ui-navbar--collapsed)")))
+          (str "expand " bp " at " (:width env) "px, not collapsed: [toggle display, panel display, panel position]; below, a nil display leaves the button's own and the user agent's closed popover, and the panel is fixed, as the user agent draws a popover"))
+      (is (= [nil nil "fixed"] (seen rules x))
+          (str "expand " bp " at " (:width env) "px, collapsed by ui.js: drawn as below the breakpoint, whatever the width")))))
+
+(deftest a-navbar-is-one-row-whatever-it-holds
+  ;; The user's decision of 2026-11-17: the bar never wraps. Its brand is cut short, and what
+  ;; does not fit beside it collapses to the toggle (ui.js) rather than wrapping to a second
+  ;; row — which is what makes a sticky bar's scroll padding its own size.
+  (let [cases (for [env environments [bp px] [["sm" 640] ["md" 768] ["lg" 1024]]] [env bp px])]
+    (doseq [[env rules] @env-rules]
+      (is (= "nowrap" (cascaded rules ".ui-navbar" ["flex-wrap"])) (str "the bar is one row " (:width env)))
+      (is (= ["nowrap" "hidden" "ellipsis" "0"] (mapv #(cascaded rules ".ui-navbar .ui-navbar__brand" [%]) ["white-space" "overflow" "text-overflow" "min-inline-size"]))
+          (str "the brand stays on one line, cut short, and may shrink to let the rest fit " (:width env))))
+    (doseq [[env bp px] cases :when (>= (:width env) px)
+            :let [rules (@env-rules env) x (str ".ui-navbar--expand-" bp ":not(.ui-navbar--collapsed) ")]]
+      (is (= ["nowrap" "nowrap" "nowrap" "nowrap" "nowrap"]
+             [(cascaded rules (str x ".ui-navbar__panel") ["flex-wrap"]) (cascaded rules (str x ".ui-navbar__items") ["flex-wrap"])
+              (cascaded rules (str x ".ui-navbar__items") ["white-space"]) (cascaded rules (str x ".ui-navbar__end") ["flex-wrap"])
+              (cascaded rules (str x ".ui-navbar__end") ["white-space"])])
+          (str "inline, the panel, its items and its end each keep to the bar's row, expand " bp " at " (:width env))))))
 
 (declare decl-of)
 
 (deftest a-navbars-open-panel-ends-at-the-screens-bottom-and-scrolls-inside-itself
   ;; WCAG 1.4.10: a panel taller than the screen would hide its last items. Natively 100% is
-  ;; the anchor area under the bar, which ends at the viewport's bottom. In ui.js's fallback
-  ;; the containing block is the viewport and place() writes the top as the toggle's bottom
-  ;; plus its gap: the toggle spans the bar but its edge, so the top is the bar's least block
-  ;; size, less that edge, plus the gap, and the bound is the viewport less all of it. Both
-  ;; numbers are read from where they are decided: the gap from ui.js, the edge from the bar.
-  (let [gap   (some-> (re-find #"\bgap = (\d+)" (slurp (io/resource "dev/arkaitz/uikit_base/public/ui.js"))) second parse-long)
-        edge  (some-> (decl-of kit-parsed ".ui-navbar" "border-block-end") (str/split #"\s+") first (str/replace "px" "") parse-long)
-        row   (decl-of kit-parsed ".ui-navbar" "min-block-size")
-        bound (str "min(100%, calc(100dvh - " row " - " (- gap edge) "px))")
-        cases (for [env environments [bp px] [["sm" 640] ["md" 768] ["lg" 1024]]] [env bp px])]
-    (is (= [4 1] [gap edge]) "witness: place()'s gap and the bar's edge, read from ui.js and kit.css")
-    (is (some? row) "witness: the bar declares its least block size")
+  ;; the anchor area under the bar, which ends at the viewport's bottom; where a browser has no
+  ;; anchor positioning, ui.js writes the bound from the top it measured (ui_js_test).
+  (let [cases (for [env environments [bp px] [["sm" 640] ["md" 768] ["lg" 1024]]] [env bp px])]
     (is (= 72 (count cases)) "witness: 24 environments, three breakpoints")
-    (doseq [[env bp px] cases :let [rules (@env-rules env) sel (str ".ui-navbar--expand-" bp " .ui-navbar__panel")
+    (doseq [[env bp px] cases :let [rules (@env-rules env) sel (str ".ui-navbar--expand-" bp ":not(.ui-navbar--collapsed) .ui-navbar__panel")
                                     got (mapv #(cascaded rules sel %) [["position"] ["inset"] ["max-block-size" "max-height"] ["overflow-y" "overflow"]])]]
-      (is (= (if (>= (:width env) px) ["static" "auto" "none" "visible"] ["fixed" "auto" bound "auto"]) got)
+      (is (= (if (>= (:width env) px) ["static" "auto" "none" "visible"] ["fixed" "auto" "100%" "auto"]) got)
           (str "expand " bp " at " (:width env) "px: [position, inset, max block size, overflow-y]")))))
 
 (def ^:private wb-parsed
@@ -1140,19 +1152,21 @@
 (defn- decl-of [parsed sel prop]
   (some (fn [{:keys [selectors decls]}] (when (some #{sel} selectors) (get decls prop))) (:rules parsed)))
 
-(deftest a-navbar-bleeds-over-the-shells-header-padding-and-its-toggle-spans-the-bar
+(deftest a-navbar-bleeds-over-the-shells-header-padding-and-its-toggle-is-a-compact-button
   ;; The header's padding is wb.css's, unlayered, which no rule of the kit can take back: the
   ;; bar's negative margins must be that very padding, read from web-base's own file, or a
-  ;; phone's bar sits inset while its panel spans the page. The toggle is as tall as the bar's
-  ;; content, so ui.js places the panel under the toggle at the bar's own edge.
+  ;; phone's bar sits inset while its panel spans the page. The toggle is a kit button as it
+  ;; renders — its edge and radius — that never shrinks, centred in the bar by the bar's own
+  ;; alignment: the panel is placed against the bar, never the toggle.
   (let [pad-inline (decl-of wb-parsed ".wb-header" "padding-inline") pad-block (decl-of wb-parsed ".wb-header" "padding-block")]
     (is (and (some? pad-inline) (some? pad-block)) (str "witness: wb.css pads the shell's header " [pad-inline pad-block]))
     (is (= [(str "calc(-1 * " pad-block ")") (str "calc(-1 * " pad-inline ")")]
            [(decl-of kit-parsed ".wb-header > .ui-navbar" "margin-block") (decl-of kit-parsed ".wb-header > .ui-navbar" "margin-inline")])
         "the bar's margins cancel the header's padding on both axes, exactly")
-    (doseq [[env rules] @env-rules]
-      (is (= ["stretch" "0"] [(cascaded rules ".ui-navbar__toggle" ["align-self"]) (first (str/split (cascaded rules ".ui-navbar" ["padding-block" "padding"]) #"\s+"))])
-          (str "the toggle stretches over a bar with no block padding of its own " (:width env))))))
+    (doseq [[env rules] @env-rules :let [toggle (fn [p] (on-element rules {:classes #{"ui-btn" "ui-navbar__toggle"}} p))]]
+      (is (= [nil "var(--ui-radius-md)" "1px solid var(--ui-border-strong)" "0" "center"]
+             [(toggle "align-self") (toggle "border-radius") (toggle "border") (toggle "flex-shrink") (cascaded rules ".ui-navbar" ["align-items"])])
+          (str "the toggle keeps the button's edge and radius, does not shrink, and is centred in the bar " (:width env))))))
 
 (deftest a-sticky-navbars-scroll-padding-is-the-bars-own-block-size
   ;; WCAG 2.4.11: a fragment or a focus scrolled to must stop below a sticky bar. No number is
@@ -1179,7 +1193,10 @@
       (when (= 360 (:width env))
         (is (= [link link] [toggle end]) "the dropdown's toggle and the end sit at the links' inset")
         (is (= (str "calc(" bar " - " link ")") panel) "and the panel's edge plus that inset is the bar's, so they line up with the brand"))
-      (is (= (ink ".ui-navbar__link") (ink ".ui-navbar__items .ui-dropdown > .ui-btn")) (str "a dropdown's toggle in the items takes the links' ink " (:width env))))))
+      (is (= (ink ".ui-navbar__link") (ink ".ui-navbar__items .ui-dropdown > .ui-btn")) (str "a dropdown's toggle in the items takes the links' ink " (:width env)))
+      ;; A button drawn as a block centres its text by the user agent's own rule.
+      (is (= ["block" "start"] (mapv #(cascaded rules ".ui-navbar__items .ui-dropdown > .ui-btn" [%]) ["display" "text-align"]))
+          (str "and its text starts where a link's does " (:width env))))))
 
 (deftest a-navbar-marks-a-page-a-section-and-a-location-alike-and-so-does-its-dropdown
   (doseq [[env rules] @env-rules v ["page" "true" "location"] base [".ui-navbar__link" ".ui-dropdown__item"]
