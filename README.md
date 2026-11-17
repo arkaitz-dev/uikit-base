@@ -316,7 +316,7 @@ It writes no markup and no text: the server rendered both, escaped. It writes no
 style as a string, by attribute or by `style =`; it positions only through single CSSOM
 properties (`style.setProperty`), which `style-src 'self'` allows. It evaluates no string,
 sets no timer from a string and fetches nothing. The plugin loads it deferred, under the
-page's nonce, so a CSP of `script-src 'nonce-…'` needs nothing more. It is at most 162 lines
+page's nonce, so a CSP of `script-src 'nonce-…'` needs nothing more. It is at most 168 lines
 of code, comments and blank lines excluded, never minified (the bound was raised to 154
 because in WebKit a deferred ui.js can run before kit.css applies, so a scrollspy under a
 sticky navbar read no scroll-padding; every init re-runs on load, as they already do on each
@@ -324,7 +324,11 @@ swap (user decision 2026-11-17); then raised to 162 because a navbar collapses t
 when its items do not fit on its one row, which only a measurement can tell (a
 ResizeObserver; no CSS on the two-year floor exposes a content's natural width), and the
 fallback places its panel against the bar, bounded by its measured top (user decision
-2026-11-17)); `ui_js_test` holds that and every ban above.
+2026-11-17); then raised to 168 because a navbar re-fits when its content changes (a late
+font, an out-of-band count, a link shortened while collapsed) without a ResizeObserver loop
+error, clears place()'s inline bound once inline, and keeps the focus on its toggle when a
+collapse hides the focused link (user decision 2026-11-17)); `ui_js_test` holds that and
+every ban above.
 
 ## Browsers
 
