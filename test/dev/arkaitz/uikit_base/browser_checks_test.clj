@@ -6,6 +6,7 @@
   checks are run again, since no JVM test can see what they see."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is]])
   (:import (java.security MessageDigest)))
 
@@ -36,3 +37,18 @@
         (is (<= 12 (count checks)) (str "witness: " engine " " mode " recorded its checks, " (count checks)))
         (is (= [] (sort (keep (fn [[check pass]] (when-not (true? pass) check)) checks)))
             (str "checks that failed in " engine " " mode))))))
+
+(deftest every-check-the-script-declares-was-recorded
+  ;; A pass is only read for a check the record holds: one dropped from a run, or renamed and
+  ;; never run under its new name, would leave nothing to fail. Every name the script gives
+  ;; check(…), and the two it writes itself, must be recorded in every engine and mode.
+  (let [src      (slurp (io/file (files "gallery-check.mjs")))
+        declared (set (map #(str/replace (second %) "\\'" "'") (re-seq #"(?:check\(|r\[)'((?:[^'\\]|\\.)*)'" src)))]
+    (is (< 40 (count declared)) (str "witness: the script's checks were read, " (count declared)))
+    (is (= (count (re-seq #"\bcheck\s*\(" src)) (count (re-seq #"\bcheck\('" src)))
+        "every check( names its check in single quotes, the only spelling read here")
+    (doseq [{:keys [engine modes]} (:runs record)]
+      (is (seq modes) (str "witness: " engine " recorded its modes")))
+    (doseq [{:keys [engine modes]} (:runs record) [mode checks] modes]
+      (is (= [] (sort (remove (set (keys checks)) declared))) (str "checks the script declares and " engine " " mode " did not record"))
+      (is (= [] (sort (remove declared (keys checks)))) (str "checks " engine " " mode " recorded that the script no longer declares")))))

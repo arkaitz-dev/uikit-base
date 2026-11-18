@@ -541,10 +541,12 @@
      * and where the inline panel does not fit beside it ui.js collapses the bar to its toggle
      * (ui-navbar--collapsed), as below the breakpoint. Its block size is therefore its brand's
      * row and its line, which a sticky bar's scroll padding repeats: the brand's line box, its
-     * padding and the bar's one-pixel edge. */
+     * padding and the bar's one-pixel edge. That row is a compact one, a tight line and a thin
+     * padding, so nothing else in the bar may stand taller: the buttons at its end, the kit's
+     * own, are drawn with the same thin block padding. */
     .ui-navbar {
       display: flex; flex-wrap: nowrap; align-items: center; gap: 0 var(--ui-spacing-md); box-sizing: border-box;
-      min-block-size: calc(var(--ui-font-size-lg) * var(--ui-line-height-normal) + 2 * var(--ui-spacing-sm) + 1px); padding: 0 var(--ui-spacing-md);
+      min-block-size: calc(var(--ui-font-size-xl) * var(--ui-line-height-tight) + 2 * var(--ui-spacing-xs) + 1px); padding: 0 var(--ui-spacing-md);
       color: var(--ui-on-surface); background: var(--ui-surface);
       border-block-end: 1px solid var(--ui-border); anchor-name: --ui-navbar; anchor-scope: --ui-navbar;
     }
@@ -559,16 +561,21 @@
     .wb-header:has(> .ui-navbar--sticky) {
       position: sticky; inset-block-start: 0; z-index: var(--ui-z-index-sticky); background: var(--ui-background);
     }
-    :root:has(.ui-navbar--sticky) { scroll-padding-block-start: calc(var(--ui-font-size-lg) * var(--ui-line-height-normal) + 2 * var(--ui-spacing-sm) + 1px); }
+    :root:has(.ui-navbar--sticky) { scroll-padding-block-start: calc(var(--ui-font-size-xl) * var(--ui-line-height-tight) + 2 * var(--ui-spacing-xs) + 1px); }
     .ui-navbar .ui-navbar__brand {
-      margin-inline-end: calc(var(--ui-spacing-lg) - var(--ui-spacing-md)); padding-block: var(--ui-spacing-sm);
-      font-size: var(--ui-font-size-lg); line-height: var(--ui-line-height-normal); font-weight: var(--ui-font-weight-bold);
+      margin-inline-end: calc(var(--ui-spacing-lg) - var(--ui-spacing-md)); padding-block: var(--ui-spacing-xs);
+      font-size: var(--ui-font-size-xl); line-height: var(--ui-line-height-tight); font-weight: var(--ui-font-weight-bold);
       letter-spacing: -0.01em; color: var(--ui-on-surface); text-decoration: none;
       min-inline-size: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .ui-navbar__collapse { display: contents; }
-    /* A compact icon button, centred in the bar; the panel is placed against the bar, not it. */
-    .ui-navbar__toggle { flex-shrink: 0; margin-inline-start: auto; padding-inline: var(--ui-spacing-sm); }
+    /* A compact icon button, centred in the bar; the panel is placed against the bar, not it.
+     * Its block padding keeps it clear of the bar's compact row and its target past WCAG 2.5.8's
+     * 24px: the bars' 0.75rem, 1.5 times the thin padding twice and its edges. */
+    .ui-navbar__toggle {
+      flex-shrink: 0; margin-inline-start: auto; padding-inline: var(--ui-spacing-sm);
+      padding-block: calc(var(--ui-spacing-xs) + var(--ui-spacing-xxs));
+    }
     /* Three bars drawn as edges, which forced colours keep, where a ground or a shadow goes. */
     .ui-navbar__bars {
       position: relative; display: block; inline-size: 1.25rem; block-size: 0.75rem;
@@ -590,15 +597,22 @@
       color: var(--ui-on-surface); background: var(--ui-surface);
       border: 0; border-block-end: 1px solid var(--ui-border); box-shadow: var(--ui-shadow-md);
     }
-    .ui-navbar__items { display: flex; flex-direction: column; gap: var(--ui-spacing-xxs); list-style: none; margin: 0; padding: 0; }
+    /* The items' size is the list's, which they inherit, so a host that sizes the list sizes them. */
+    .ui-navbar__items {
+      display: flex; flex-direction: column; gap: var(--ui-spacing-xxs); list-style: none; margin: 0; padding: 0;
+      font-size: calc((var(--ui-font-size-base) + var(--ui-font-size-lg)) / 2);
+    }
     /* Inline, an item spans the bar's whole row, so the kit's ring, drawn outside a box, would be
      * cut at the bar's top: there the same two bands are drawn inside it, the halo at its edge
      * and the ring within. */
     /* Every item — the kit's link, a host's own [:a], a dropdown's toggle — is drawn alike, in
-     * the quiet ink, one inset from the panel's edge; a dropdown's menu keeps its own items. The
+     * the quiet ink, one inset from the panel's edge, a step above body text and below the brand,
+     * halfway between the scale's two; a dropdown's menu keeps its own items. The
      * current one is the strongest ink and weight, and the rail marks it: an edge, which forced
      * colours keep, so the mark is never colour alone. In the panel the rail is at the row's
-     * start; inline it lies on the bar's bottom edge. */
+     * start; inline it lies on the bar's bottom edge. The current item and one under a pointer
+     * or a focus lie on the hover ground, one shade off the bar, which reinforces and never
+     * carries a mark: the rail is the current item's alone, and a hover needs none. */
     .ui-navbar .ui-navbar__items > li > a, .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn {
       position: relative; display: flex; align-items: center; gap: var(--ui-spacing-xs); padding: var(--ui-spacing-sm);
       font: inherit; font-weight: var(--ui-font-weight-medium); color: var(--ui-text-muted); text-decoration: none;
@@ -612,12 +626,12 @@
       color: var(--ui-on-surface); background: var(--ui-surface-hover);
     }
     .ui-navbar .ui-navbar__items > li > a[aria-current="page"], .ui-navbar .ui-navbar__items > li > a[aria-current="true"], .ui-navbar .ui-navbar__items > li > a[aria-current="location"] {
-      color: var(--ui-on-surface); font-weight: var(--ui-font-weight-semibold);
+      color: var(--ui-on-surface); background: var(--ui-surface-hover); font-weight: var(--ui-font-weight-semibold);
     }
-    .ui-navbar .ui-navbar__items > li > a::after, .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn::after {
+    .ui-navbar .ui-navbar__items > li > a::after {
       content: ""; position: absolute; inset-block: 20%; inset-inline-start: 0; opacity: 0;
       border-inline-start: var(--ui-border-width-thick) solid var(--ui-primary-border);
-      transition: opacity var(--ui-duration-fast) var(--ui-easing-ease-out), border-color var(--ui-duration-fast) var(--ui-easing-ease-out);
+      transition: opacity var(--ui-duration-fast) var(--ui-easing-ease-out);
     }
     .ui-navbar .ui-navbar__items > li > a[aria-current="page"]::after, .ui-navbar .ui-navbar__items > li > a[aria-current="true"]::after, .ui-navbar .ui-navbar__items > li > a[aria-current="location"]::after { opacity: 1; }
     .ui-navbar__items .ui-dropdown { display: block; }
@@ -628,8 +642,14 @@
     .ui-navbar__end {
       display: flex; flex-wrap: wrap; align-items: center; gap: var(--ui-spacing-sm); padding: var(--ui-spacing-sm) var(--ui-spacing-sm) 0;
     }
+    .ui-navbar__end .ui-btn { padding-block: var(--ui-spacing-xs); }
     /* From the breakpoint up, unless ui.js found the row too narrow: author CSS outranks the user
      * agent's display: none on a closed popover, and these undo the rest of its popover look. */
+    /* Forced colours drop the hover ground, and a hover has no rail: an item under the pointer
+     * is underlined there instead, so it is never left with no mark at all. */
+    @media (forced-colors: active) {
+      .ui-navbar .ui-navbar__items > li > a:hover, .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover { text-decoration: underline; }
+    }
     @media (min-width: 640px) {
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__toggle { display: none; }
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__panel {
@@ -641,17 +661,12 @@
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__end { align-self: center; margin-inline-start: auto; padding: 0; flex-wrap: nowrap; white-space: nowrap; }
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__panel > nav, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown { display: flex; }
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn { padding-block: 0; padding-inline: var(--ui-spacing-sm); border-radius: var(--ui-radius-sm); }
-      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible { background: var(--ui-surface); }
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible {
         outline-offset: calc(-2 * var(--ui-focus-outline-width)); box-shadow: inset 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
       }
-      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a::after, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn::after {
+      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a::after {
         inset-block: auto -1px; inset-inline: var(--ui-spacing-sm); border-inline-start: 0;
-        border-block-end: var(--ui-border-width-thick) solid var(--ui-border-strong);
-      }
-      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover::after, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover::after { opacity: 1; }
-      .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="page"]::after, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="true"]::after, .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="location"]::after {
-        border-block-end-color: var(--ui-primary-border);
+        border-block-end: var(--ui-border-width-thick) solid var(--ui-primary-border);
       }
     }
     @media (min-width: 768px) {
@@ -665,17 +680,12 @@
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__end { align-self: center; margin-inline-start: auto; padding: 0; flex-wrap: nowrap; white-space: nowrap; }
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__panel > nav, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown { display: flex; }
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn { padding-block: 0; padding-inline: var(--ui-spacing-sm); border-radius: var(--ui-radius-sm); }
-      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible { background: var(--ui-surface); }
       .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible {
         outline-offset: calc(-2 * var(--ui-focus-outline-width)); box-shadow: inset 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
       }
-      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a::after, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn::after {
+      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a::after {
         inset-block: auto -1px; inset-inline: var(--ui-spacing-sm); border-inline-start: 0;
-        border-block-end: var(--ui-border-width-thick) solid var(--ui-border-strong);
-      }
-      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover::after, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover::after { opacity: 1; }
-      .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="page"]::after, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="true"]::after, .ui-navbar--expand-md:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="location"]::after {
-        border-block-end-color: var(--ui-primary-border);
+        border-block-end: var(--ui-border-width-thick) solid var(--ui-primary-border);
       }
     }
     @media (min-width: 1024px) {
@@ -689,17 +699,12 @@
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__end { align-self: center; margin-inline-start: auto; padding: 0; flex-wrap: nowrap; white-space: nowrap; }
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__panel > nav, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items .ui-dropdown { display: flex; }
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn { padding-block: 0; padding-inline: var(--ui-spacing-sm); border-radius: var(--ui-radius-sm); }
-      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible { background: var(--ui-surface); }
       .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:focus-visible, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:focus-visible {
         outline-offset: calc(-2 * var(--ui-focus-outline-width)); box-shadow: inset 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo);
       }
-      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a::after, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn::after {
+      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a::after {
         inset-block: auto -1px; inset-inline: var(--ui-spacing-sm); border-inline-start: 0;
-        border-block-end: var(--ui-border-width-thick) solid var(--ui-border-strong);
-      }
-      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a:hover::after, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover::after { opacity: 1; }
-      .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="page"]::after, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="true"]::after, .ui-navbar--expand-lg:not(.ui-navbar--collapsed) .ui-navbar__items > li > a[aria-current="location"]::after {
-        border-block-end-color: var(--ui-primary-border);
+        border-block-end: var(--ui-border-width-thick) solid var(--ui-primary-border);
       }
     }
     /* A tooltip: above its trigger, centred, in the inverse surface. */
@@ -789,7 +794,7 @@
     @media (prefers-reduced-motion: reduce) {
       .ui-btn, .ui-switch::before, .ui-field--floating > .ui-field__label, .ui-dialog,
       .ui-dropdown__menu, .ui-popover, .ui-tooltip, .ui-toast { transition: none; }
-      .ui-navbar .ui-navbar__items > li > a, .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn, .ui-navbar .ui-navbar__items > li > a::after, .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn::after, .ui-dropdown > .ui-btn::before { transition: none; }
+      .ui-navbar .ui-navbar__items > li > a, .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn, .ui-navbar .ui-navbar__items > li > a::after, .ui-dropdown > .ui-btn::before { transition: none; }
       .ui-carousel__rotate { display: none; }
       .ui-progress--animated::-webkit-progress-value { animation: none; }
       .ui-progress--animated:indeterminate, .ui-progress--animated:indeterminate::-webkit-progress-bar { animation: none; }

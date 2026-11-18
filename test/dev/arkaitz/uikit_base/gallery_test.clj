@@ -84,5 +84,5 @@
         [second-class second-items second-body] (bar "/second")]
     (is (= ["ui-navbar ui-navbar--expand-md ui-navbar--sticky" 4] [home-class home-items]) "/ keeps the md bar and its four items")
     (is (= ["ui-navbar ui-navbar--expand-sm ui-navbar--sticky" 5] [second-class second-items]) "/second expands from sm with a fifth item")
-    (is (and (str/includes? second-body "<a href=\"#more\">More of it</a>") (str/includes? second-body "id=\"more\""))
+    (is (and (str/includes? second-body "<a href=\"#more\">Of it</a>") (str/includes? second-body "id=\"more\""))
         "its extra item is a host's own link to a part of /second, which nav.js never marks")))

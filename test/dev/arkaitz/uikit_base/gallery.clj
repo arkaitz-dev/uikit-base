@@ -142,7 +142,7 @@
   [request]
   (response/ok
     (shell/page {:request request :title "uikit-base gallery: second page"
-                 :header (header request :sm [[nil [:a {:href "#more"} "More of it"]]])
+                 :header (header request :sm [[nil [:a {:href "#more"} "Of it"]]])
                  :content [:div.ui-stack {:id "second"} [:h2 "Second page"] [:p "A page to swap to."] (ui/link-button "/" "Back to the gallery") [:p {:id "more"} "More of it."]]})))
 
 (defn handler

@@ -349,26 +349,47 @@ for (const [mode, init] of Object.entries(modes)) {
     await q.setViewportSize({ width: 420, height: 700 }); await q.waitForTimeout(250);
     const open = await q.evaluate(() => document.getElementById('g-nav').matches(':popover-open')); await q.close(); return { open, errs };
   }, s => s.open && s.errs.length === 0);
-  await check('navbar: its toggle a compact button, centred in the bar', async () => {
+  await check('navbar: its toggle a compact button, a target of 24px at least, clear of the bar\'s edges and centred in it', async () => {
+    // 24px is WCAG 2.5.8's target. Clear is declared: the scale's smallest step, spacing-xxs, on
+    // each side within the bar's row, which is the bar less its one-pixel bottom edge.
     const [q, errs] = await pageAt(360, '/');
     const s = await q.evaluate(() => { const t = document.querySelector('.ui-navbar__toggle').getBoundingClientRect(), b = document.querySelector('.ui-navbar').getBoundingClientRect();
-      return { h: t.height, bar: b.height, above: t.top - b.top, below: b.bottom - t.bottom }; });
+      const d = document.createElement('div'); d.style.setProperty('inline-size', 'var(--ui-spacing-xxs)'); document.body.append(d); const step = d.getBoundingClientRect().width; d.remove();
+      return { h: t.height, bar: b.height, step, above: t.top - b.top, below: b.bottom - t.bottom }; });
     await q.close(); return { ...s, errs };
-  }, s => s.h < s.bar - 4 && Math.abs(s.above - s.below) <= 1.5);
+  }, s => s.step > 0 && s.h >= 24 && s.h <= s.bar - 1 - 2 * s.step && Math.abs(s.above - s.below) <= 1.5);
+  // /second's need is wherever its items stop fitting; it is found, not assumed: the narrowest
+  // width from its sm breakpoint to the gallery's 768px container at which the bar is inline,
+  // swept upward 2px at a time, once per mode. The checks that work around it read it: under
+  // it by 10px the bar is collapsed, past it by 20px it is inline. A need under 650px would put
+  // that collapse below the sm breakpoint, collapsed by it rather than by the items: those reds.
+  let needFound;
+  const secondNeed = async () => {
+    if (needFound !== undefined) return needFound;
+    const [q] = await pageAt(640, '/second'); needFound = null;
+    for (let w = 640; w <= 768 && needFound === null; w += 2) {
+      await q.setViewportSize({ width: w, height: 740 }); await q.waitForTimeout(100); await frames(q);
+      if (await q.evaluate(() => { const l = document.querySelector('.ui-navbar__link').getBoundingClientRect(), b = document.querySelector('.ui-navbar').getBoundingClientRect();
+        return l.height > 0 && l.top >= b.top && l.bottom <= b.bottom; })) needFound = w;
+    }
+    await q.close(); return needFound;
+  };
   await check('navbar: past its breakpoint it collapses to its toggle while its items do not fit, inline once they do, and stays one row', async () => {
-    // /second's need is wherever its items stop fitting; it is found, not assumed: the narrowest
-    // width from its sm breakpoint up at which the bar is inline, swept upward 2px at a time.
     const [q, errs] = await pageAt(640, '/second');
     const state = () => q.evaluate(() => { const bar = document.querySelector('.ui-navbar'), t = document.querySelector('.ui-navbar__toggle'), l = document.querySelector('.ui-navbar__link').getBoundingClientRect(), b = bar.getBoundingClientRect();
-      return { collapsed: bar.classList.contains('ui-navbar--collapsed'), toggle: getComputedStyle(t).display !== 'none', linkInBar: l.height > 0 && l.top >= b.top && l.bottom <= b.bottom, h: b.height }; });
+      return { collapsed: bar.classList.contains('ui-navbar--collapsed'), toggle: getComputedStyle(t).display !== 'none', linkInBar: l.height > 0 && l.top >= b.top && l.bottom <= b.bottom, h: b.height,
+        row: parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) }; });
+    // One row is the bar's own row at that width — the brand's line, its padding and the edge,
+    // which the sticky bar's scroll padding repeats — and the brand's size is the scale's, which
+    // grows past 640px, so the bar is held to the row of each width, never to one height.
     const at = async (w) => { await q.setViewportSize({ width: w, height: 740 }); await q.waitForTimeout(100); await frames(q); return state(); };
-    let need = null; for (let w = 640; w <= 768 && need === null; w += 2) if ((await at(w)).linkInBar) need = w;
+    const need = await secondNeed(); if (need !== null) await at(need);
     if (need === null) { await q.close(); return { need, errs }; }
     const fits = await state(), under = await at(need - 6), s600 = await at(600), s320 = await at(320), back = await at(need), wide = await at(1024);
     await q.close(); return { need, fits, under, s600, s320, back, wide, errs };
-  }, s => s.need > 640 && !s.fits.collapsed && !s.fits.toggle && s.under.collapsed && s.under.toggle && !s.under.linkInBar
+  }, s => s.need >= 646 && !s.fits.collapsed && !s.fits.toggle && s.under.collapsed && s.under.toggle && !s.under.linkInBar
         && s.s600.toggle && !s.s600.linkInBar && s.s320.toggle && !s.back.collapsed && !s.back.toggle && s.back.linkInBar && s.wide.linkInBar
-        && [s.under, s.s600, s.s320, s.back, s.wide].every(x => Math.abs(x.h - s.fits.h) <= 0.5) && s.errs.length === 0);
+        && [s.fits, s.under, s.s600, s.s320, s.back, s.wide].every(x => x.row > 0 && Math.abs(x.h - x.row) <= 0.5) && s.errs.length === 0);
   await check('navbar: with a banner above its header and many links, the open panel starts at the bar and ends within the screen', async () => {
     const q = await ctx.newPage(); await q.setViewportSize({ width: 320, height: 400 }); await q.goto(url);
     await q.evaluate(() => { const ban = document.createElement('div'); ban.style.blockSize = '120px'; document.body.prepend(ban);
@@ -386,10 +407,11 @@ for (const [mode, init] of Object.entries(modes)) {
       await q.evaluate(() => { document.querySelector('.ui-navbar__link[href="/second"]').textContent = 'Second page'; }); await q.waitForTimeout(60);
     } };
   await check('navbar: its items growing and shrinking around the width they need raise no error', async () => {
-    const [q, errs] = await pageAt(720, '/second');
-    for (const w of [690, 698, 720]) await growShrink(q, w);
-    const err = await q.evaluate(() => window.__err); await q.close(); return { err, errs };
-  }, s => s.err.length === 0 && s.errs.length === 0);
+    const need = await secondNeed(); if (need === null) return { need };
+    const [q, errs] = await pageAt(need + 20, '/second');
+    for (const w of [need - 10, need - 2, need + 20]) await growShrink(q, w);
+    const err = await q.evaluate(() => window.__err); await q.close(); return { need, err, errs };
+  }, s => s.need >= 650 && s.err.length === 0 && s.errs.length === 0);
   await check('navbar: wide, an item grown past the row collapses it, and shrunk back while collapsed it is inline again', async () => {
     const [q, errs] = await pageAt(1024, '/second');
     const set = async (t) => { await q.evaluate(t => { document.querySelector('.ui-navbar__link[href="/second"]').textContent = t; }, t); await q.waitForTimeout(100); await frames(q);
@@ -406,21 +428,23 @@ for (const [mode, init] of Object.entries(modes)) {
     await q.close(); return { ...s, errs };
   }, s => s.inline === 0 && s.max === 'none' && s.position === 'static' && !s.open && s.errs.length === 0);
   await check('navbar: when it collapses while a link of its row has the focus, the focus goes to its toggle', async () => {
-    const [q, errs] = await pageAt(720, '/second');
+    const need = await secondNeed(); if (need === null) return { need };
+    const [q, errs] = await pageAt(need + 20, '/second');
     await q.keyboard.press('Shift'); await q.evaluate(() => document.querySelector('.ui-navbar__link[href="/"]').focus());
     const before = await q.evaluate(() => document.activeElement.getAttribute('href'));
-    await q.setViewportSize({ width: 690, height: 740 }); await q.waitForTimeout(100); await frames(q);
-    const after = await q.evaluate(() => document.activeElement.className); await q.close(); return { before, after, errs };
-  }, s => s.before === '/' && /ui-navbar__toggle/.test(s.after) && s.errs.length === 0);
+    await q.setViewportSize({ width: need - 10, height: 740 }); await q.waitForTimeout(100); await frames(q);
+    const after = await q.evaluate(() => document.activeElement.className); await q.close(); return { need, before, after, errs };
+  }, s => s.need >= 650 && s.before === '/' && /ui-navbar__toggle/.test(s.after) && s.errs.length === 0);
   await check('navbar: collapsed past its breakpoint, its toggle opens the panel and it stays open, through a change of its content too', async () => {
-    const [q, errs] = await pageAt(690, '/second'); await frames(q);
+    const need = await secondNeed(); if (need === null) return { need };
+    const [q, errs] = await pageAt(need - 10, '/second'); await frames(q);
     const collapsed = await q.evaluate(() => document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'));
     await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(1000); await frames(q);
     const opened = await q.evaluate(() => document.getElementById('g-nav').matches(':popover-open'));
     await q.evaluate(() => document.querySelector('.ui-navbar__end').append(document.createElement('span'))); await q.waitForTimeout(300); await frames(q);
     const afterEdit = await q.evaluate(() => document.getElementById('g-nav').matches(':popover-open'));
-    const err = await q.evaluate(() => window.__err); await q.close(); return { collapsed, opened, afterEdit, err, errs };
-  }, s => s.collapsed && s.opened && s.afterEdit && s.err.length === 0 && s.errs.length === 0);
+    const err = await q.evaluate(() => window.__err); await q.close(); return { need, collapsed, opened, afterEdit, err, errs };
+  }, s => s.need >= 650 && s.collapsed && s.opened && s.afterEdit && s.err.length === 0 && s.errs.length === 0);
   await check('navbar: a stylesheet that widens its items collapses it, with no error', async () => {
     const [q, errs] = await pageAt(1100, '/'); await frames(q);
     const before = await q.evaluate(() => document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'));
@@ -458,12 +482,14 @@ for (const [mode, init] of Object.entries(modes)) {
     const err = await q.evaluate(() => window.__err); await q.close(); return { grown, shrunk, err, errs };
   }, s => s.grown && !s.shrunk && s.err.length === 0 && s.errs.length === 0);
   await check('navbar: a collapse leaves alone a focus that was not in its row', async () => {
-    const [q, errs] = await pageAt(720, '/second'); await frames(q);
+    const need = await secondNeed(); if (need === null) return { need };
+    const [q, errs] = await pageAt(need + 20, '/second'); await frames(q);
+    const inline = await q.evaluate(() => !document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'));
     await q.evaluate(() => { const i = document.createElement('input'); i.id = 'outside'; document.querySelector('main').prepend(i); i.focus(); });
-    await q.setViewportSize({ width: 690, height: 740 }); await q.waitForTimeout(100); await frames(q);
+    await q.setViewportSize({ width: need - 10, height: 740 }); await q.waitForTimeout(100); await frames(q);
     const s = await q.evaluate(() => ({ collapsed: document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'), focus: document.activeElement.id }));
-    await q.close(); return { ...s, errs };
-  }, s => s.collapsed && s.focus === 'outside' && s.errs.length === 0);
+    await q.close(); return { need, inline, ...s, errs };
+  }, s => s.need >= 650 && s.inline && s.collapsed && s.focus === 'outside' && s.errs.length === 0);
   await check('navbar: swaps of the page leave one content observer on its bar', async () => {
     const q = await ctx.newPage(); await q.setViewportSize({ width: 1024, height: 740 });
     await q.addInitScript(() => { const observe = MutationObserver.prototype.observe; window.__barObservers = new Set();
@@ -507,6 +533,56 @@ for (const [mode, init] of Object.entries(modes)) {
     });
     await q.close(); return { ...s, errs };
   }, s => Math.abs(s.railBottom - s.barBottom) <= 0.5 && s.railShown === '1' && s.moreRight - s.labelRight >= 8 && s.errs.length === 0);
+  await check('navbar: wide, under forced colours, a hovered item is underlined and the current one keeps its rail', async () => {
+    // Forced colours drop the hover ground, and a hover has no rail: the underline is its mark there.
+    const [q, errs] = await pageAt(1024, '/'); await q.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' }); await frames(q);
+    const look = (sel) => q.evaluate((sel) => { const el = document.querySelector(sel), r = getComputedStyle(el, '::after');
+      return { forced: matchMedia('(forced-colors: active)').matches, hovered: el.matches(':hover'), line: getComputedStyle(el).textDecorationLine, rail: r.opacity, railStyle: r.borderBottomStyle }; }, sel);
+    const link = '.ui-navbar__link[href="/second"]', more = '[popovertarget="g-nav-more"]';
+    await q.mouse.move(0, 400); await frames(q); const resting = await look(link), current = await look('.ui-navbar__link[aria-current="page"]');
+    await q.hover(link); await frames(q); const hovered = await look(link);
+    await q.hover(more); await frames(q); const moreHovered = await look(more);
+    await q.close(); return { resting, current, hovered, moreHovered, errs };
+  }, s => s.resting.forced && s.resting.line === 'none' && s.hovered.hovered && s.hovered.line === 'underline'
+        && s.moreHovered.hovered && s.moreHovered.line === 'underline' && s.current.rail === '1' && s.current.railStyle === 'solid' && s.errs.length === 0);
+  await check('navbar: wide, a kit button of the default size at its end keeps the bar to its row', async () => {
+    const [q, errs] = await pageAt(1024, '/'); await frames(q);
+    // A host's identity is a sign-out form, so the button is put inside one, as auth-base's is.
+    const s = await q.evaluate(() => new Promise(done => { const bar = document.querySelector('.ui-navbar'), btn = bar.querySelector('.ui-navbar__end .ui-btn');
+      const row = () => parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop);
+      const small = btn.classList.contains('ui-btn--sm'); btn.classList.remove('ui-btn--sm');
+      const form = document.createElement('form'); btn.before(form); form.append(btn);
+      requestAnimationFrame(() => requestAnimationFrame(() => done({ small, sized: !btn.classList.contains('ui-btn--sm'), nested: btn.parentElement.tagName === 'FORM',
+        h: bar.getBoundingClientRect().height, row: row(), inline: !bar.classList.contains('ui-navbar--collapsed') }))); }));
+    await q.close(); return { ...s, errs };
+  }, s => s.small && s.sized && s.nested && s.inline && s.row > 0 && Math.abs(s.h - s.row) <= 0.5 && s.errs.length === 0);
+  await check('navbar: wide, the current item and a hovered or focused one lie on the hover ground, and only the current one shows a rail', async () => {
+    const [q, errs] = await pageAt(1024, '/'); await frames(q);
+    // The grounds and the rail transition; with motion reduced the kit has none, so what is read is the settled look.
+    await q.emulateMedia({ reducedMotion: 'reduce' });
+    const probe = await q.evaluate(() => Object.fromEntries(['--ui-surface-hover', '--ui-surface', '--ui-surface-high', '--ui-primary-border', '--ui-focus-ring'].map((v) => {
+      const d = document.createElement('div'); d.style.setProperty('background-color', `var(${v})`); document.body.append(d);
+      const c = getComputedStyle(d).backgroundColor; d.remove(); return [v, c]; })));
+    const look = (sel) => q.evaluate((sel) => { const el = document.querySelector(sel), cs = getComputedStyle(el), r = getComputedStyle(el, '::after');
+      return { ground: cs.backgroundColor, rail: r.opacity, railColor: r.borderBottomColor, after: r.content, hovered: el.matches(':hover'), focused: el.matches(':focus-visible'),
+        ring: [cs.outlineStyle, cs.outlineColor] }; }, sel);
+    const cur = '.ui-navbar__link[aria-current="page"]', link = '.ui-navbar__link[href="/second"]', more = '[popovertarget="g-nav-more"]';
+    await q.mouse.move(0, 400); await frames(q);
+    const collapsed = await q.evaluate(() => document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'));
+    const current = await look(cur), resting = await look(link);
+    await q.hover(link); await frames(q); const hovered = await look(link);
+    await q.hover(more); await frames(q); const moreHovered = await look(more);
+    await q.mouse.move(0, 400); await q.keyboard.press('Shift'); await q.focus(link); await frames(q); const focused = await look(link);
+    await q.close(); return { probe, collapsed, current, resting, hovered, moreHovered, focused, errs };
+  }, s => { const g = s.probe['--ui-surface-hover'];
+    return g !== s.probe['--ui-surface'] && g !== s.probe['--ui-surface-high'] && !s.collapsed
+      && s.current.ground === g && s.current.rail === '1' && s.current.railColor === s.probe['--ui-primary-border']
+      && s.resting.ground !== g && s.resting.rail === '0'
+      && s.hovered.hovered && s.hovered.ground === g && s.hovered.rail === '0'
+      && s.moreHovered.hovered && s.moreHovered.ground === g && s.moreHovered.after === 'none'
+      && s.focused.focused && !s.focused.hovered && s.focused.ground === g && s.focused.rail === '0'
+      && s.focused.ring[0] === 'solid' && s.focused.ring[1] === s.probe['--ui-focus-ring']
+      && s.errs.length === 0; });
   result.modes[mode] = r;
   await ctx.close();
 }

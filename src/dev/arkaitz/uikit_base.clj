@@ -669,7 +669,9 @@
   section a page belongs to, drawn as the current page is, and `nav.js` leaves it. An item
   with a nil path holds its content as it is: a `dropdown`, drawn as one of the links, or an
   `[:a]` of the host's own that carries htmx a `wb/link` refuses, painted as the kit's links
-  are. `:end` — the identity, a sign-out form — sits after the nav.
+  are. `:end` — the identity, a sign-out form — sits after the nav; a kit button in it, at
+  any depth, is drawn with the bar's thin block padding whatever its size, in the bar and in
+  its panel alike, so inline it stands no taller than the bar's compact row.
 
   Below `:expand`, `:sm`, `:md` (unless given) or `:lg`, the items and the end are a panel —
   the platform's popover, `:id` its one-word id — that a toggle named by the kit's word

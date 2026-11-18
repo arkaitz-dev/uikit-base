@@ -3,10 +3,10 @@
 ;; passed and that the files below are the bytes they were run against, so a change to any of
 ;; them reds until the checks are run again and this file regenerated.
 {:checked "2026-11-18"
- :files {"kit.css" "8d9de1f2881453d81cbc8042f9a50c6e0a2ccb80cff86e3458d091d63fa0624d"
+ :files {"kit.css" "6ae74b24918925529228695f63c4d050a389aa22f82bd7e1ef1747e8229adaeb"
          "ui-utilities.css" "a13d081a7dacf810293c7e730b1e6da87d36c89af1336f9bb5dda55fc6f981e6"
          "ui.js" "429e8cb222d498f3255aff49c896e5672750fa07b81ba6e22bef7b5b29a3cfeb"
-         "gallery-check.mjs" "f603019b8e87195319805233a9072065deda0cddf672117997e987583d6c82dd"}
+         "gallery-check.mjs" "db413b92b2eac2ca494dca237bb023007ce16b3db977020cc4a517cd2b937501"}
  :runs [
   {:engine "webkit" :version "26.4"
    :modes {
@@ -38,7 +38,7 @@
      "navbar: a host's plain link is painted as its links are, and a section mark looks like the page mark" true
      "navbar: sticky, its header stays at the top as the page scrolls, and a jump to a section lands below it" true
      "navbar: opened narrow, a resize that stays below its breakpoint leaves it open" true
-     "navbar: its toggle a compact button, centred in the bar" true
+     "navbar: its toggle a compact button, a target of 24px at least, clear of the bar's edges and centred in it" true
      "navbar: past its breakpoint it collapses to its toggle while its items do not fit, inline once they do, and stays one row" true
      "navbar: with a banner above its header and many links, the open panel starts at the bar and ends within the screen" true
      "navbar: its items growing and shrinking around the width they need raise no error" true
@@ -54,7 +54,10 @@
      "navbar: a collapse leaves alone a focus that was not in its row" true
      "navbar: swaps of the page leave one content observer on its bar" true
      "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true
-     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true}
+     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true
+     "navbar: wide, under forced colours, a hovered item is underlined and the current one keeps its rail" true
+     "navbar: wide, a kit button of the default size at its end keeps the bar to its row" true
+     "navbar: wide, the current item and a hovered or focused one lie on the hover ground, and only the current one shows a rail" true}
     "older-floor" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -83,7 +86,7 @@
      "navbar: a host's plain link is painted as its links are, and a section mark looks like the page mark" true
      "navbar: sticky, its header stays at the top as the page scrolls, and a jump to a section lands below it" true
      "navbar: opened narrow, a resize that stays below its breakpoint leaves it open" true
-     "navbar: its toggle a compact button, centred in the bar" true
+     "navbar: its toggle a compact button, a target of 24px at least, clear of the bar's edges and centred in it" true
      "navbar: past its breakpoint it collapses to its toggle while its items do not fit, inline once they do, and stays one row" true
      "navbar: with a banner above its header and many links, the open panel starts at the bar and ends within the screen" true
      "navbar: its items growing and shrinking around the width they need raise no error" true
@@ -99,7 +102,10 @@
      "navbar: a collapse leaves alone a focus that was not in its row" true
      "navbar: swaps of the page leave one content observer on its bar" true
      "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true
-     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true}}}
+     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true
+     "navbar: wide, under forced colours, a hovered item is underlined and the current one keeps its rail" true
+     "navbar: wide, a kit button of the default size at its end keeps the bar to its row" true
+     "navbar: wide, the current item and a hovered or focused one lie on the hover ground, and only the current one shows a rail" true}}}
   {:engine "chromium" :version "145.0.7632.6"
    :modes {
     "native" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
@@ -130,7 +136,7 @@
      "navbar: a host's plain link is painted as its links are, and a section mark looks like the page mark" true
      "navbar: sticky, its header stays at the top as the page scrolls, and a jump to a section lands below it" true
      "navbar: opened narrow, a resize that stays below its breakpoint leaves it open" true
-     "navbar: its toggle a compact button, centred in the bar" true
+     "navbar: its toggle a compact button, a target of 24px at least, clear of the bar's edges and centred in it" true
      "navbar: past its breakpoint it collapses to its toggle while its items do not fit, inline once they do, and stays one row" true
      "navbar: with a banner above its header and many links, the open panel starts at the bar and ends within the screen" true
      "navbar: its items growing and shrinking around the width they need raise no error" true
@@ -146,7 +152,10 @@
      "navbar: a collapse leaves alone a focus that was not in its row" true
      "navbar: swaps of the page leave one content observer on its bar" true
      "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true
-     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true}
+     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true
+     "navbar: wide, under forced colours, a hovered item is underlined and the current one keeps its rail" true
+     "navbar: wide, a kit button of the default size at its end keeps the bar to its row" true
+     "navbar: wide, the current item and a hovered or focused one lie on the hover ground, and only the current one shows a rail" true}
     "older-floor" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -175,7 +184,7 @@
      "navbar: a host's plain link is painted as its links are, and a section mark looks like the page mark" true
      "navbar: sticky, its header stays at the top as the page scrolls, and a jump to a section lands below it" true
      "navbar: opened narrow, a resize that stays below its breakpoint leaves it open" true
-     "navbar: its toggle a compact button, centred in the bar" true
+     "navbar: its toggle a compact button, a target of 24px at least, clear of the bar's edges and centred in it" true
      "navbar: past its breakpoint it collapses to its toggle while its items do not fit, inline once they do, and stays one row" true
      "navbar: with a banner above its header and many links, the open panel starts at the bar and ends within the screen" true
      "navbar: its items growing and shrinking around the width they need raise no error" true
@@ -191,7 +200,10 @@
      "navbar: a collapse leaves alone a focus that was not in its row" true
      "navbar: swaps of the page leave one content observer on its bar" true
      "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true
-     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true}
+     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true
+     "navbar: wide, under forced colours, a hovered item is underlined and the current one keeps its rail" true
+     "navbar: wide, a kit button of the default size at its end keeps the bar to its row" true
+     "navbar: wide, the current item and a hovered or focused one lie on the hover ground, and only the current one shows a rail" true}
     "anchor-without-scope" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -220,7 +232,7 @@
      "navbar: a host's plain link is painted as its links are, and a section mark looks like the page mark" true
      "navbar: sticky, its header stays at the top as the page scrolls, and a jump to a section lands below it" true
      "navbar: opened narrow, a resize that stays below its breakpoint leaves it open" true
-     "navbar: its toggle a compact button, centred in the bar" true
+     "navbar: its toggle a compact button, a target of 24px at least, clear of the bar's edges and centred in it" true
      "navbar: past its breakpoint it collapses to its toggle while its items do not fit, inline once they do, and stays one row" true
      "navbar: with a banner above its header and many links, the open panel starts at the bar and ends within the screen" true
      "navbar: its items growing and shrinking around the width they need raise no error" true
@@ -236,7 +248,10 @@
      "navbar: a collapse leaves alone a focus that was not in its row" true
      "navbar: swaps of the page leave one content observer on its bar" true
      "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true
-     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true}}}]
+     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true
+     "navbar: wide, under forced colours, a hovered item is underlined and the current one keeps its rail" true
+     "navbar: wide, a kit button of the default size at its end keeps the bar to its row" true
+     "navbar: wide, the current item and a hovered or focused one lie on the hover ground, and only the current one shows a rail" true}}}]
  :not-verified ["a dialog's closedby shim in a Chromium without it (131-133): Chromium's own closedby cannot be switched off; the shim's Esc decision is read from defaultPrevented, and WebKit 26.4, which lacks closedby, runs the shim for real"
                 "Firefox: no engine of it on this machine"
                 "a real Safari 18.x: its gaps are forced in WebKit 26.4 and Chromium, never run"]
