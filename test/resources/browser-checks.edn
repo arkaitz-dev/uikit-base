@@ -3,10 +3,10 @@
 ;; passed and that the files below are the bytes they were run against, so a change to any of
 ;; them reds until the checks are run again and this file regenerated.
 {:checked "2026-11-18"
- :files {"kit.css" "a042a7730221847a15d818a406e413564b43d87b46a4ef37bc42e31d07a0e1a8"
+ :files {"kit.css" "8d9de1f2881453d81cbc8042f9a50c6e0a2ccb80cff86e3458d091d63fa0624d"
          "ui-utilities.css" "a13d081a7dacf810293c7e730b1e6da87d36c89af1336f9bb5dda55fc6f981e6"
          "ui.js" "429e8cb222d498f3255aff49c896e5672750fa07b81ba6e22bef7b5b29a3cfeb"
-         "gallery-check.mjs" "f43400d8e4388489f9f18b9e2626b254a54403d416a25583c1a8bdaac2a7d0ca"}
+         "gallery-check.mjs" "f603019b8e87195319805233a9072065deda0cddf672117997e987583d6c82dd"}
  :runs [
   {:engine "webkit" :version "26.4"
    :modes {
@@ -53,7 +53,8 @@
      "navbar: without a brand it still collapses when its items do not fit and expands when they do, with no error" true
      "navbar: a collapse leaves alone a focus that was not in its row" true
      "navbar: swaps of the page leave one content observer on its bar" true
-     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true}
+     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true
+     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true}
     "older-floor" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -97,7 +98,8 @@
      "navbar: without a brand it still collapses when its items do not fit and expands when they do, with no error" true
      "navbar: a collapse leaves alone a focus that was not in its row" true
      "navbar: swaps of the page leave one content observer on its bar" true
-     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true}}}
+     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true
+     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true}}}
   {:engine "chromium" :version "145.0.7632.6"
    :modes {
     "native" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
@@ -143,7 +145,8 @@
      "navbar: without a brand it still collapses when its items do not fit and expands when they do, with no error" true
      "navbar: a collapse leaves alone a focus that was not in its row" true
      "navbar: swaps of the page leave one content observer on its bar" true
-     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true}
+     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true
+     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true}
     "older-floor" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -187,7 +190,8 @@
      "navbar: without a brand it still collapses when its items do not fit and expands when they do, with no error" true
      "navbar: a collapse leaves alone a focus that was not in its row" true
      "navbar: swaps of the page leave one content observer on its bar" true
-     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true}
+     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true
+     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true}
     "anchor-without-scope" {"dialog: opens by keyboard, Esc closes, focus returns to its button" true
      "dialog: centred in the viewport, inside a ui-stack as a page puts it" true
      "dialog: a press on the backdrop closes, a drag out of it does not, the x closes" true
@@ -231,7 +235,8 @@
      "navbar: without a brand it still collapses when its items do not fit and expands when they do, with no error" true
      "navbar: a collapse leaves alone a focus that was not in its row" true
      "navbar: swaps of the page leave one content observer on its bar" true
-     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true}}}]
+     "navbar: a page loaded at a width where its items do not fit paints no overflowing frame once ui.js runs" true
+     "navbar: wide, the current item's rail lies on the bar's bottom edge, and the caret of its dropdown stands apart from its label" true}}}]
  :not-verified ["a dialog's closedby shim in a Chromium without it (131-133): Chromium's own closedby cannot be switched off; the shim's Esc decision is read from defaultPrevented, and WebKit 26.4, which lacks closedby, runs the shim for real"
                 "Firefox: no engine of it on this machine"
                 "a real Safari 18.x: its gaps are forced in WebKit 26.4 and Chromium, never run"]

@@ -313,10 +313,12 @@ for (const [mode, init] of Object.entries(modes)) {
   }, s => s.brand === s.link && s.raw === s.link && s.more === s.link && s.end === s.link && s.endKid === s.link);
   await check('navbar: a host\'s plain link is painted as its links are, and a section mark looks like the page mark', async () => {
     const [q, errs] = await pageAt(1024, '/');
+    // The inks transition; with motion reduced the kit has none, so what is read is the resting look.
+    await q.emulateMedia({ reducedMotion: 'reduce' });
     await q.keyboard.press('Shift');
     const s = await q.evaluate(() => {
       const link = document.querySelector('.ui-navbar__link[href="/second"]'), raw = document.getElementById('g-nav-raw');
-      const look = (el) => { const cs = getComputedStyle(el); return { color: cs.color, weight: cs.fontWeight, line: cs.textDecorationLine }; };
+      const look = (el) => { const cs = getComputedStyle(el), rail = getComputedStyle(el, '::after'); return { color: cs.color, weight: cs.fontWeight, rail: rail.opacity, railColor: rail.borderBottomColor }; };
       const ring = (el) => { el.focus(); const cs = getComputedStyle(el); const o = { style: cs.outlineStyle, color: cs.outlineColor, width: cs.outlineWidth, fv: el.matches(':focus-visible') }; el.blur(); return o; };
       const page = look(document.querySelector('.ui-navbar__link[aria-current="page"]'));
       const plain = look(link), rawLook = look(raw), linkRing = ring(link), rawRing = ring(raw);
@@ -327,7 +329,7 @@ for (const [mode, init] of Object.entries(modes)) {
     await q.close(); return { ...s, errs };
   }, s => s.rawLook.color === s.plain.color && s.rawLook.weight === s.plain.weight
         && s.linkRing.fv && s.rawRing.fv && s.linkRing.style !== 'none' && JSON.stringify(s.rawRing) === JSON.stringify(s.linkRing)
-        && s.page.weight === '600' && s.page.line.includes('underline') && s.plain.weight !== '600'
+        && s.page.weight === '600' && s.page.rail === '1' && s.plain.weight !== '600' && s.plain.rail === '0' && s.page.color !== s.plain.color
         && JSON.stringify(s.section) === JSON.stringify(s.page) && JSON.stringify(s.location) === JSON.stringify(s.page));
   await check('navbar: sticky, its header stays at the top as the page scrolls, and a jump to a section lands below it', async () => {
     const [q, errs] = await pageAt(1024, '/');
@@ -354,15 +356,19 @@ for (const [mode, init] of Object.entries(modes)) {
     await q.close(); return { ...s, errs };
   }, s => s.h < s.bar - 4 && Math.abs(s.above - s.below) <= 1.5);
   await check('navbar: past its breakpoint it collapses to its toggle while its items do not fit, inline once they do, and stays one row', async () => {
-    const [q, errs] = await pageAt(700, '/second');
+    // /second's need is wherever its items stop fitting; it is found, not assumed: the narrowest
+    // width from its sm breakpoint up at which the bar is inline, swept upward 2px at a time.
+    const [q, errs] = await pageAt(640, '/second');
     const state = () => q.evaluate(() => { const bar = document.querySelector('.ui-navbar'), t = document.querySelector('.ui-navbar__toggle'), l = document.querySelector('.ui-navbar__link').getBoundingClientRect(), b = bar.getBoundingClientRect();
       return { collapsed: bar.classList.contains('ui-navbar--collapsed'), toggle: getComputedStyle(t).display !== 'none', linkInBar: l.height > 0 && l.top >= b.top && l.bottom <= b.bottom, h: b.height }; });
     const at = async (w) => { await q.setViewportSize({ width: w, height: 740 }); await q.waitForTimeout(100); await frames(q); return state(); };
-    const s700 = await state(), s690 = await at(690), s600 = await at(600), s320 = await at(320), back = await at(700), wide = await at(1024);
-    await q.close(); return { s700, s690, s600, s320, back, wide, errs };
-  }, s => !s.s700.collapsed && !s.s700.toggle && s.s700.linkInBar && s.s690.collapsed && s.s690.toggle && !s.s690.linkInBar
+    let need = null; for (let w = 640; w <= 768 && need === null; w += 2) if ((await at(w)).linkInBar) need = w;
+    if (need === null) { await q.close(); return { need, errs }; }
+    const fits = await state(), under = await at(need - 6), s600 = await at(600), s320 = await at(320), back = await at(need), wide = await at(1024);
+    await q.close(); return { need, fits, under, s600, s320, back, wide, errs };
+  }, s => s.need > 640 && !s.fits.collapsed && !s.fits.toggle && s.under.collapsed && s.under.toggle && !s.under.linkInBar
         && s.s600.toggle && !s.s600.linkInBar && s.s320.toggle && !s.back.collapsed && !s.back.toggle && s.back.linkInBar && s.wide.linkInBar
-        && [s.s690, s.s600, s.s320, s.back, s.wide].every(x => Math.abs(x.h - s.s700.h) <= 0.5) && s.errs.length === 0);
+        && [s.under, s.s600, s.s320, s.back, s.wide].every(x => Math.abs(x.h - s.fits.h) <= 0.5) && s.errs.length === 0);
   await check('navbar: with a banner above its header and many links, the open panel starts at the bar and ends within the screen', async () => {
     const q = await ctx.newPage(); await q.setViewportSize({ width: 320, height: 400 }); await q.goto(url);
     await q.evaluate(() => { const ban = document.createElement('div'); ban.style.blockSize = '120px'; document.body.prepend(ban);
@@ -490,6 +496,17 @@ for (const [mode, init] of Object.entries(modes)) {
     }
     return loads;
   }, s => s.every(l => l.frames > 40 && l.overAfterUi === 0 && l.collapsed && l.err === 0));
+  await check('navbar: wide, the current item\'s rail lies on the bar\'s bottom edge, and the caret of its dropdown stands apart from its label', async () => {
+    const [q, errs] = await pageAt(1024, '/'); await frames(q);
+    const s = await q.evaluate(() => {
+      const a = document.querySelector('.ui-navbar__link[aria-current="page"]'), cs = getComputedStyle(a, '::after');
+      const more = document.querySelector('[popovertarget="g-nav-more"]'), range = document.createRange(); range.selectNodeContents(more.firstChild);
+      const label = range.getBoundingClientRect().right, caret = more.getBoundingClientRect().right - parseFloat(getComputedStyle(more).paddingRight);
+      return { railBottom: a.getBoundingClientRect().bottom - parseFloat(cs.insetBlockEnd), barBottom: document.querySelector('.ui-navbar').getBoundingClientRect().bottom,
+        railShown: cs.opacity, labelRight: label, moreRight: caret };
+    });
+    await q.close(); return { ...s, errs };
+  }, s => Math.abs(s.railBottom - s.barBottom) <= 0.5 && s.railShown === '1' && s.moreRight - s.labelRight >= 8 && s.errs.length === 0);
   result.modes[mode] = r;
   await ctx.close();
 }
