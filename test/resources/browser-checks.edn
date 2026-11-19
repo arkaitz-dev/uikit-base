@@ -7,7 +7,7 @@
          "ui-utilities.css" "a13d081a7dacf810293c7e730b1e6da87d36c89af1336f9bb5dda55fc6f981e6"
          "ui.js" "429e8cb222d498f3255aff49c896e5672750fa07b81ba6e22bef7b5b29a3cfeb"
          "gallery-check.mjs" "4c03fbd635c7be7d21b0462a32836ed7de20def76fdd544abc08e0cada221eed"
-         "wb.css" "283bec5ce8baa2d005fdf0a3250895d6892a9373e63d6796eb89007d725a925e"}
+         "wb.css" "551519f3b5b3de5eb2cdf9487e111dfd3f1bdf7d3d22337ed82b2fd9ad090595"}
  :runs [
   {:engine "webkit" :version "26.4"
    :modes {
