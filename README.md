@@ -15,7 +15,7 @@ overrides the kit without a fight.
 dev.arkaitz/uikit-base {:mvn/version "0.6.0"}
 ```
 
-It needs web-base 0.25.0 or later.
+It needs web-base 0.25.0 or later, and 0.27.0 or later from uikit-base 0.7.0.
 
 ## In a host
 

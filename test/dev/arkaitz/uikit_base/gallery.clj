@@ -145,11 +145,43 @@
                  :header (header request :sm [[nil [:a {:href "#more"} "Of it"]]])
                  :content [:div.ui-stack {:id "second"} [:h2 "Second page"] [:p "A page to swap to."] (ui/link-button "/" "Back to the gallery") [:p {:id "more"} "More of it."]]})))
 
+(def ^:private width-css
+  "What the header-width pages add: `tall` styles the root's scrollbar 15px wide, which a
+  Chromium launched without --hide-scrollbars then lays out, so the body's width and 100vw
+  differ; `themed` is a host's own gap and measure."
+  {"tall"   "::-webkit-scrollbar { width: 15px; background: #888; }\n"
+   "themed" ":root { --wb-gap: 24px; --wb-measure: 40rem; }\n"})
+
+(defn- width-sheet [variant]
+  {:status 200 :headers {"Content-Type" "text/css; charset=utf-8"} :body (width-css variant)})
+
+(defn- width-page
+  "A page whose header stands at `width`, so the browser checks see the bar follow the
+  shell's `:header-width`: across the window, and under `:aligned` with its content over
+  `<main>`'s text. `variant`, a key of `width-css`, links that sheet; `tall` overflows."
+  ([width] (width-page width nil))
+  ([width variant]
+   (fn [request]
+     (response/ok
+       (shell/page {:request request :title (str "uikit-base gallery: header " (name width))
+                    :head (when variant [:link {:rel "stylesheet" :href (str "/width-" variant ".css")}])
+                    :header (header request :md nil) :header-width width
+                    :content (into [:div.ui-stack [:p {:id "width-text"} "Text under the bar."]]
+                                   (when (= variant "tall") (repeat 200 [:p "More text."])))})))))
+
 (defn handler
   "The gallery's handler: the kit as a plugin, Spanish and English, the template's CSP."
   []
   (wb/handler {:routes  [["/" {:get page}]
                          ["/second" {:get second-page}]
+                         ["/aligned" {:get (width-page :aligned)}]
+                         ["/aligned/tall" {:get (width-page :aligned "tall")}]
+                         ["/aligned/themed" {:get (width-page :aligned "themed")}]
+                         ["/measure" {:get (width-page :measure)}]
+                         ["/measure/tall" {:get (width-page :measure "tall")}]
+                         ["/measure/themed" {:get (width-page :measure "themed")}]
+                         ["/width-tall.css" {:get (fn [_] (width-sheet "tall"))}]
+                         ["/width-themed.css" {:get (fn [_] (width-sheet "themed"))}]
                          ["/do" {:post (fn [_] (response/see-other "/"))}]]
                :session {:key (byte-array 16 (byte 7))}
                :plugins [(web/plugin)]

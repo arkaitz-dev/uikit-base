@@ -1,7 +1,8 @@
 (ns dev.arkaitz.uikit-base.browser-checks-test
   "What a browser saw of the kit, held to the bytes it saw. test/browser/gallery-check.mjs runs
   the gallery in real engines and test/resources/browser-checks.edn records each check; this
-  holds that every recorded check passed, and that the stylesheets, the script and the checks
+  holds that every recorded check passed, and that the stylesheets (web-base's wb.css too, as
+  the classpath brings it: the gallery's header is laid out by it), the script and the checks
   themselves are still the bytes they were run against — a change to any reds here until the
   checks are run again, since no JVM test can see what they see."
   (:require [clojure.edn :as edn]
@@ -12,14 +13,20 @@
 
 (def ^:private record (edn/read-string (slurp (io/resource "browser-checks.edn"))))
 
+(def ^:private wb-css
+  "web-base's stylesheet as the gallery serves it: from the jar the classpath names."
+  "dev/arkaitz/web_base/public/wb.css")
+
 (def ^:private files
   {"kit.css"           "resources/dev/arkaitz/uikit_base/public/kit.css"
    "ui-utilities.css"  "resources/dev/arkaitz/uikit_base/public/ui-utilities.css"
    "ui.js"             "resources/dev/arkaitz/uikit_base/public/ui.js"
-   "gallery-check.mjs" "test/browser/gallery-check.mjs"})
+   "gallery-check.mjs" "test/browser/gallery-check.mjs"
+   "wb.css"            wb-css})
 
 (defn- sha256 [path]
-  (let [d (.digest (MessageDigest/getInstance "SHA-256") (.readAllBytes (io/input-stream (io/file path))))]
+  (let [src (if (= path wb-css) (io/resource path) (io/file path))
+        d   (.digest (MessageDigest/getInstance "SHA-256") (.readAllBytes (io/input-stream src)))]
     (apply str (map #(format "%02x" (bit-and % 0xff)) d))))
 
 (deftest the-browser-checks-were-run-against-these-bytes
@@ -43,8 +50,10 @@
   ;; never run under its new name, would leave nothing to fail. Every name the script gives
   ;; check(…), and the two it writes itself, must be recorded in every engine and mode.
   (let [src      (slurp (io/file (files "gallery-check.mjs")))
-        declared (set (map #(str/replace (second %) "\\'" "'") (re-seq #"(?:check\(|r\[)'((?:[^'\\]|\\.)*)'" src)))]
+        names    (map #(str/replace (second %) "\\'" "'") (re-seq #"(?:check\(|r\[)'((?:[^'\\]|\\.)*)'" src))
+        declared (set names)]
     (is (< 40 (count declared)) (str "witness: the script's checks were read, " (count declared)))
+    (is (= (count names) (count declared)) "no two checks share a name, which would record one over the other")
     (is (= (count (re-seq #"\bcheck\s*\(" src)) (count (re-seq #"\bcheck\('" src)))
         "every check( names its check in single quotes, the only spelling read here")
     (doseq [{:keys [engine modes]} (:runs record)]

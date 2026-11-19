@@ -2,11 +2,12 @@
 ;; tree: the kit's behaviour no JVM test can see. browser_checks_test holds that every check
 ;; passed and that the files below are the bytes they were run against, so a change to any of
 ;; them reds until the checks are run again and this file regenerated.
-{:checked "2026-11-18"
- :files {"kit.css" "6ae74b24918925529228695f63c4d050a389aa22f82bd7e1ef1747e8229adaeb"
+{:checked "2026-11-19"
+ :files {"kit.css" "815d271f015c4de55267a9d3c1212e9a1b825521ad0938d1d44429703c52f2d6"
          "ui-utilities.css" "a13d081a7dacf810293c7e730b1e6da87d36c89af1336f9bb5dda55fc6f981e6"
          "ui.js" "429e8cb222d498f3255aff49c896e5672750fa07b81ba6e22bef7b5b29a3cfeb"
-         "gallery-check.mjs" "db413b92b2eac2ca494dca237bb023007ce16b3db977020cc4a517cd2b937501"}
+         "gallery-check.mjs" "4c03fbd635c7be7d21b0462a32836ed7de20def76fdd544abc08e0cada221eed"
+         "wb.css" "283bec5ce8baa2d005fdf0a3250895d6892a9373e63d6796eb89007d725a925e"}
  :runs [
   {:engine "webkit" :version "26.4"
    :modes {
@@ -36,6 +37,10 @@
      "navbar: on a short screen with many links, the open panel ends at the screen's bottom and its last link is reached by scrolling it" true
      "navbar: narrow, its links, its dropdown's button, its end and its brand start their text at one inset" true
      "navbar: a host's plain link is painted as its links are, and a section mark looks like the page mark" true
+     "navbar: under :full it spans the window, under :aligned and :measure the column, and under :aligned its content stands over main's text" true
+     "navbar: under :aligned its ground and its line reach the window's edges and nowhere else, and under :measure they keep to the column" true
+     "navbar: under :aligned its brand, its links and its end start their text where main's does, and under :measure where its brand does — narrow, collapsed wide, under a host's own gap and measure, and (Chromium) beside a scrollbar — its panel inset alike on both sides" true
+     "navbar: under :aligned, items that outgrow the column by a little collapse it" true
      "navbar: sticky, its header stays at the top as the page scrolls, and a jump to a section lands below it" true
      "navbar: opened narrow, a resize that stays below its breakpoint leaves it open" true
      "navbar: its toggle a compact button, a target of 24px at least, clear of the bar's edges and centred in it" true
@@ -84,6 +89,10 @@
      "navbar: on a short screen with many links, the open panel ends at the screen's bottom and its last link is reached by scrolling it" true
      "navbar: narrow, its links, its dropdown's button, its end and its brand start their text at one inset" true
      "navbar: a host's plain link is painted as its links are, and a section mark looks like the page mark" true
+     "navbar: under :full it spans the window, under :aligned and :measure the column, and under :aligned its content stands over main's text" true
+     "navbar: under :aligned its ground and its line reach the window's edges and nowhere else, and under :measure they keep to the column" true
+     "navbar: under :aligned its brand, its links and its end start their text where main's does, and under :measure where its brand does — narrow, collapsed wide, under a host's own gap and measure, and (Chromium) beside a scrollbar — its panel inset alike on both sides" true
+     "navbar: under :aligned, items that outgrow the column by a little collapse it" true
      "navbar: sticky, its header stays at the top as the page scrolls, and a jump to a section lands below it" true
      "navbar: opened narrow, a resize that stays below its breakpoint leaves it open" true
      "navbar: its toggle a compact button, a target of 24px at least, clear of the bar's edges and centred in it" true
@@ -134,6 +143,10 @@
      "navbar: on a short screen with many links, the open panel ends at the screen's bottom and its last link is reached by scrolling it" true
      "navbar: narrow, its links, its dropdown's button, its end and its brand start their text at one inset" true
      "navbar: a host's plain link is painted as its links are, and a section mark looks like the page mark" true
+     "navbar: under :full it spans the window, under :aligned and :measure the column, and under :aligned its content stands over main's text" true
+     "navbar: under :aligned its ground and its line reach the window's edges and nowhere else, and under :measure they keep to the column" true
+     "navbar: under :aligned its brand, its links and its end start their text where main's does, and under :measure where its brand does — narrow, collapsed wide, under a host's own gap and measure, and (Chromium) beside a scrollbar — its panel inset alike on both sides" true
+     "navbar: under :aligned, items that outgrow the column by a little collapse it" true
      "navbar: sticky, its header stays at the top as the page scrolls, and a jump to a section lands below it" true
      "navbar: opened narrow, a resize that stays below its breakpoint leaves it open" true
      "navbar: its toggle a compact button, a target of 24px at least, clear of the bar's edges and centred in it" true
@@ -182,6 +195,10 @@
      "navbar: on a short screen with many links, the open panel ends at the screen's bottom and its last link is reached by scrolling it" true
      "navbar: narrow, its links, its dropdown's button, its end and its brand start their text at one inset" true
      "navbar: a host's plain link is painted as its links are, and a section mark looks like the page mark" true
+     "navbar: under :full it spans the window, under :aligned and :measure the column, and under :aligned its content stands over main's text" true
+     "navbar: under :aligned its ground and its line reach the window's edges and nowhere else, and under :measure they keep to the column" true
+     "navbar: under :aligned its brand, its links and its end start their text where main's does, and under :measure where its brand does — narrow, collapsed wide, under a host's own gap and measure, and (Chromium) beside a scrollbar — its panel inset alike on both sides" true
+     "navbar: under :aligned, items that outgrow the column by a little collapse it" true
      "navbar: sticky, its header stays at the top as the page scrolls, and a jump to a section lands below it" true
      "navbar: opened narrow, a resize that stays below its breakpoint leaves it open" true
      "navbar: its toggle a compact button, a target of 24px at least, clear of the bar's edges and centred in it" true
@@ -230,6 +247,10 @@
      "navbar: on a short screen with many links, the open panel ends at the screen's bottom and its last link is reached by scrolling it" true
      "navbar: narrow, its links, its dropdown's button, its end and its brand start their text at one inset" true
      "navbar: a host's plain link is painted as its links are, and a section mark looks like the page mark" true
+     "navbar: under :full it spans the window, under :aligned and :measure the column, and under :aligned its content stands over main's text" true
+     "navbar: under :aligned its ground and its line reach the window's edges and nowhere else, and under :measure they keep to the column" true
+     "navbar: under :aligned its brand, its links and its end start their text where main's does, and under :measure where its brand does — narrow, collapsed wide, under a host's own gap and measure, and (Chromium) beside a scrollbar — its panel inset alike on both sides" true
+     "navbar: under :aligned, items that outgrow the column by a little collapse it" true
      "navbar: sticky, its header stays at the top as the page scrolls, and a jump to a section lands below it" true
      "navbar: opened narrow, a resize that stays below its breakpoint leaves it open" true
      "navbar: its toggle a compact button, a target of 24px at least, clear of the bar's edges and centred in it" true

@@ -552,8 +552,26 @@
     }
     /* The shell pads its header with --wb-gap from wb.css, which is unlayered and so cannot be
      * taken back from here: the bar bleeds over that padding instead, edge to edge on a phone,
-     * where its panel is as wide as the page. */
+     * where its panel is as wide as the page. Under :aligned (web-base 0.27.0) the header's
+     * inline padding puts its content over <main>'s text, so the bar stands on the column with
+     * the gap as its padding, its panel's text where its brand is, and paints its ground and
+     * its line out to the window's edges: an image's outset, which neither lays out nor
+     * scrolls, and which paints over the bar's own background and bottom border, so a host that
+     * restyles those under :aligned restyles border-image too. Under :measure the bar stands on
+     * the column, and its panel, which spans the viewport, starts its text where the brand does. */
     .wb-header > .ui-navbar { margin-block: calc(-1 * var(--wb-gap)); margin-inline: calc(-1 * var(--wb-gap)); }
+    .wb-header--aligned > .ui-navbar {
+      padding-inline: var(--wb-gap);
+      border-image: linear-gradient(to top, var(--ui-border) 1px, var(--ui-surface) 1px) fill 0 / 0 / 0 100vmax;
+    }
+    /* The panel spans the viewport, its containing block, so its inset is the header's own
+     * formula, or under :measure the column's edge plus the bar's own padding. */
+    .wb-header--aligned > .ui-navbar .ui-navbar__panel {
+      padding-inline: calc(max(var(--wb-gap), calc((100% - var(--wb-measure)) / 2 + var(--wb-gap))) - var(--ui-spacing-sm));
+    }
+    .wb-header--measure > .ui-navbar .ui-navbar__panel {
+      padding-inline: calc(max(0px, calc((100% - var(--wb-measure)) / 2)) + var(--ui-spacing-md) - var(--ui-spacing-sm));
+    }
     .ui-navbar--sticky { position: sticky; inset-block-start: 0; z-index: var(--ui-z-index-sticky); }
     /* The shell's header holds the bar and nothing else, so a bar sticky inside it has nowhere
      * to travel: the header sticks for it. wb.css sets none of these, so its unlayered rule does
@@ -649,6 +667,8 @@
      * is underlined there instead, so it is never left with no mark at all. */
     @media (forced-colors: active) {
       .ui-navbar .ui-navbar__items > li > a:hover, .ui-navbar .ui-navbar__items > li > .ui-dropdown > .ui-btn:hover { text-decoration: underline; }
+      /* An image keeps its colours where the system's replace the bar's: the column alone. */
+      .wb-header--aligned > .ui-navbar { border-image: none; }
     }
     @media (min-width: 640px) {
       .ui-navbar--expand-sm:not(.ui-navbar--collapsed) .ui-navbar__toggle { display: none; }

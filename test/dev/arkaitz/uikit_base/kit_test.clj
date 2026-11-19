@@ -1343,6 +1343,18 @@
           (str "under forced colours a hovered link or dropdown toggle is underlined, and a resting one is not, "
                (if bp (str "inline, expand " bp) "in the panel") " at " (:width env) " " (:scheme env))))))
 
+(deftest an-aligned-bars-ground-reaches-the-window-in-its-own-colours-and-not-under-forced-ones
+  ;; Under :aligned the bar paints its ground and line past its box as an image (that it
+  ;; reaches the window is the browser check's to see). Forced colours replace the bar's
+  ;; colours but not an image's, which would ring the bar in the palette's: there, none.
+  (let [bar ".wb-header--aligned > .ui-navbar"]
+    (doseq [[env rules] @env-rules
+            :let [forced (in-env (leaf-rules) (assoc env :forced :active))
+                  where  (str (:width env) " " (:scheme env) " " (:motion env))]]
+      (is (re-find #"var\(--ui-border\) 1px, var\(--ui-surface\) 1px" (str (cascaded rules bar ["border-image"])))
+          (str "the ground is the bar's surface and its line the bar's border, " where))
+      (is (= "none" (cascaded forced bar ["border-image"])) (str "under forced colours the bar paints nothing past itself, " where)))))
+
 (deftest a-dropdowns-caret-is-a-chevron-that-turns-over-while-its-menu-is-open
   (doseq [[env rules] @env-rules :let [c ".ui-dropdown > .ui-btn::before"]]
     (is (= ["1" "45deg" "var(--ui-border-width-thick) solid" "var(--ui-border-width-thick) solid"]

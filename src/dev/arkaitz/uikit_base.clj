@@ -679,7 +679,11 @@
   chosen in it, by the plugin's `/ui/ui.js`; it reaches the bottom of the screen at most and
   scrolls inside itself past that. From that width up the toggle is gone and the panel is
   drawn inline. `:sticky? true` keeps the bar at the top as the page scrolls, and a fragment
-  or a focus scrolled to stops below it.
+  or a focus scrolled to stops below it. In the shell's header it follows its `:header-width`:
+  across the window under `:full`, on the column under `:measure`, and under `:aligned` on
+  the column with its content, its panel's too, over `<main>`'s text and its ground painted
+  out to the window's edges — as `border-image`, which a host restyling the bar's background
+  or bottom border there restyles too.
   `:attrs` go on the bar. No items, two with one path, an item with nothing in it, or an
   `:expand` that is not one of the three, is refused."
   [request {:keys [id brand label items current end expand sticky? attrs]}]

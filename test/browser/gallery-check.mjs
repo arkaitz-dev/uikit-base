@@ -50,6 +50,12 @@ const modes = { native: '', 'older-floor': noCommand + noAnchor, ...(engine === 
 const type = { webkit, chromium }[engine];
 if (!type) { console.error('engine: webkit or chromium'); process.exit(2); }
 const browser = await type.launch(process.env.CHROMIUM && engine === 'chromium' ? { executablePath: process.env.CHROMIUM } : {});
+// Headless Chromium hides scrollbars; one launched without that flag lays out a styled 15px one
+// every time, so a page beside a scrollbar is measured there. Headless WebKit lays one out on
+// the gallery's tall page in some runs and not others (measured: 1455 and 1470 for the same
+// page), so it measures none; web-base's own check holds its side of it in WebKit.
+const scrolling = engine === 'chromium'
+  ? await type.launch({ ignoreDefaultArgs: ['--hide-scrollbars'], ...(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {}) }) : null;
 const result = { engine, version: browser.version(), modes: {} };
 
 for (const [mode, init] of Object.entries(modes)) {
@@ -331,6 +337,108 @@ for (const [mode, init] of Object.entries(modes)) {
         && s.linkRing.fv && s.rawRing.fv && s.linkRing.style !== 'none' && JSON.stringify(s.rawRing) === JSON.stringify(s.linkRing)
         && s.page.weight === '600' && s.page.rail === '1' && s.plain.weight !== '600' && s.plain.rail === '0' && s.page.color !== s.plain.color
         && JSON.stringify(s.section) === JSON.stringify(s.page) && JSON.stringify(s.location) === JSON.stringify(s.page));
+  // The shell's :header-width (web-base 0.27.0). The column is 48rem = 768px and --wb-gap 16px,
+  // so at 1470 it is 351..1119 and its text 367..1103; at 360 every inset is the gap.
+  const widthAt = async (width, path) => {
+    const [q, errs] = await pageAt(width, path);
+    const s = await q.evaluate(() => {
+      const R = (sel) => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return [r.left, r.right]; };
+      return { cw: document.documentElement.clientWidth, sw: document.documentElement.scrollWidth, header: R('header.wb-header'), bar: R('.ui-navbar'),
+        brand: R('.ui-navbar__brand'), end: R('.ui-navbar__end'), text: R('#width-text') };
+    });
+    await q.close(); return { ...s, errs };
+  };
+  const eq = (a, b) => a !== null && a[0] === b[0] && a[1] === b[1];
+  await check('navbar: under :full it spans the window, under :aligned and :measure the column, and under :aligned its content stands over main\'s text', async () =>
+    ({ full: await widthAt(1470, '/'), aligned: await widthAt(1470, '/aligned'), measure: await widthAt(1470, '/measure'), narrow: await widthAt(360, '/aligned') }),
+  ({ full, aligned, measure, narrow }) => [full, aligned, measure].every(s => s.cw === 1470 && s.errs.length === 0) && narrow.cw === 360 && narrow.errs.length === 0
+    && [aligned, narrow].every(s => s.sw === s.cw)
+    && eq(full.header, [0, 1470]) && eq(full.bar, [0, 1470])
+    && eq(aligned.header, [0, 1470]) && eq(aligned.bar, [351, 1119]) && eq(aligned.text, [367, 1103]) && aligned.brand[0] === 367 && aligned.end[1] === 1103
+    && eq(measure.header, [351, 1119]) && eq(measure.bar, [351, 1119])
+    && eq(narrow.bar, [0, 360]) && eq(narrow.text, [16, 344]) && narrow.brand[0] === 16);
+  await check('navbar: under :aligned its ground and its line reach the window\'s edges and nowhere else, and under :measure they keep to the column', async () => {
+    // A page of its own: Playwright's screenshot injects a <style> in WebKit, which the CSP refuses.
+    const shot = async (path) => {
+      const q = await ctx.newPage(); await q.setViewportSize({ width: 1470, height: 740 }); await q.goto(new URL(path, url).href);
+      const s = await q.evaluate(() => {
+        const probe = (v) => { const d = document.createElement('div'); d.style.setProperty('background-color', `var(${v})`); document.body.append(d);
+          const c = getComputedStyle(d).backgroundColor.match(/\d+/g).slice(0, 3).join(','); d.remove(); return c; };
+        const r = document.querySelector('.ui-navbar').getBoundingClientRect();
+        return { surface: probe('--ui-surface'), border: probe('--ui-border'), page: probe('--ui-background'), mid: Math.floor((r.top + r.bottom) / 2), line: Math.ceil(r.bottom) - 1 };
+      });
+      const img = pixels(await q.screenshot({ caret: 'initial' })); await q.close();
+      // Device pixels: the context's scale is 1, so a CSS pixel is one. x 2, 200, 1300 and 1467
+      // are outside the column (351..1119), 360 inside it and before the brand's ink (367 or
+      // 369.4); below the line, beside main's text.
+      return { ...s, ground: [2, 200, 360, 1300, 1467].map(x => img.at(x, s.mid)), rule: [2, 200, 360, 1300, 1467].map(x => img.at(x, s.line)),
+        below: [2, 200, 1467].map(x => img.at(x, s.line + 3)) };
+    };
+    return { aligned: await shot('/aligned'), measure: await shot('/measure') };
+  }, ({ aligned: a, measure: m }) => a.surface !== a.border && a.surface !== a.page
+    && a.ground.every(c => c === a.surface) && a.rule.every(c => c === a.border) && a.below.every(c => c === a.page)
+    && [0, 1, 3, 4].every(i => m.ground[i] === m.page && m.rule[i] === m.page) && m.ground[2] === m.surface && m.rule[2] === m.border);
+  await check('navbar: under :aligned its brand, its links and its end start their text where main\'s does, and under :measure where its brand does — narrow, collapsed wide, under a host\'s own gap and measure, and (Chromium) beside a scrollbar — its panel inset alike on both sides', async () => {
+    const starts = (q) => q.evaluate(() => {
+      const start = (el) => { const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: n => n.data.trim() ? 1 : 3 });
+        const r = document.createRange(); r.selectNodeContents(w.nextNode()); return Math.round(r.getBoundingClientRect().left * 2) / 2; };
+      return { cw: document.documentElement.clientWidth, brand: start(document.querySelector('.ui-navbar__brand')), link: start(document.querySelector('.ui-navbar__link')),
+        more: start(document.querySelector('[popovertarget="g-nav-more"]')), end: Math.round(document.querySelector('.ui-navbar__end').firstElementChild.getBoundingClientRect().left * 2) / 2,
+        text: start(document.getElementById('width-text')),
+        sides: (cs => [cs.paddingInlineStart, cs.paddingInlineEnd, cs.paddingLeft, cs.paddingRight])(getComputedStyle(document.querySelector('.ui-navbar__panel'))) };
+    });
+    // Collapsed by type three times the bar's width (as the widening check derives it), then opened.
+    const collapsed = async (q) => {
+      await frames(q);
+      await q.evaluate(() => { const bar = document.querySelector('.ui-navbar'), items = bar.querySelector('.ui-navbar__items');
+        const px = parseFloat(getComputedStyle(items).fontSize) * 3 * bar.clientWidth / items.getBoundingClientRect().width;
+        const sheet = new CSSStyleSheet(); sheet.replaceSync(`.ui-navbar__items { font-size: ${px}px; }`); document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]; });
+      await q.waitForFunction(() => document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'), null, { timeout: 3000 });
+      await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150);
+      return starts(q);
+    };
+    const errs = [], at = async (width, path) => { const [q, e] = await pageAt(width, path); errs.push(...e); return q; };
+    const n = await at(360, '/aligned'); await n.locator('.ui-navbar__toggle').click(); await n.waitForTimeout(150);
+    const narrow = await starts(n); await n.close();
+    const w = await at(1100, '/aligned'); const wide = await collapsed(w); await w.close();
+    const t = await at(1100, '/aligned/themed'); const themed = await collapsed(t); await t.close();
+    const m = await at(1100, '/measure'); const measure = await collapsed(m); await m.close();
+    const mt = await at(1100, '/measure/themed'); const measureThemed = await collapsed(mt); await mt.close();
+    const m8 = await at(800, '/measure'); const measure800 = await collapsed(m8); await m8.close();
+    const mn = await at(360, '/measure'); await mn.locator('.ui-navbar__toggle').click(); await mn.waitForTimeout(150);
+    const measureNarrow = await starts(mn); await mn.close();
+    // Beside a 15px scrollbar, in Chromium only (see `scrolling`): a context of its own, native.
+    const beside = async (path) => { const c = await scrolling.newContext({ viewport: { width: 1470, height: 740 } }); const b = await c.newPage();
+      b.on('pageerror', e => errs.push(String(e))); await b.goto(new URL(path, url).href); const o = await collapsed(b); await c.close(); return o; };
+    const scrollbar = scrolling ? await beside('/aligned/tall') : null, measureScrollbar = scrolling ? await beside('/measure/tall') : null;
+    return { engine, narrow, wide, themed, scrollbar, measure, measureThemed, measure800, measureNarrow, measureScrollbar, errs };
+  }, s => {
+    const aligned = [s.narrow, s.wide, s.themed, ...(s.scrollbar ? [s.scrollbar] : [])], measure = [s.measure, s.measureThemed, s.measure800, s.measureNarrow, ...(s.measureScrollbar ? [s.measureScrollbar] : [])];
+    const one = (o, at) => o.brand === at && o.link === at && o.more === at && o.end === at;
+    return s.errs.length === 0 && [...aligned, ...measure].every(o => o.sides[0] === o.sides[1] && o.sides[2] === o.sides[3])
+      // :aligned, main's text: (1100 - 768) / 2 + 16; a host's (1100 - 640) / 2 + 24; beside the scrollbar (1455 - 768) / 2 + 16.
+      && aligned.every(o => one(o, o.text)) && s.narrow.text === 16 && s.wide.text === 182 && s.themed.text === 254
+      // :measure, the brand: the column's edge plus the bar's padding (--ui-spacing-md: 1.15rem from 1024, 1rem from 640,
+      // 0.85rem below), to the half pixel: 166 + 18.4; (1100 - 640) / 2 + 18.4; 16 + 16; 0 + 13.6; (1455 - 768) / 2 + 18.4.
+      && one(s.measure, 184.5) && one(s.measureThemed, 248.5) && one(s.measure800, 32) && one(s.measureNarrow, 13.5)
+      && (s.engine === 'chromium' ? s.scrollbar.cw === 1455 && s.scrollbar.text === 359.5 && s.measureScrollbar.cw === 1455 && one(s.measureScrollbar, 362)
+                                  : s.scrollbar === null && s.measureScrollbar === null);
+  });
+  await check('navbar: under :aligned, items that outgrow the column by a little collapse it', async () => {
+    const [q, errs] = await pageAt(1470, '/aligned'); await frames(q);
+    // Type that makes the items about 60px wider than the room the column leaves them.
+    const room = await q.evaluate(() => {
+      const bar = document.querySelector('.ui-navbar'), items = bar.querySelector('.ui-navbar__items'), cs = getComputedStyle(bar);
+      const content = bar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const used = [...bar.children].filter(c => c.checkVisibility()).reduce((a, c) => a + c.getBoundingClientRect().width, 0);
+      const fs = parseFloat(getComputedStyle(items).fontSize), iw = items.getBoundingClientRect().width, px = fs * (iw + content - used + 60) / iw;
+      const before = bar.classList.contains('ui-navbar--collapsed');
+      const sheet = new CSSStyleSheet(); sheet.replaceSync(`.ui-navbar__items { font-size: ${px}px; }`); document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+      return { content, used, px, before };
+    });
+    const after = await q.waitForFunction(() => document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'), null, { timeout: 3000 }).then(() => true, () => false);
+    await q.close(); return { ...room, after, errs };
+  }, s => !s.before && s.content === 736 && s.used > 0 && s.after && s.errs.length === 0);
   await check('navbar: sticky, its header stays at the top as the page scrolls, and a jump to a section lands below it', async () => {
     const [q, errs] = await pageAt(1024, '/');
     const s = await q.evaluate(async () => {
@@ -448,11 +556,18 @@ for (const [mode, init] of Object.entries(modes)) {
   await check('navbar: a stylesheet that widens its items collapses it, with no error', async () => {
     const [q, errs] = await pageAt(1100, '/'); await frames(q);
     const before = await q.evaluate(() => document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'));
-    await q.evaluate(() => { const sheet = new CSSStyleSheet(); sheet.replaceSync('.ui-navbar__items { font-size: 28px; }'); document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]; });
+    // The bar spans the window, so the widening is derived from it: type that makes the items'
+    // text three times the bar's width, whatever that width is.
+    const scale = await q.evaluate(() => {
+      const bar = document.querySelector('.ui-navbar'), items = bar.querySelector('.ui-navbar__items');
+      const fs = parseFloat(getComputedStyle(items).fontSize), w = bar.clientWidth, iw = items.getBoundingClientRect().width;
+      const px = fs * 3 * w / iw; const sheet = new CSSStyleSheet(); sheet.replaceSync(`.ui-navbar__items { font-size: ${px}px; }`);
+      document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]; return { fs, w, iw, px };
+    });
     await q.waitForTimeout(300); await frames(q);
     const after = await q.evaluate(() => document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'));
-    const err = await q.evaluate(() => window.__err); await q.close(); return { before, after, err, errs };
-  }, s => !s.before && s.after && s.err.length === 0 && s.errs.length === 0);
+    const err = await q.evaluate(() => window.__err); await q.close(); return { before, scale, after, err, errs };
+  }, s => !s.before && s.scale.iw > 0 && s.scale.w > 0 && s.after && s.err.length === 0 && s.errs.length === 0);
   await check('navbar: a node added to it and removed in one task raises no error', async () => {
     const [q, errs] = await pageAt(1024, '/'); await frames(q);
     await q.evaluate(() => { const span = document.createElement('span'); document.querySelector('.ui-navbar__end').append(span); span.append(document.createElement('b')); span.remove(); });
@@ -587,4 +702,5 @@ for (const [mode, init] of Object.entries(modes)) {
   await ctx.close();
 }
 await browser.close();
+if (scrolling) await scrolling.close();
 console.log(JSON.stringify(result, null, 1));
