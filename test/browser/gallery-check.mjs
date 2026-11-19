@@ -553,6 +553,43 @@ for (const [mode, init] of Object.entries(modes)) {
     const afterEdit = await q.evaluate(() => document.getElementById('g-nav').matches(':popover-open'));
     const err = await q.evaluate(() => window.__err); await q.close(); return { need, collapsed, opened, afterEdit, err, errs };
   }, s => s.need >= 650 && s.collapsed && s.opened && s.afterEdit && s.err.length === 0 && s.errs.length === 0);
+  // E1: the breakpoints are in em, a media query's em being the browser's default font size.
+  // Chromium takes that size through CDP (Page.setFontSizes); WebKit has no such setting, so
+  // there the check holds the 16px half only. `/` draws its bar from :md, 48em: 768px at 16,
+  // 960px at 20. Below it the toggle shows by the query alone — ui.js's fit adds
+  // ui-navbar--collapsed only to a bar its query already made inline — so a shown toggle with
+  // no class is the breakpoint's doing. Each width is read on a page of its own, the setting
+  // made before it loads.
+  await check('navbar: its breakpoint follows the reader\'s default font size — below 48em its toggle shows by the query alone, never by fit (Chromium at a 20px default; WebKit has no setting and holds the 16px half only)', async () => {
+    const at = async (width, size) => {
+      const q = await ctx.newPage(); await q.setViewportSize({ width, height: 740 });
+      const errs = []; q.on('pageerror', e => errs.push(String(e)));
+      if (size) await (await ctx.newCDPSession(q)).send('Page.setFontSizes', { fontSizes: { standard: size } });
+      await q.goto(url); await frames(q);
+      const s = await q.evaluate(() => {
+        const bar = document.querySelector('.ui-navbar'), items = bar.querySelector('.ui-navbar__items'), end = bar.querySelector('.ui-navbar__end');
+        const span = document.createElement('span'); span.style.fontSize = 'medium'; document.documentElement.append(span);
+        const medium = getComputedStyle(span).fontSize; span.remove();
+        return { medium, mq: matchMedia('(min-width: 48em)').matches, toggleShown: getComputedStyle(bar.querySelector('.ui-navbar__toggle')).display !== 'none',
+          collapsed: bar.classList.contains('ui-navbar--collapsed'), linkInBar: items.checkVisibility() && items.getBoundingClientRect().height > 0 && !bar.querySelector('.ui-navbar__panel').matches(':popover-open'),
+          free: end.firstElementChild.getBoundingClientRect().left - items.getBoundingClientRect().right };
+      });
+      await q.close(); return { ...s, errs };
+    };
+    const knob = engine === 'chromium';
+    const out = { engine, s760: await at(760), s780: await at(780) };
+    if (knob) { out.s950 = await at(950, 20); out.s970 = await at(970, 20);
+      // A page after them, with no setting of its own: the size does not leak to the next check.
+      const after = await at(780); out.leak = after.medium; }
+    return out;
+  }, o => {
+    const below = (s, size) => s.medium === size && !s.mq && s.toggleShown && !s.collapsed && !s.linkInBar && s.errs.length === 0;
+    // 20px between the two widths of each pair, over which no token of the bar changes: room
+    // of 20 at the wider one is room at the narrower one, so the query alone made the toggle.
+    const above = (s, size) => s.medium === size && s.mq && !s.toggleShown && !s.collapsed && s.linkInBar && s.free >= 20 && s.errs.length === 0;
+    return below(o.s760, '16px') && above(o.s780, '16px')
+      && (o.engine === 'chromium' ? below(o.s950, '20px') && above(o.s970, '20px') && o.leak === '16px' : o.s950 === undefined);
+  });
   await check('navbar: a stylesheet that widens its items collapses it, with no error', async () => {
     const [q, errs] = await pageAt(1100, '/'); await frames(q);
     const before = await q.evaluate(() => document.querySelector('.ui-navbar').classList.contains('ui-navbar--collapsed'));

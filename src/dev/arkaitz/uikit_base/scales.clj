@@ -3,11 +3,11 @@
   writes them (`themes/default.zig`), shaped by the four personality axes of
   `personality.zig`: `:density` (`:compact` `:cozy` `:comfortable`), `:roundness` (`:sharp`
   `:soft` `:round`), `:typography` (`:sans` `:serif` `:mono`) and `:elevation` (`:flat`
-  `:normal` `:raised`). Spacing, type and shadows grow at basaku's breakpoints, 640px and
-  1024px; shadows differ by scheme. Arithmetic is basaku's own, in 32-bit floats, and the
-  numbers are printed as it prints them, so the declarations are its declarations under
-  the kit's `--ui-` prefix. Part of the engine: a running host reads them from its
-  generated file, never from here."
+  `:normal` `:raised`). Spacing, type and shadows grow at basaku's breakpoints, 40em and
+  64em (640px and 1024px at the default font size); shadows differ by scheme. Arithmetic
+  is basaku's own, in 32-bit floats, and the numbers are printed as it prints them, so the
+  declarations are its declarations under the kit's `--ui-` prefix. Part of the engine: a
+  running host reads them from its generated file, never from here."
   (:require [clojure.string :as str]))
 
 (def ^:private densities {:compact (float 0.8) :cozy (float 1.0) :comfortable (float 1.25)})
@@ -25,7 +25,7 @@
    :mono  "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace"})
 
 (def ^:private rungs
-  "The layout spacing rungs: their value below 640px, from 640px and from 1024px."
+  "The layout spacing rungs: their value below 40em, from 40em and from 64em."
   [[:md 0.85 1.0 1.15] [:lg 1.25 1.5 1.75] [:xl 2.0 2.5 3.0] [:xxl 3.0 4.0 5.0] [:xxxl 4.5 6.0 7.5]])
 
 (defn- sh [y blur spread a] {:y (float y) :blur (float blur) :spread (some-> spread float) :a a})
@@ -104,7 +104,7 @@
   "The scales for a brand's personality, `{:density … :roundness … :typography … :elevation …}`
   (each its default when absent), as an ordered seq of `[block [[property value] …]]`,
   `block` one of `:root` `:dark` `:sm` `:sm-dark` `:lg` `:lg-dark` — the light scheme and
-  the dark at every width, from 640px, from 1024px."
+  the dark at every width, from 40em, from 64em."
   [opts]
   (let [lvl  (fn [k] (get opts k (get-in axes [k :default])))
         f    (densities (lvl :density))
@@ -143,15 +143,15 @@
 (defn css
   "The scales as an unlayered stylesheet: the light scheme on `:root`, the dark on
   `:root.dark` and under `prefers-color-scheme: dark` for a page that says neither, each
-  again from 640px and from 1024px."
+  again from 40em and from 64em (640px and 1024px at the default font size)."
   [opts]
   (let [block (fn [sel decls] (str sel "{" (apply str (for [[k v] decls] (str k ":" v ";"))) "}"))
         d     (into {} (declarations opts))
         dark  (fn [decls] (str (block ":root.dark" decls) "\n@media (prefers-color-scheme:dark){" (block ":root:not(.light)" decls) "}"))]
     (str (block ":root" (:root d)) "\n" (dark (:dark d)) "\n"
-         "@media (min-width:640px){" (block ":root" (:sm d)) "}\n"
-         "@media (min-width:640px){" (block ":root.dark" (:sm-dark d)) "}\n"
-         "@media (prefers-color-scheme:dark) and (min-width:640px){" (block ":root:not(.light)" (:sm-dark d)) "}\n"
-         "@media (min-width:1024px){" (block ":root" (:lg d)) "}\n"
-         "@media (min-width:1024px){" (block ":root.dark" (:lg-dark d)) "}\n"
-         "@media (prefers-color-scheme:dark) and (min-width:1024px){" (block ":root:not(.light)" (:lg-dark d)) "}\n")))
+         "@media (min-width:40em){" (block ":root" (:sm d)) "}\n"
+         "@media (min-width:40em){" (block ":root.dark" (:sm-dark d)) "}\n"
+         "@media (prefers-color-scheme:dark) and (min-width:40em){" (block ":root:not(.light)" (:sm-dark d)) "}\n"
+         "@media (min-width:64em){" (block ":root" (:lg d)) "}\n"
+         "@media (min-width:64em){" (block ":root.dark" (:lg-dark d)) "}\n"
+         "@media (prefers-color-scheme:dark) and (min-width:64em){" (block ":root:not(.light)" (:lg-dark d)) "}\n")))

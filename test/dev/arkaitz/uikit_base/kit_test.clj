@@ -131,8 +131,11 @@
     (let [q (str/trim (str/replace prelude #"^@media" ""))]
       (every? (fn [part]
                 (let [part (str/trim part)]
-                  (if-let [[_ f n u] (re-matches #"\((min|max)-width:\s*([\d.]+)(px|rem)\)" part)]
-                    (let [px (* (Double/parseDouble n) (if (= u "rem") 16 1))]
+                  ;; Widths in em only, as the kit writes them: a media query's em is the
+                  ;; browser's default font size, 16px in every environment here. A query
+                  ;; in px or rem is not the kit's, and the model refuses it by name.
+                  (if-let [[_ f n] (re-matches #"\((min|max)-width:\s*([\d.]+)em\)" part)]
+                    (let [px (* (Double/parseDouble n) 16)]
                       (if (= f "min") (>= (:width env) px) (<= (:width env) px)))
                     (if-let [[_ f v] (re-matches #"\((prefers-color-scheme|prefers-reduced-motion):\s*([a-z-]+)\)" part)]
                       (= v (name (if (= f "prefers-color-scheme") (:scheme env) (:motion env))))
@@ -183,7 +186,7 @@
   ;; The model every other test here stands on, checked against stylesheets whose cascade
   ;; is known: if it mis-ranked layers or ignored a query, those tests would audit the
   ;; wrong winner and stay green.
-  (let [p (parse-css "@layer k { @layer base, components, utilities; @layer utilities { .x { color: u; } } @layer components { .w .x { color: c; } } .d .e { color: d; } @layer base { .d .e { color: b; } } .m { color: narrow; } @media (min-width: 48rem) and (prefers-color-scheme: dark) { .m { color: wide; } } }")
+  (let [p (parse-css "@layer k { @layer base, components, utilities; @layer utilities { .x { color: u; } } @layer components { .w .x { color: c; } } .d .e { color: d; } @layer base { .d .e { color: b; } } .m { color: narrow; } @media (min-width: 48em) and (prefers-color-scheme: dark) { .m { color: wide; } } }")
         rules (mapv (juxt :selectors :decls :index :layer :conditions) (:rules p))
         win (fn [env sel] (cascaded (:layer-order p) (in-env rules env) sel ["color"]))]
     (is (= {["k"] ["base" "components" "utilities"]} (dissoc (:layer-order p) []))
@@ -210,7 +213,14 @@
   (is (= "kit.css: a rule nested in a rule" (try (parse-css ".a { color: x; .b { color: y; } }") nil (catch clojure.lang.ExceptionInfo e (ex-message e)))))
   (is (= "kit_test: a media condition the model does not know" (try (holds? "@media (hover: hover)" (first environments)) nil (catch clojure.lang.ExceptionInfo e (ex-message e)))))
   (is (= [] (filter #(holds? "@media print" %) environments)) "print holds in no screen")
-  (is (= [false true true] (mapv #(holds? "@media (min-width:1280px)" {:width %}) [1024 1280 1536])) "a breakpoint written without a space")
+  (is (= [false true true] (mapv #(holds? "@media (min-width:80em)" {:width %}) [1024 1280 1536])) "a breakpoint written without a space")
+  (is (= [[false true] [true false]] [(mapv #(holds? "@media (min-width:48em)" {:width %}) [767 768])
+                                      (mapv #(holds? "@media (max-width: 40em)" {:width %}) [640 641])])
+      "an em is sixteen px of viewport, the default the environments assume, both edges inclusive")
+  (is (= [{:condition "(min-width: 768px)"} {:condition "(max-width: 40rem)"}]
+         (for [q ["@media (min-width: 768px)" "@media (max-width: 40rem)"]]
+           (try (holds? q (first environments)) nil (catch clojure.lang.ExceptionInfo e (ex-data e)))))
+      "a width in px or rem is not the kit's: the model refuses it, naming it")
   (is (= 24 (count environments)) "witness: six widths, two schemes, two motions"))
 
 (deftest every-rule-sits-in-the-one-layer-and-nothing-is-important
@@ -346,10 +356,25 @@
                      [(:width env) bp v :want want :got got]))}))
 
 (deftest the-breakpoints-are-basakus-own
-  (let [widths (fn [text] (set (map #(Long/parseLong (second %)) (re-seq #"min-width:\s*(\d+)px" text))))]
-    (is (= #{640 768 1024 1280 1536} (widths utilities-css)) "every query of the utilities is one of the five")
-    (is (= #{640 1024} (widths (slurp (io/resource "dev/arkaitz/uikit_base/public/ui-colors.css"))))
-        "witness: the scales grow at two of them, the same numbers")
+  ;; Every width query, read from the parsed conditions whatever its unit, so one left in px
+  ;; or rem is an offender rather than a query a unit-bound regex never sees.
+  (let [colors   (str/replace (slurp (io/resource "dev/arkaitz/uikit_base/public/ui-colors.css")) #"(?s)/\*.*?\*/" "")
+        parts    (fn [p] (for [{:keys [conditions]} (:rules p) c conditions
+                               part (str/split (str/trim (str/replace c #"^@media" "")) #"\s+and\s+") :when (str/includes? part "width")]
+                           (str/trim part)))
+        read     (fn [p] (let [ps (distinct (parts p))]
+                           {:offenders (vec (remove #(re-matches #"\((min|max)-width:\s*(\d+)em\)" %) ps))
+                            :widths    (set (keep #(when-let [[_ f n] (re-matches #"\((min|max)-width:\s*(\d+)em\)" %)] [f (Long/parseLong n)]) ps))}))
+        preludes (fn [text] (count (re-seq #"@media[^{]*-width" text)))]
+    (is (= [4 5 6] (mapv preludes [css utilities-css colors])) "witness: the width queries each file holds, counted in its text")
+    (is (= {:offenders [] :widths #{["min" 40] ["min" 48] ["min" 64] ["max" 40]}} (read kit-parsed))
+        "the kit's own queries: its navbar's three and the page head's, all in whole em")
+    (is (= {:offenders [] :widths #{["min" 40] ["min" 48] ["min" 64] ["min" 80] ["min" 96]}} (read utilities-parsed))
+        "every query of the utilities is one of the five, in whole em")
+    (is (= {:offenders [] :widths #{["min" 40] ["min" 64]}} (read (parse-css colors)))
+        "the scales grow at two of them, in em too")
+    (is (= (map #(* 16 %) [40 48 64 80 96]) (map second breakpoint-px))
+        "basaku's breakpoints, at the default sixteen px to an em")
     (is (= (set (map :width environments)) (conj (set (map second breakpoint-px)) 360))
         "and the model reads the page at each, and on a phone below them")))
 
@@ -667,7 +692,7 @@
 
 (def ^:private bootstrap-widths
   "Bootstrap's breakpoints on basaku's, by the user's decision."
-  {"576px" "640px" "768px" "768px" "992px" "1024px" "1200px" "1280px" "1400px" "1536px"})
+  {"576px" "40em" "768px" "48em" "992px" "64em" "1200px" "80em" "1400px" "96em"})
 
 (def ^:private logical-properties
   "Bootstrap's physical sides on the logical ones: start and end are inline, top and bottom stay."
@@ -748,7 +773,7 @@
   (by-class (for [{:keys [selectors decls conditions]} (:rules @bootstrap) s selectors :let [c (first-class s)] :when c
                   :let [conds (mapv #(canonical-condition (str/replace % #"(min-width:\s*)(\d+px)" (fn [[_ p w]] (str p (bootstrap-widths w w))))) conditions)]
                   ;; RFS's fluid caps: basaku's sizes grow by their own variables.
-                  :when (not (and (= ["@media (min-width:1280px)"] conds) (= #{"font-size"} (set (keys decls)))))]
+                  :when (not (and (= ["@media (min-width:80em)"] conds) (= #{"font-size"} (set (keys decls)))))]
               [c [conds (canonical-selector (-> s (str/replace #"\.bi(?![\w-])" "svg") (str/replace #"\.(-?[a-zA-Z][\w-]*)" ".ui-$1")))
                   (normalised decls)]])))
 

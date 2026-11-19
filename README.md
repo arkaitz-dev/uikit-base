@@ -96,7 +96,8 @@ basaku's, under the kit's prefix, in your colours file: `--ui-spacing-xxs` …
 `--ui-font-size-xxxl`, `--ui-shadow-sm` … `--ui-shadow-xl`, `--ui-font-family-*`,
 `--ui-line-height-*`, `--ui-font-weight-*`, `--ui-duration-fast` `-normal` `-slow`,
 `--ui-easing-*`, `--ui-z-index-*`, `--ui-opacity-*`, `--ui-focus-outline-width` and
-`-offset`. Spacing, type and shadows grow at 640px and 1024px; shadows differ by scheme.
+`-offset`. Spacing, type and shadows grow at 40em and 64em (640px and 1024px at the default
+font size, and later for a reader who raised it); shadows differ by scheme.
 Use them in your own CSS and they follow the brand.
 
 ## The kit's classes
@@ -161,8 +162,10 @@ grid is twelve CSS grid tracks:
 
 A span is `ui-col-*`, an offset `ui-offset-*`, a gutter `ui-g-*` `ui-gx-*` `ui-gy-*`;
 `ui-layout-cols-*` gives every child one track of so many, and `ui-col`, `ui-col-auto` and
-`ui-layout-cols-auto` make the line a wrapping flex one. Breakpoints are basaku's: `sm`
-640, `md` 768, `lg` 1024, `xl` 1280, `xxl` 1536. Spacing steps 0 to 5 read the spacing
+`ui-layout-cols-auto` make the line a wrapping flex one. Breakpoints are basaku's, in em so they
+follow a reader's default font size: `sm` 40em, `md` 48em, `lg` 64em, `xl` 80em, `xxl` 96em
+(640 to 1536px at the default). Write a host's own queries in em too, or they part from the
+kit's for that reader. Spacing steps 0 to 5 read the spacing
 scale, so a brand's density scales them.
 
 The rule: every Bootstrap class is the kit's, equal after a stated normalisation, or a
