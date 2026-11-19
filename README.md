@@ -165,7 +165,8 @@ A span is `ui-col-*`, an offset `ui-offset-*`, a gutter `ui-g-*` `ui-gx-*` `ui-g
 `ui-layout-cols-auto` make the line a wrapping flex one. Breakpoints are basaku's, in em so they
 follow a reader's default font size: `sm` 40em, `md` 48em, `lg` 64em, `xl` 80em, `xxl` 96em
 (640 to 1536px at the default). Write a host's own queries in em too, or they part from the
-kit's for that reader. Spacing steps 0 to 5 read the spacing
+kit's for that reader. A `ui-container` is bounded at the breakpoint it reached, in rem
+(40 to 96rem), so its line length holds for that reader as well. Spacing steps 0 to 5 read the spacing
 scale, so a brand's density scales them.
 
 The rule: every Bootstrap class is the kit's, equal after a stated normalisation, or a

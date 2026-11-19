@@ -4,7 +4,7 @@
 ;; them reds until the checks are run again and this file regenerated.
 {:checked "2026-11-19"
  :files {"kit.css" "af2e88fe8d5077e1085fac204ea90a71b15e70347ebf5188746c1ef236cdc9df"
-         "ui-utilities.css" "f9094bdffeb42ba3a59080a3fb071076ba07e6b7013130d470ab9af165f4ecf1"
+         "ui-utilities.css" "925076562e08793921f22584692bbfc1591c931e64573e34668d94b39f2995f5"
          "ui.js" "429e8cb222d498f3255aff49c896e5672750fa07b81ba6e22bef7b5b29a3cfeb"
          "gallery-check.mjs" "3b1c0fa13434c943d31ccd63ff1f37f75dd97ed61e3f0d631ddd142210359718"
          "wb.css" "551519f3b5b3de5eb2cdf9487e111dfd3f1bdf7d3d22337ed82b2fd9ad090595"}

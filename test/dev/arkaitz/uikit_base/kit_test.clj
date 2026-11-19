@@ -398,14 +398,14 @@
         (str "a span from md and an offset from below it hold together " (:width env)))))
 
 (deftest a-container-is-as-wide-as-its-tier-allows
-  (let [want (fn [w tier] (some (fn [[i [_ px]]] (when (and (>= i tier) (>= w px)) (str px "px"))) (reverse (map-indexed vector breakpoint-px))))
+  (let [want (fn [w tier] (some (fn [[i [_ px]]] (when (and (>= i tier) (>= w px)) (str (quot px 16) "rem"))) (reverse (map-indexed vector breakpoint-px))))
         {:keys [checked misses]} (misses [nil] (fn [rules env bp _ _]
                                                  (let [c (if bp (cls "container" bp nil) "ui-container")
                                                        tier (if bp (.indexOf ^java.util.List (mapv first breakpoint-px) bp) 0)]
                                                    [[(want (:width env) tier) "100%"]
                                                     [(on-element rules {:classes #{c}} "max-width") (on-element rules {:classes #{c}} "width")]])))]
     (is (= 144 checked) "witness: 24 environments, the plain container and five tiers")
-    (is (= "1536px" (want 1536 0)) "witness: the test's own reading of a tier")
+    (is (= "96rem" (want 1536 0)) "witness: the test's own reading of a tier, in rem so it stays the breakpoint's width at any default font size")
     (is (= [] misses) "full width below its tier, then no wider than the largest breakpoint reached")
     (doseq [[env rules] @env-rules]
       (is (= [nil "100%"] [(on-element rules {:classes #{"ui-container-fluid"}} "max-width") (on-element rules {:classes #{"ui-container-fluid"}} "width")])

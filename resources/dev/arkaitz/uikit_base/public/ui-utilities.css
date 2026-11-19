@@ -469,7 +469,7 @@
 .ui-z-2{z-index:2}
 .ui-z-3{z-index:3}
 @media (min-width:40em){
-.ui-container,.ui-container-sm{max-width:640px}
+.ui-container,.ui-container-sm{max-width:40rem}
 .ui-layout-cols-sm-auto{display:flex;flex-wrap:wrap}
 .ui-layout-cols-sm-auto>*{flex:0 0 auto}
 .ui-layout-cols-sm-1{display:grid;grid-template-columns:repeat(1,minmax(0,1fr))}
@@ -708,7 +708,7 @@
 .ui-text-sm-center{text-align:center}
 }
 @media (min-width:48em){
-.ui-container,.ui-container-sm,.ui-container-md{max-width:768px}
+.ui-container,.ui-container-sm,.ui-container-md{max-width:48rem}
 .ui-layout-cols-md-auto{display:flex;flex-wrap:wrap}
 .ui-layout-cols-md-auto>*{flex:0 0 auto}
 .ui-layout-cols-md-1{display:grid;grid-template-columns:repeat(1,minmax(0,1fr))}
@@ -947,7 +947,7 @@
 .ui-text-md-center{text-align:center}
 }
 @media (min-width:64em){
-.ui-container,.ui-container-sm,.ui-container-md,.ui-container-lg{max-width:1024px}
+.ui-container,.ui-container-sm,.ui-container-md,.ui-container-lg{max-width:64rem}
 .ui-layout-cols-lg-auto{display:flex;flex-wrap:wrap}
 .ui-layout-cols-lg-auto>*{flex:0 0 auto}
 .ui-layout-cols-lg-1{display:grid;grid-template-columns:repeat(1,minmax(0,1fr))}
@@ -1186,7 +1186,7 @@
 .ui-text-lg-center{text-align:center}
 }
 @media (min-width:80em){
-.ui-container,.ui-container-sm,.ui-container-md,.ui-container-lg,.ui-container-xl{max-width:1280px}
+.ui-container,.ui-container-sm,.ui-container-md,.ui-container-lg,.ui-container-xl{max-width:80rem}
 .ui-layout-cols-xl-auto{display:flex;flex-wrap:wrap}
 .ui-layout-cols-xl-auto>*{flex:0 0 auto}
 .ui-layout-cols-xl-1{display:grid;grid-template-columns:repeat(1,minmax(0,1fr))}
@@ -1425,7 +1425,7 @@
 .ui-text-xl-center{text-align:center}
 }
 @media (min-width:96em){
-.ui-container,.ui-container-sm,.ui-container-md,.ui-container-lg,.ui-container-xl,.ui-container-xxl{max-width:1536px}
+.ui-container,.ui-container-sm,.ui-container-md,.ui-container-lg,.ui-container-xl,.ui-container-xxl{max-width:96rem}
 .ui-layout-cols-xxl-auto{display:flex;flex-wrap:wrap}
 .ui-layout-cols-xxl-auto>*{flex:0 0 auto}
 .ui-layout-cols-xxl-1{display:grid;grid-template-columns:repeat(1,minmax(0,1fr))}

@@ -8,7 +8,9 @@
   layer, with no `!important`, and a host's unlayered stylesheet still wins over it.
   Responsive classes name basaku's breakpoints — sm 640, md 768, lg 1024, xl 1280, xxl
   1536 px at the default font size, written as 40, 48, 64, 80 and 96em so they move with a
-  reader who raised it — not Bootstrap's 576/768/992/1200/1400. Spacing steps 0..5 read the kit's spacing
+  reader who raised it — not Bootstrap's 576/768/992/1200/1400. A container is bounded at
+  the breakpoint it reached, in rem (40..96rem), so its line length holds for that reader too
+  instead of shrinking against px. Spacing steps 0..5 read the kit's spacing
   scale, so a brand's density scales them.
 
   The grid is a twelve-track CSS grid (`ui-layout`), not Bootstrap's flex row with negative
@@ -53,11 +55,12 @@
      (rule ".ui-layout>*" "grid-column-end" "span 12" "min-width" "0")]))
 
 (defn- containers
-  "From breakpoint `i` up, a container of that tier or a narrower one is no wider than it."
+  "From breakpoint `i` up, a container of that tier or a narrower one is no wider than it, in
+  rem, so it is the breakpoint's own width at any default font size."
   [i]
   (let [[_ px] (nth breakpoints i)]
     [(rule (str/join "," (map #(str "." %) (cons "ui-container" (for [[bp] (take (inc i) breakpoints)] (named "container" bp nil)))))
-           "max-width" (str px "px"))]))
+           "max-width" (str (quot px 16) "rem"))]))
 
 (defn- grid-tier
   "The grid classes of one tier: `bp` nil for the unconditioned one."
