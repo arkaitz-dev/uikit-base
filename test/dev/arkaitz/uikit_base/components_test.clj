@@ -1064,7 +1064,15 @@
   (is (str/starts-with? (html (ui/tabs-nav req {:label "S" :items [["/a" "A"]] :style :tabs :justify? true :attrs {:class "x"}})) "<nav aria-label=\"S\" class=\"ui-tabs ui-tabs--justify x\"><ul>"))
   (doseq [st [:pill "pills" :underline]]
     (is (= ["uikit-base: a tabs-nav's :style is :tabs or :pills" {:style st}] (refusal #(ui/tabs-nav req {:label "S" :items [["/a" "A"]] :style st}))) (pr-str st)))
-  (is (= ["uikit-base: a tabs-nav is :fill? or :justify?, not both" {}] (refusal #(ui/tabs-nav req {:label "S" :items [["/a" "A"]] :fill? true :justify? true})))))
+  (is (= ["uikit-base: a tabs-nav is :fill? or :justify?, not both" {}] (refusal #(ui/tabs-nav req {:label "S" :items [["/a" "A"]] :fill? true :justify? true}))))
+  (is (str/starts-with? (html (ui/tabs-nav req {:label "S" :items [["/a" "A"]] :style :pills :vertical? true :attrs {:class "x"}}))
+                        "<nav aria-label=\"S\" class=\"ui-tabs ui-tabs--pills ui-tabs--vertical x\"><ul>")
+      "a column of pills")
+  (is (str/starts-with? (html (ui/tabs-nav req {:label "S" :items [["/a" "A"]] :vertical? false})) "<nav aria-label=\"S\" class=\"ui-tabs\"><ul>")
+      "false is the line")
+  (doseq [o [{:fill? true} {:justify? true}]]
+    (is (= ["uikit-base: a vertical tabs-nav neither fills nor justifies" {}] (refusal #(ui/tabs-nav req (merge {:label "S" :items [["/a" "A"]] :vertical? true} o))))
+        (pr-str o))))
 
 ;; --- K13: cards and media ---------------------------------------------------------------
 

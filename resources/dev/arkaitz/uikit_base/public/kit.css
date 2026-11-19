@@ -290,6 +290,16 @@
     .ui-tabs--pills a[aria-current="page"]:focus-visible { box-shadow: 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo); }
     .ui-tabs--fill > ul > li { flex: 1 1 auto; text-align: center; }
     .ui-tabs--justify > ul > li { flex: 1 1 0; text-align: center; }
+    /* Vertical: a column, its line at the inline end, where the current tab's mark lies; pills
+     * keep their fill and draw no line. */
+    .ui-tabs--vertical > ul { flex-direction: column; flex-wrap: nowrap; border-bottom: 0; border-inline-end: 1px solid var(--ui-border); }
+    .ui-tabs--vertical a { position: relative; }
+    .ui-tabs--vertical a[aria-current="page"] { box-shadow: none; }
+    .ui-tabs--vertical a[aria-current="page"]:focus-visible { box-shadow: 0 0 0 var(--ui-focus-outline-width) var(--ui-focus-ring-halo); }
+    .ui-tabs--vertical:not(.ui-tabs--pills) a[aria-current="page"]::after {
+      content: ""; position: absolute; inset-block: 0; inset-inline-end: 0; border-inline-end: 2px solid var(--ui-primary-border);
+    }
+    .ui-tabs--pills.ui-tabs--vertical > ul { border-inline-end: 0; }
 
     /* List groups: one bordered column; an item with a path is a link that fills it. */
     .ui-list-group {

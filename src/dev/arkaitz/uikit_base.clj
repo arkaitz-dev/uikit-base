@@ -634,12 +634,16 @@
   `aria-current`. Links, not a tablist: each is a page. No items, two items with one
   path, or a `current` that is no item's path, is refused; nil marks none. `:style
   :pills` draws each as a pill, the current one filled; `:fill? true` shares the line
-  among the items by their width, `:justify? true` in equal parts — one or the other."
-  [request {:keys [label items current attrs style fill? justify?]}]
+  among the items by their width, `:justify? true` in equal parts — one or the other.
+  `:vertical? true` stacks the items in a column, the current one marked at its inline end
+  (or filled, as pills); a column has no line to share, so it neither fills nor justifies."
+  [request {:keys [label items current attrs style fill? justify? vertical?]}]
   (when-not (contains? #{nil :tabs :pills} style)
     (throw (ex-info "uikit-base: a tabs-nav's :style is :tabs or :pills" {:style style})))
   (when (and fill? justify?)
     (throw (ex-info "uikit-base: a tabs-nav is :fill? or :justify?, not both" {})))
+  (when (and vertical? (or fill? justify?))
+    (throw (ex-info "uikit-base: a vertical tabs-nav neither fills nor justifies" {})))
   (when-not (and (string? label) (not (str/blank? label)))
     (throw (ex-info "uikit-base: a tabs-nav is named by its label" {:label label})))
   (when (or (empty? items) (not= (count items) (count (distinct (map first items)))))
@@ -648,7 +652,8 @@
   (when (and (some? current) (not-any? #(= current (first %)) items))
     (throw (ex-info "uikit-base: a tabs-nav's current is one of its items' paths" {:current current})))
   [:nav (with-attrs {:class (str/join " " (cond-> ["ui-tabs"] (= :pills style) (conj "ui-tabs--pills")
-                                             fill? (conj "ui-tabs--fill") justify? (conj "ui-tabs--justify")))
+                                             fill? (conj "ui-tabs--fill") justify? (conj "ui-tabs--justify")
+                                             vertical? (conj "ui-tabs--vertical")))
                      :aria-label label} attrs [:aria-label])
    (into [:ul] (for [[p l] items] [:li (wb/link p (when (= p current) {:aria-current "page"}) l)]))])
 

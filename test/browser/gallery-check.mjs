@@ -161,6 +161,25 @@ for (const [mode, init] of Object.entries(modes)) {
     const b = await p.locator('#g-end').boundingBox(); await p.keyboard.press('Escape');
     return { right: Math.round(b.x + b.width), height: Math.round(b.height), closed: !(await isOpen('g-end')) };
   }, s => s.right === 1024 && s.height === 768 && s.closed);
+  await check('tabs-nav: vertical, its items a column on one line at the inline end, the current one\'s rail on it; pills draw neither', async () => {
+    const look = (label) => p.evaluate((label) => {
+      const nav = document.querySelector(`nav[aria-label="${label}"]`); nav.scrollIntoView();
+      const ul = nav.querySelector('ul'), ur = ul.getBoundingClientRect(), us = getComputedStyle(ul);
+      const items = [...ul.querySelectorAll('a')].map(a => a.getBoundingClientRect());
+      const cur = ul.querySelector('a[aria-current="page"]'), cr = cur.getBoundingClientRect(), after = getComputedStyle(cur, '::after');
+      const probe = document.createElement('div'); probe.style.color = 'var(--ui-primary-border)'; document.body.append(probe);
+      const primary = getComputedStyle(probe).color; probe.remove();
+      return { stacked: items.every((r, i) => i === 0 || (Math.round(r.top) >= Math.round(items[i - 1].bottom) && Math.round(r.left) === Math.round(items[0].left))),
+        lineEnd: us.borderRightWidth, lineBottom: us.borderBottomWidth, lineColour: us.borderRightColor,
+        rail: after.content !== 'none' ? { width: after.borderRightWidth, colour: after.borderRightColor === primary,
+          // The rail's own box, in the link's padding box: its right edge on the line's inner side.
+          right: Math.round(cr.left + parseFloat(after.left) + parseFloat(after.width) + parseFloat(after.borderRightWidth)) === Math.round(ur.right - parseFloat(us.borderRightWidth)) && Math.round(cr.right) === Math.round(ur.right - parseFloat(us.borderRightWidth)), height: Math.round(parseFloat(after.height)) === Math.round(cr.height) } : null,
+        shadow: getComputedStyle(cur).boxShadow, fill: getComputedStyle(cur).backgroundColor };
+    }, label);
+    return { tabs: await look('Vertical views'), pills: await look('Vertical pills') };
+  }, s => s.tabs.stacked && s.tabs.lineEnd === '1px' && s.tabs.lineBottom === '0px' && s.tabs.rail?.width === '2px' && s.tabs.rail.colour
+       && s.tabs.rail.right && s.tabs.rail.height && s.tabs.shadow === 'none'
+       && s.pills.stacked && s.pills.lineEnd === '0px' && s.pills.lineBottom === '0px' && s.pills.rail === null && s.pills.fill !== 'rgba(0, 0, 0, 0)');
   await check('dropdown: below its button at the inline start, closed by Esc', async () => {
     const dd = p.locator('button[popovertarget=g-menu]');
     await dd.scrollIntoViewIfNeeded(); await dd.click(); await p.waitForTimeout(150);

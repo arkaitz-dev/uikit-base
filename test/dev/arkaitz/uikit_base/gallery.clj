@@ -79,6 +79,9 @@
     (ui/crumbs r {:items [["/" "Home"] [nil "Gallery"]]})
     (ui/tabs-nav r {:label "Views" :items [["/" "All"] ["/open" "Open"]] :current "/"})
     (ui/tabs-nav r {:label "Pills" :style :pills :fill? true :items [["/" "All"] ["/open" "Open"]] :current "/"})
+    [:div.ui-cluster
+     (ui/tabs-nav r {:label "Vertical views" :vertical? true :items [["/" "All"] ["/open" "Open"] ["/closed" "Closed"]] :current "/open"})
+     (ui/tabs-nav r {:label "Vertical pills" :style :pills :vertical? true :items [["/" "All"] ["/open" "Open"] ["/closed" "Closed"]] :current "/open"})]
     (ui/pager r {:previous "/?p=1" :next "/?p=3" :pages [["/?p=1" 1] ["/?p=2" 2] ["/?p=3" 3]] :current 2})]
    ["cards"
     (ui/card-group

@@ -3,10 +3,10 @@
 ;; passed and that the files below are the bytes they were run against, so a change to any of
 ;; them reds until the checks are run again and this file regenerated.
 {:checked "2026-11-19"
- :files {"kit.css" "af2e88fe8d5077e1085fac204ea90a71b15e70347ebf5188746c1ef236cdc9df"
+ :files {"kit.css" "849e4bc3ed2491dc147a58bfeee6c513203f4fe1dad2c3f2ad711bebabbc75c7"
          "ui-utilities.css" "925076562e08793921f22584692bbfc1591c931e64573e34668d94b39f2995f5"
          "ui.js" "429e8cb222d498f3255aff49c896e5672750fa07b81ba6e22bef7b5b29a3cfeb"
-         "gallery-check.mjs" "3b1c0fa13434c943d31ccd63ff1f37f75dd97ed61e3f0d631ddd142210359718"
+         "gallery-check.mjs" "17c80e59bb26db1b6f60d26fa365653ea59b5ded3ff49dfb888dd076b76c8966"
          "wb.css" "551519f3b5b3de5eb2cdf9487e111dfd3f1bdf7d3d22337ed82b2fd9ad090595"}
  :runs [
   {:engine "webkit" :version "26.0"
@@ -20,6 +20,7 @@
      "button-group: an open confirm leaves its neighbours their own height" true
      "meter: its fill and its track are the palette's, the fill the track's whole height" true
      "offcanvas: the end sheet at the inline end, full height" true
+     "tabs-nav: vertical, its items a column on one line at the inline end, the current one's rail on it; pills draw neither" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
      "carousel: no scrollbar of its own once its buttons drive it, one without them" true
@@ -73,6 +74,7 @@
      "button-group: an open confirm leaves its neighbours their own height" true
      "meter: its fill and its track are the palette's, the fill the track's whole height" true
      "offcanvas: the end sheet at the inline end, full height" true
+     "tabs-nav: vertical, its items a column on one line at the inline end, the current one's rail on it; pills draw neither" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
      "carousel: no scrollbar of its own once its buttons drive it, one without them" true
@@ -128,6 +130,7 @@
      "button-group: an open confirm leaves its neighbours their own height" true
      "meter: its fill and its track are the palette's, the fill the track's whole height" true
      "offcanvas: the end sheet at the inline end, full height" true
+     "tabs-nav: vertical, its items a column on one line at the inline end, the current one's rail on it; pills draw neither" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
      "carousel: no scrollbar of its own once its buttons drive it, one without them" true
@@ -181,6 +184,7 @@
      "button-group: an open confirm leaves its neighbours their own height" true
      "meter: its fill and its track are the palette's, the fill the track's whole height" true
      "offcanvas: the end sheet at the inline end, full height" true
+     "tabs-nav: vertical, its items a column on one line at the inline end, the current one's rail on it; pills draw neither" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
      "carousel: no scrollbar of its own once its buttons drive it, one without them" true
@@ -234,6 +238,7 @@
      "button-group: an open confirm leaves its neighbours their own height" true
      "meter: its fill and its track are the palette's, the fill the track's whole height" true
      "offcanvas: the end sheet at the inline end, full height" true
+     "tabs-nav: vertical, its items a column on one line at the inline end, the current one's rail on it; pills draw neither" true
      "dropdown: below its button at the inline start, closed by Esc" true
      "tooltip: shown on hover and focus, above, reachable by the pointer, hidden on leave and Esc" true
      "carousel: no scrollbar of its own once its buttons drive it, one without them" true
