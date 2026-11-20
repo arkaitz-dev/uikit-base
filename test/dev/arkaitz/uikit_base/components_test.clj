@@ -1201,8 +1201,16 @@
   (is (str/includes? (html (ui/offcanvas {} {:id "nav" :title "Menu"} "b")) "class=\"ui-dialog ui-dialog--scrollable ui-offcanvas ui-offcanvas--start\"")
       "the inline start unless told")
   (is (str/includes? (html (ui/offcanvas {} {:id "nav" :title "Menu" :static? true} "b")) "closedby=\"none\"") "static as a dialog is")
-  (doseq [side [:left :right "end"]]
-    (is (= ["uikit-base: an offcanvas's :side is :start or :end" {:side side}] (refusal #(ui/offcanvas {} {:id "n" :title "M" :side side}))) (pr-str side)))
+  (doseq [side [:left :right "end" :middle]]
+    (is (= ["uikit-base: an offcanvas's :side is :start, :end, :top or :bottom" {:side side}] (refusal #(ui/offcanvas {} {:id "n" :title "M" :side side}))) (pr-str side)))
+  (doseq [side [:top :bottom]]
+    (is (str/includes? (html (ui/offcanvas {} {:id "n" :title "M" :side side} "b")) (str "class=\"ui-dialog ui-dialog--scrollable ui-offcanvas ui-offcanvas--" (name side) "\""))
+        (pr-str side)))
+  (is (str/includes? (html (ui/offcanvas {} {:id "n" :title "M" :side :end :responsive :md :attrs {:class "x"}} "b"))
+                     "class=\"ui-dialog ui-dialog--scrollable ui-offcanvas ui-offcanvas--end ui-offcanvas--responsive-md x\"")
+      "inline from md up")
+  (doseq [r [:xl :xs "md" true]]
+    (is (= ["uikit-base: an offcanvas's :responsive is :sm, :md or :lg" {:responsive r}] (refusal #(ui/offcanvas {} {:id "n" :title "M" :responsive r}))) (pr-str r)))
   (is (= ["uikit-base: an offcanvas has a title, which names it" {:id "n"}] (refusal #(ui/offcanvas {} {:id "n"})))))
 
 (def ^:private nav-attrs "hx-push-url=\"true\" hx-select=\"main\" hx-swap=\"outerHTML show:top showTarget:body\" hx-target=\"main\"")

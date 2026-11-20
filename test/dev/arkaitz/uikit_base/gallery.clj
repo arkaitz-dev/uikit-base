@@ -82,7 +82,9 @@
     [:div.ui-cluster
      (ui/tabs-nav r {:label "Vertical views" :vertical? true :items [["/" "All"] ["/open" "Open"] ["/closed" "Closed"]] :current "/open"})
      (ui/tabs-nav r {:label "Vertical pills" :style :pills :vertical? true :items [["/" "All"] ["/open" "Open"] ["/closed" "Closed"]] :current "/open"})]
-    (ui/pager r {:previous "/?p=1" :next "/?p=3" :pages [["/?p=1" 1] ["/?p=2" 2] ["/?p=3" 3]] :current 2})]
+    (ui/pager r {:previous "/?p=1" :next "/?p=3" :pages [["/?p=1" 1] ["/?p=2" 2] ["/?p=3" 3]] :current 2})
+    (ui/dialog-button {:dialog "g-side" :class "ui-d-md-none"} "Sections")
+    (ui/offcanvas r {:id "g-side" :title "Sections" :responsive :md} (ui/list-group {:items [["/" "Home"] ["/open" "Open items"]]}))]
    ["cards"
     (ui/card-group
       (ui/card {:title "With image" :image {:src image :alt "A grey rectangle"} :footer "Footer"} "Body.")
@@ -100,6 +102,12 @@
      (ui/dropdown {:id "g-menu" :label "Actions" :items [["/" "Home"] ["/open" "Open items"] [nil (ui/action r "/do" {:label "Archive" :subject "the gallery"})]]})
      (ui/popover {:id "g-pop" :label "What is this?" :title "The gallery"} [:p "Every component of the kit on one page."])
      (ui/tooltip {:id "g-tip" :text "Saves the draft, not the page"} (ui/button {:type "button"} "Save draft"))]
+    [:div.ui-cluster
+     (ui/dialog-button {:dialog "g-top"} "Open a sheet at the top")
+     (ui/dialog-button {:dialog "g-bottom"} "Open a sheet at the bottom")
+]
+    (ui/offcanvas r {:id "g-top" :title "Notices" :side :top} [:p "A notice across the top."])
+    (ui/offcanvas r {:id "g-bottom" :title "Cookies" :side :bottom} [:p "A sheet along the bottom."])
     (ui/offcanvas r {:id "g-start" :title "Navigation"} (ui/list-group {:items [["/" "Home"] ["/open" "Open items"]]}))
     (ui/offcanvas r {:id "g-end" :title "Filters" :side :end} [:p "Filters would go here."])
     (ui/dialog r {:id "g-dialog" :title "Rename" :footer (ui/button {:type "button" :commandfor "g-dialog" :command "close"} "Cancel")}

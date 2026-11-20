@@ -156,6 +156,26 @@ for (const [mode, init] of Object.entries(modes)) {
     const fill = mid.map(y => img.at(Math.floor(img.w * 0.3), y)), track = mid.map(y => img.at(Math.floor(img.w * 0.9), y));
     return { fill, track, want };
   }, s => s.fill.every(c => c === s.want['--ui-warning-border']) && s.track.every(c => c === s.want['--ui-surface-alt']));
+  await check('offcanvas: the top and bottom sheets span the width at their edge, as tall as their content', async () => {
+    const sheet = async (id) => {
+      await p.locator(`button[commandfor=${id}][command=show-modal]`).click();
+      const s = await p.evaluate((id) => { const d = document.getElementById(id), r = d.getBoundingClientRect();
+        const content = [...d.children].reduce((h, c) => h + c.getBoundingClientRect().height, 0);
+        return { open: d.matches(':modal'), left: r.left, width: r.width, top: r.top, bottom: r.bottom, height: r.height, content: Math.round(content) }; }, id);
+      await p.keyboard.press('Escape'); return { ...s, closed: !(await isOpen(id)) };
+    };
+    return { top: await sheet('g-top'), bottom: await sheet('g-bottom') };
+  }, s => [s.top, s.bottom].every(x => x.open && x.closed && x.left === 0 && x.width === 1024 && x.height < 400 && Math.abs(Math.round(x.height) - x.content) <= 1)
+       && s.top.top === 0 && s.bottom.bottom === 768);
+  await check('offcanvas: responsive from md, closed, its body in the page with no head, its link reachable, its button hidden', async () => {
+    return p.evaluate(() => {
+      const d = document.getElementById('g-side'), r = d.getBoundingClientRect(), link = d.querySelector('a');
+      const before = d.previousElementSibling.previousElementSibling.getBoundingClientRect(); link.focus();
+      return { open: d.open, display: getComputedStyle(d).display, position: getComputedStyle(d).position, inFlow: Math.round(r.top) >= Math.round(before.bottom),
+        head: getComputedStyle(d.querySelector('.ui-dialog__head')).display, linkShown: link.getBoundingClientRect().height > 0, focused: document.activeElement === link,
+        button: getComputedStyle(document.querySelector('button[commandfor=g-side][command=show-modal]')).display, border: getComputedStyle(d).borderTopWidth };
+    });
+  }, s => !s.open && s.display === 'block' && s.position === 'static' && s.inFlow && s.head === 'none' && s.linkShown && s.focused && s.button === 'none' && s.border === '0px');
   await check('offcanvas: the end sheet at the inline end, full height', async () => {
     await p.locator('button[commandfor=g-end][command=show-modal]').click();
     const b = await p.locator('#g-end').boundingBox(); await p.keyboard.press('Escape');
@@ -257,6 +277,20 @@ for (const [mode, init] of Object.entries(modes)) {
       under: pr.top - br.bottom, left: pr.left, width: pr.width, barLeft: br.left, barWidth: br.width, vw: document.documentElement.clientWidth,
       current: [...document.querySelectorAll('.ui-navbar__link[aria-current="page"]')].map(a => a.getAttribute('href')), path: location.pathname };
   });
+  await check('offcanvas: responsive from md, below it a sheet its button opens; widened while open it stays a sheet until closed, then sits in the page', async () => {
+    const [q, errs] = await pageAt(600, '/');
+    const state = () => q.evaluate(() => { const d = document.getElementById('g-side'), r = d.getBoundingClientRect();
+      return { open: d.open, modal: d.matches(':modal'), display: getComputedStyle(d).display, head: getComputedStyle(d.querySelector('.ui-dialog__head')).display,
+        left: Math.round(r.left), height: Math.round(r.height), vh: innerHeight }; });
+    const closed = await state();
+    const button = await q.evaluate(() => getComputedStyle(document.querySelector('button[commandfor=g-side][command=show-modal]')).display);
+    await q.locator('button[commandfor=g-side][command=show-modal]').click(); const opened = await state();
+    await q.setViewportSize({ width: 1024, height: 740 }); await frames(q); const widened = await state();
+    await q.keyboard.press('Escape'); await frames(q); const after = await state();
+    await q.close(); return { closed, button, opened, widened, after, errs };
+  }, s => !s.closed.open && s.closed.display === 'none' && s.button !== 'none'
+       && s.opened.modal && s.opened.head !== 'none' && s.opened.left === 0 && s.opened.height === s.opened.vh
+       && s.widened.modal && s.widened.head !== 'none' && !s.after.open && s.after.display === 'block' && s.after.head === 'none' && s.errs.length === 0);
   await check('navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open', async () => {
     const [q, errs] = await pageAt(1024, '/'); const s = await navState(q);
     const sameRow = await q.evaluate(() => { const l = document.querySelector('.ui-navbar__link').getBoundingClientRect(), b = document.querySelector('.ui-navbar').getBoundingClientRect(); return l.top >= b.top && l.bottom <= b.bottom; });

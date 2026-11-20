@@ -496,13 +496,37 @@
     .ui-dialog--scrollable[open] { display: flex; flex-direction: column; }
     .ui-dialog--scrollable > .ui-dialog__body { position: relative; flex: 1 1 auto; min-block-size: 0; overflow-y: auto; }
 
-    /* Offcanvas: a dialog drawn as a sheet along the inline start or end, the screen's height. */
-    .ui-offcanvas {
+    /* Offcanvas: a dialog drawn as a sheet along the inline start or end, the screen's height,
+     * or along its top or bottom, its width and as tall as its content, short of the screen's. */
+    .ui-offcanvas { border-radius: 0; }
+    .ui-offcanvas--start, .ui-offcanvas--end {
       inline-size: min(24rem, calc(100% - var(--ui-spacing-xl))); block-size: 100%; max-block-size: none;
-      margin-block: 0; border-block-width: 0; border-radius: 0;
+      margin-block: 0; border-block-width: 0;
     }
     .ui-offcanvas--start { margin-inline: 0 auto; border-inline-start-width: 0; }
     .ui-offcanvas--end { margin-inline: auto 0; border-inline-end-width: 0; }
+    .ui-offcanvas--top, .ui-offcanvas--bottom {
+      inline-size: 100%; max-inline-size: none; max-block-size: calc(100% - var(--ui-spacing-xl)); margin-inline: 0; border-inline-width: 0;
+    }
+    .ui-offcanvas--top { margin-block: 0 auto; border-block-start-width: 0; }
+    .ui-offcanvas--bottom { margin-block: auto 0; border-block-end-width: 0; }
+    /* Responsive: from its breakpoint up, closed, its body is drawn in the page — author CSS
+     * outranks the user agent's display: none on a closed dialog — with no head, no box. */
+    @media (min-width: 40em) {
+      .ui-offcanvas--responsive-sm:not([open]) { display: block; position: static; inline-size: auto; block-size: auto; max-inline-size: none; max-block-size: none; margin: 0; color: var(--ui-on-background); background: var(--ui-background); border: 0; box-shadow: none; }
+      .ui-offcanvas--responsive-sm:not([open]) > .ui-dialog__head { display: none; }
+      .ui-offcanvas--responsive-sm:not([open]) > .ui-dialog__body { padding: 0; overflow: visible; }
+    }
+    @media (min-width: 48em) {
+      .ui-offcanvas--responsive-md:not([open]) { display: block; position: static; inline-size: auto; block-size: auto; max-inline-size: none; max-block-size: none; margin: 0; color: var(--ui-on-background); background: var(--ui-background); border: 0; box-shadow: none; }
+      .ui-offcanvas--responsive-md:not([open]) > .ui-dialog__head { display: none; }
+      .ui-offcanvas--responsive-md:not([open]) > .ui-dialog__body { padding: 0; overflow: visible; }
+    }
+    @media (min-width: 64em) {
+      .ui-offcanvas--responsive-lg:not([open]) { display: block; position: static; inline-size: auto; block-size: auto; max-inline-size: none; max-block-size: none; margin: 0; color: var(--ui-on-background); background: var(--ui-background); border: 0; box-shadow: none; }
+      .ui-offcanvas--responsive-lg:not([open]) > .ui-dialog__head { display: none; }
+      .ui-offcanvas--responsive-lg:not([open]) > .ui-dialog__body { padding: 0; overflow: visible; }
+    }
 
     /* Dropdowns, popovers and tooltips: the platform's popover, in the top layer, placed
      * against the control before it by anchor positioning, which each wrapper scopes so one

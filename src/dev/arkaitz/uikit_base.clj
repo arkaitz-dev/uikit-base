@@ -1093,13 +1093,21 @@
 (defn offcanvas
   "`(offcanvas request opts & body)` → a `dialog` drawn as a sheet along one side of the
   screen, `:side` `:start` (unless given) or `:end` — the inline start or end, so a page in a
-  right-to-left language draws it on the other side. Opened by a `dialog-button` naming its
-  `:id`, named by its `:title`, closed as a dialog is, `:static?` alike; its body scrolls,
-  and the keyboard reaches it. A navigation on a narrow screen is one: its links inside."
-  [request {:keys [side] :as opts} & body]
-  (when-not (contains? #{nil :start :end} side)
-    (throw (ex-info "uikit-base: an offcanvas's :side is :start or :end" {:side side})))
-  (sheet request "an offcanvas" (str "ui-dialog ui-dialog--scrollable ui-offcanvas ui-offcanvas--" (name (or side :start)))
+  right-to-left language draws it on the other side — the screen's height, or `:top` or
+  `:bottom`, its width and as tall as its content, short of the screen's height. Opened by a
+  `dialog-button` naming its `:id`, named by its `:title`, closed as a dialog is, `:static?`
+  alike; its body scrolls, and the keyboard reaches it. A navigation on a narrow screen is one:
+  its links inside. `:responsive`, `:sm`, `:md` or `:lg`, shows its body in the page from that
+  breakpoint up while it is closed, with no head — a sidebar on a wide screen, a sheet on a
+  narrow one; its `dialog-button` is the host's to hide from there (`ui-d-md-none`). Opened
+  below the breakpoint, it stays a sheet until it is closed."
+  [request {:keys [side responsive] :as opts} & body]
+  (when-not (contains? #{nil :start :end :top :bottom} side)
+    (throw (ex-info "uikit-base: an offcanvas's :side is :start, :end, :top or :bottom" {:side side})))
+  (when-not (or (nil? responsive) (expands responsive))
+    (throw (ex-info "uikit-base: an offcanvas's :responsive is :sm, :md or :lg" {:responsive responsive})))
+  (sheet request "an offcanvas" (cond-> (str "ui-dialog ui-dialog--scrollable ui-offcanvas ui-offcanvas--" (name (or side :start)))
+                                  responsive (str " ui-offcanvas--responsive-" (name responsive)))
          (assoc opts :scrollable? true) body))
 
 (defn- toggle

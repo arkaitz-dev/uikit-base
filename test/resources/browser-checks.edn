@@ -2,11 +2,11 @@
 ;; tree: the kit's behaviour no JVM test can see. browser_checks_test holds that every check
 ;; passed and that the files below are the bytes they were run against, so a change to any of
 ;; them reds until the checks are run again and this file regenerated.
-{:checked "2026-11-19"
- :files {"kit.css" "849e4bc3ed2491dc147a58bfeee6c513203f4fe1dad2c3f2ad711bebabbc75c7"
+{:checked "2026-11-20"
+ :files {"kit.css" "57e255c3395cb8b7f71b08ad9d0afebcb774359a3299b7cd57a23065748a8cf4"
          "ui-utilities.css" "925076562e08793921f22584692bbfc1591c931e64573e34668d94b39f2995f5"
          "ui.js" "429e8cb222d498f3255aff49c896e5672750fa07b81ba6e22bef7b5b29a3cfeb"
-         "gallery-check.mjs" "17c80e59bb26db1b6f60d26fa365653ea59b5ded3ff49dfb888dd076b76c8966"
+         "gallery-check.mjs" "77f9b3545c4c6e732690789a64cd90406973422d72e8ea2f9e85dd646226da74"
          "wb.css" "551519f3b5b3de5eb2cdf9487e111dfd3f1bdf7d3d22337ed82b2fd9ad090595"}
  :runs [
   {:engine "webkit" :version "26.0"
@@ -19,6 +19,8 @@
      "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "button-group: an open confirm leaves its neighbours their own height" true
      "meter: its fill and its track are the palette's, the fill the track's whole height" true
+     "offcanvas: the top and bottom sheets span the width at their edge, as tall as their content" true
+     "offcanvas: responsive from md, closed, its body in the page with no head, its link reachable, its button hidden" true
      "offcanvas: the end sheet at the inline end, full height" true
      "tabs-nav: vertical, its items a column on one line at the inline end, the current one's rail on it; pills draw neither" true
      "dropdown: below its button at the inline start, closed by Esc" true
@@ -29,6 +31,7 @@
      "scrollspy: the section in view is aria-current=location" true
      "forced: native invoker commands were cancelled, so the script acted" true
      "no CSP violation, no script error" true
+     "offcanvas: responsive from md, below it a sheet its button opens; widened while open it stays a sheet until closed, then sits in the page" true
      "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
      "navbar: a link swaps <main> and the current mark moves with it, no reload" true
      "navbar: narrow, the panel hidden until its toggle opens it, under the bar, both as wide as the page; Esc and a press outside close it" true
@@ -73,6 +76,8 @@
      "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "button-group: an open confirm leaves its neighbours their own height" true
      "meter: its fill and its track are the palette's, the fill the track's whole height" true
+     "offcanvas: the top and bottom sheets span the width at their edge, as tall as their content" true
+     "offcanvas: responsive from md, closed, its body in the page with no head, its link reachable, its button hidden" true
      "offcanvas: the end sheet at the inline end, full height" true
      "tabs-nav: vertical, its items a column on one line at the inline end, the current one's rail on it; pills draw neither" true
      "dropdown: below its button at the inline start, closed by Esc" true
@@ -83,6 +88,7 @@
      "scrollspy: the section in view is aria-current=location" true
      "forced: native invoker commands were cancelled, so the script acted" true
      "no CSP violation, no script error" true
+     "offcanvas: responsive from md, below it a sheet its button opens; widened while open it stays a sheet until closed, then sits in the page" true
      "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
      "navbar: a link swaps <main> and the current mark moves with it, no reload" true
      "navbar: narrow, the panel hidden until its toggle opens it, under the bar, both as wide as the page; Esc and a press outside close it" true
@@ -129,6 +135,8 @@
      "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "button-group: an open confirm leaves its neighbours their own height" true
      "meter: its fill and its track are the palette's, the fill the track's whole height" true
+     "offcanvas: the top and bottom sheets span the width at their edge, as tall as their content" true
+     "offcanvas: responsive from md, closed, its body in the page with no head, its link reachable, its button hidden" true
      "offcanvas: the end sheet at the inline end, full height" true
      "tabs-nav: vertical, its items a column on one line at the inline end, the current one's rail on it; pills draw neither" true
      "dropdown: below its button at the inline start, closed by Esc" true
@@ -139,6 +147,7 @@
      "scrollspy: the section in view is aria-current=location" true
      "forced: native invoker commands were cancelled, so the script acted" true
      "no CSP violation, no script error" true
+     "offcanvas: responsive from md, below it a sheet its button opens; widened while open it stays a sheet until closed, then sits in the page" true
      "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
      "navbar: a link swaps <main> and the current mark moves with it, no reload" true
      "navbar: narrow, the panel hidden until its toggle opens it, under the bar, both as wide as the page; Esc and a press outside close it" true
@@ -183,6 +192,8 @@
      "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "button-group: an open confirm leaves its neighbours their own height" true
      "meter: its fill and its track are the palette's, the fill the track's whole height" true
+     "offcanvas: the top and bottom sheets span the width at their edge, as tall as their content" true
+     "offcanvas: responsive from md, closed, its body in the page with no head, its link reachable, its button hidden" true
      "offcanvas: the end sheet at the inline end, full height" true
      "tabs-nav: vertical, its items a column on one line at the inline end, the current one's rail on it; pills draw neither" true
      "dropdown: below its button at the inline start, closed by Esc" true
@@ -193,6 +204,7 @@
      "scrollspy: the section in view is aria-current=location" true
      "forced: native invoker commands were cancelled, so the script acted" true
      "no CSP violation, no script error" true
+     "offcanvas: responsive from md, below it a sheet its button opens; widened while open it stays a sheet until closed, then sits in the page" true
      "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
      "navbar: a link swaps <main> and the current mark moves with it, no reload" true
      "navbar: narrow, the panel hidden until its toggle opens it, under the bar, both as wide as the page; Esc and a press outside close it" true
@@ -237,6 +249,8 @@
      "forms: fields apart by the kit's spacing without ui-form, a form of only a button left inline" true
      "button-group: an open confirm leaves its neighbours their own height" true
      "meter: its fill and its track are the palette's, the fill the track's whole height" true
+     "offcanvas: the top and bottom sheets span the width at their edge, as tall as their content" true
+     "offcanvas: responsive from md, closed, its body in the page with no head, its link reachable, its button hidden" true
      "offcanvas: the end sheet at the inline end, full height" true
      "tabs-nav: vertical, its items a column on one line at the inline end, the current one's rail on it; pills draw neither" true
      "dropdown: below its button at the inline start, closed by Esc" true
@@ -247,6 +261,7 @@
      "scrollspy: the section in view is aria-current=location" true
      "forced: native invoker commands were cancelled, so the script acted" true
      "no CSP violation, no script error" true
+     "offcanvas: responsive from md, below it a sheet its button opens; widened while open it stays a sheet until closed, then sits in the page" true
      "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
      "navbar: a link swaps <main> and the current mark moves with it, no reload" true
      "navbar: narrow, the panel hidden until its toggle opens it, under the bar, both as wide as the page; Esc and a press outside close it" true
