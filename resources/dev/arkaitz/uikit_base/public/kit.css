@@ -566,6 +566,40 @@
     /* The inline end is the left there: the same chevron turned the other way points down too. */
     .ui-dropdown > .ui-btn:dir(rtl)::before { rotate: -45deg; }
     .ui-dropdown:has(> .ui-dropdown__menu:popover-open) > .ui-btn:dir(rtl)::before { rotate: -225deg; }
+    /* Opened up, or beside the button at its inline start or end, or lined with its inline end;
+     * flipped to the other side where the screen has no room. */
+    .ui-dropdown--up > .ui-dropdown__menu { margin-block: 0 var(--ui-spacing-xs); position-area: block-start span-inline-end; }
+    .ui-dropdown--align-end > .ui-dropdown__menu { position-area: block-end span-inline-start; }
+    .ui-dropdown--up.ui-dropdown--align-end > .ui-dropdown__menu { position-area: block-start span-inline-start; }
+    .ui-dropdown--start > .ui-dropdown__menu {
+      margin-block: 0; margin-inline: 0 var(--ui-spacing-xs); position-area: inline-start span-block-end; position-try-fallbacks: flip-inline;
+    }
+    .ui-dropdown--end > .ui-dropdown__menu {
+      margin-block: 0; margin-inline: var(--ui-spacing-xs) 0; position-area: inline-end span-block-end; position-try-fallbacks: flip-inline;
+    }
+    /* Its caret points the way it opens: up, turned down while open; beside, before the label at
+     * the start and after it at the end, unturned. Each of the four selectors the caret above is
+     * drawn by — closed or open, either direction — is matched, so none of those outranks these. */
+    .ui-dropdown--up > .ui-btn::before { rotate: 225deg; translate: 0 calc(0.35355339 * (0.35em + var(--ui-border-width-thick))); }
+    .ui-dropdown--up:has(> .ui-dropdown__menu:popover-open) > .ui-btn::before { rotate: 45deg; translate: 0 calc(-0.35355339 * (0.35em + var(--ui-border-width-thick))); }
+    .ui-dropdown--up > .ui-btn:dir(rtl)::before { rotate: -225deg; }
+    .ui-dropdown--up:has(> .ui-dropdown__menu:popover-open) > .ui-btn:dir(rtl)::before { rotate: -45deg; }
+    .ui-dropdown--start > .ui-btn::before, .ui-dropdown--start:has(> .ui-dropdown__menu:popover-open) > .ui-btn::before {
+      order: -1; margin-inline: 0 calc(0.20710678 * (0.35em + var(--ui-border-width-thick))); rotate: 135deg; translate: calc(0.35355339 * (0.35em + var(--ui-border-width-thick))) 0;
+    }
+    .ui-dropdown--start > .ui-btn:dir(rtl)::before, .ui-dropdown--start:has(> .ui-dropdown__menu:popover-open) > .ui-btn:dir(rtl)::before {
+      rotate: -135deg; translate: calc(-0.35355339 * (0.35em + var(--ui-border-width-thick))) 0;
+    }
+    .ui-dropdown--end > .ui-btn::before, .ui-dropdown--end:has(> .ui-dropdown__menu:popover-open) > .ui-btn::before {
+      rotate: -45deg; translate: calc(-0.35355339 * (0.35em + var(--ui-border-width-thick))) 0;
+    }
+    .ui-dropdown--end > .ui-btn:dir(rtl)::before, .ui-dropdown--end:has(> .ui-dropdown__menu:popover-open) > .ui-btn:dir(rtl)::before {
+      rotate: 45deg; translate: calc(0.35355339 * (0.35em + var(--ui-border-width-thick))) 0;
+    }
+    /* A heading over the items after it, a line between them, and an item that goes nowhere. */
+    .ui-dropdown__header { padding: var(--ui-spacing-xs) var(--ui-spacing-md); font-size: var(--ui-font-size-sm); color: var(--ui-text-muted); }
+    .ui-dropdown__divider { margin-block: var(--ui-spacing-xs); border-block-start: 1px solid var(--ui-border); }
+    .ui-dropdown__item[aria-disabled="true"], .ui-dropdown__item[aria-disabled="true"]:hover { color: var(--ui-disabled-fg); background: var(--ui-disabled-bg); cursor: default; }
     /* Navbars: the bar on the surface, its brand at the start; below its breakpoint a toggle
      * opens the items and the end as a popover under the bar, as wide as the page, by anchor
      * positioning on the bar, or by ui.js's placement under the toggle where a browser has

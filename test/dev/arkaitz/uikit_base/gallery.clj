@@ -105,7 +105,12 @@
     [:div.ui-cluster
      (ui/dialog-button {:dialog "g-top"} "Open a sheet at the top")
      (ui/dialog-button {:dialog "g-bottom"} "Open a sheet at the bottom")
-]
+     (ui/dropdown {:id "g-up" :label "Up, at the end" :direction :up :align :end :current "/"
+                   :items [[:header "Go to"] ["/" "Home"] ["/open" "Open items"] :divider ["/closed" "Closed items" {:disabled? true}]]})
+     (ui/dropdown {:id "g-up-start" :label "Up" :direction :up :items [["/" "Home"] ["/open" "Open items"]]})
+     (ui/dropdown {:id "g-down-end" :label "Down, at the end" :align :end :items [["/" "Home"] ["/open" "Open items"]]})
+     (ui/dropdown {:id "g-beside-start" :label "Beside, at the start" :direction :start :items [["/" "Home"] ["/open" "Open items"]]})
+     (ui/dropdown {:id "g-beside-end" :label "Beside, at the end" :direction :end :items [["/" "Home"] ["/open" "Open items"]]})]
     (ui/offcanvas r {:id "g-top" :title "Notices" :side :top} [:p "A notice across the top."])
     (ui/offcanvas r {:id "g-bottom" :title "Cookies" :side :bottom} [:p "A sheet along the bottom."])
     (ui/offcanvas r {:id "g-start" :title "Navigation"} (ui/list-group {:items [["/" "Home"] ["/open" "Open items"]]}))

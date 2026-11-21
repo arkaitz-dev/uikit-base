@@ -50,15 +50,21 @@
   // A browser with anchor-name but no anchor-scope would apply the stylesheet's area too. A
   // navbar's panel is placed against its bar, at its very edge, never flipped (no room above),
   // and bounded by the screen's bottom from the top measured here, as the stylesheet's 100% is.
+  // A dropdown opened up prefers above, one lined with the button's end starts from its end, and
+  // one beside it stands at its top, at its inline start or end (+1 is the right), flipped to fit.
   var open = ":is(.ui-dropdown__menu, .ui-popover, .ui-tooltip, .ui-navbar__panel):popover-open";
   function place(pop) {
     var bar = pop.matches(".ui-navbar__panel") && pop.closest(".ui-navbar"), p = pop.getBoundingClientRect();
-    var a = (bar || pop.parentElement.firstElementChild).getBoundingClientRect();
+    var a = (bar || pop.parentElement.firstElementChild).getBoundingClientRect(), wrap = pop.parentElement.classList;
     var tip = pop.classList.contains("ui-tooltip"), gap = bar ? 0 : 4, rtl = getComputedStyle(pop).direction === "rtl";
-    var below = a.bottom + gap, above = bar ? -1 : a.top - gap - p.height;
-    var top = tip ? (above < 0 ? below : above) : (below + p.height > innerHeight && above >= 0 ? above : below);
-    var left = tip ? a.left + (a.width - p.width) / 2 : (rtl ? a.right - p.width : a.left);
-    left = Math.max(0, Math.min(left, document.documentElement.clientWidth - p.width));
+    var side = (wrap.contains("ui-dropdown--end") - wrap.contains("ui-dropdown--start")) * (rtl ? -1 : 1);
+    var below = a.bottom + gap, above = bar ? -1 : a.top - gap - p.height, vw = document.documentElement.clientWidth;
+    var top = side ? a.top : tip || wrap.contains("ui-dropdown--up") ? (above < 0 ? below : above)
+      : (below + p.height > innerHeight && above >= 0 ? above : below);
+    var right = a.right + gap, before = a.left - gap - p.width, end = rtl !== wrap.contains("ui-dropdown--align-end");
+    var left = side > 0 ? (right + p.width > vw && before >= 0 ? before : right) : side ? (before < 0 ? right : before)
+      : tip ? a.left + (a.width - p.width) / 2 : (end ? a.right - p.width : a.left);
+    left = Math.max(0, Math.min(left, vw - p.width));
     var props = { "position-area": "none", "position-try-fallbacks": "none", margin: "0" };
     Object.assign(props, { top: top + "px", left: left + "px", "max-block-size": bar ? innerHeight - top + "px" : "" });
     Object.keys(props).forEach(function (name) { pop.style.setProperty(name, props[name]); });
@@ -118,20 +124,21 @@
   }
   ["mouseover", "focusin"].forEach(function (type) { on(type, showTip); });
   ["mouseout", "focusout"].forEach(function (type) { on(type, hideTip); });
-  // Esc hides an open tooltip, and only that: the dialog around it stays. Where closedby is
+  // Esc hides every open tooltip; one in the top modal keeps the Esc, so that modal stays, and
+  // one outside it (still in its hide delay) does not, so the modal closes. Where closedby is
   // missing, Esc is refused too while the focus is in a closedby=none modal and no popover in
   // it is open, which Esc must still close.
   on("keydown", function (event) {
     if (event.key !== "Escape") return;
-    var tips = [...document.querySelectorAll(".ui-tooltip:popover-open")].map((tip) => tip.hidePopover());
     // The innermost modal holding the focus; when the focus has fallen to body (a click on a
     // modal's text), the modal that held it last, which is the one on top: neither document
     // order nor :modal says which of two open modals is.
     // A modal that opened without the focus ever entering it leaves no mark: then the first open one.
     var modal = [...document.querySelectorAll(":modal:focus-within")].pop() || lastModal;
     modal = modal?.matches(":modal") ? modal : document.querySelector(":modal");
+    var tips = [...document.querySelectorAll(".ui-tooltip:popover-open")].map((tip) => (tip.hidePopover(), tip));
     var held = !nativeClosedBy && !document.querySelector(":popover-open") && modal?.matches("[closedby=none]");
-    if (tips.length || held) event.preventDefault();
+    if (tips.some((tip) => !modal || modal.contains(tip)) || held) event.preventDefault();
   }, true);
 
   // Toasts: one with a timeout goes once shown that long, the time stopped while hovered or focused.

@@ -1117,23 +1117,63 @@
   (label! component :label label)
   [:button {:type "button" :class (btn-class variant size) :popovertarget id} label])
 
+(def ^:private directions #{:down :up :start :end})
+
+(defn- dropdown-item
+  "One entry of a dropdown's menu: a divider, a header, a link — disabled, current or plain —
+  or content held as it is."
+  [current item]
+  (cond
+    (= :divider item) [:li {:role "separator" :class "ui-dropdown__divider"}]
+    (= :header (first item)) [:li {:class "ui-dropdown__header"} (second item)]
+    :else
+    (let [[p c attrs] item, disabled? (:disabled? attrs), attrs (dissoc attrs :disabled?)]
+      [:li (cond
+             (nil? p) c
+             disabled? [:a (with-attrs {:class "ui-dropdown__item" :role "link" :aria-disabled "true"} attrs [:role :aria-disabled]) c]
+             :else (wb/link p (cond-> (with-attrs {:class "ui-dropdown__item"} attrs []) (= p current) (assoc :aria-current "page")) c))])))
+
 (defn dropdown
   "`(dropdown opts)` → a button, `:label`, that opens a menu of `:items` below it — the
   platform's popover, which Esc and a click outside close, and the keyboard reaches after
-  the button. `:items`, `[[path content] …]`: an item with a path is a `wb/link`; one with a
-  nil path holds its content as it is, an `action` whose button acts. Links and forms, not
-  an ARIA menu: Tab moves through them, as through any links. Choosing one closes the menu.
-  `:id` is the menu's, one word; `:variant` and `:size` are the button's; `:attrs` go on
-  the wrapper. Placed below the button, flipped above when the screen has no room, by CSS
-  anchor positioning, or by the plugin's `/ui/ui.js` where the browser has none."
-  [{:keys [id label items variant size attrs]}]
+  the button. `:items`, `[[path content attrs?] …]`: an item with a path is a `wb/link`; one
+  with a nil path holds its content as it is, an `action` whose button acts. An item's
+  `attrs`, a map, go on its link, its `:class` joined to the kit's; `{:disabled? true}` there
+  draws it as a link that goes nowhere — no address, out of the keyboard's way, said to be
+  unavailable. `:divider` is a line between items and `[:header content]` a heading over the
+  ones after it. Links and forms, not an ARIA menu: Tab moves through them, as through any
+  links. Choosing one closes the menu. The item whose path is `:current` is marked
+  `aria-current=page`, and a `:current` that is no item's path marks none, so `(:uri
+  request)` serves every page; `{:aria-current \"true\"}` in an item's attrs marks the section
+  a page belongs to. `:id` is the menu's, one word; `:variant` and `:size` are the button's;
+  `:attrs` go on the wrapper. `:direction`, `:down` unless given, `:up`, `:start` or `:end`,
+  opens it below, above, or beside the button at its inline start or end, the caret pointing
+  that way; `:align :end` lines a menu opened down or up with the button's inline end instead
+  of its start. Flipped to the other side when the screen has no room, by CSS anchor
+  positioning, or by the plugin's `/ui/ui.js` where the browser has none. No items, an item
+  with nothing in it, a `:direction` or `:align` that is not one of these, or an `:align`
+  beside a menu that opens sideways, is refused."
+  [{:keys [id label items current variant size attrs direction align]}]
   (when (empty? items) (throw (ex-info "uikit-base: a dropdown's items are one or more" {})))
-  (named-items! "dropdown" items)
-  [:div (with-attrs {:class "ui-dropdown"} attrs [])
+  (when-not (or (nil? direction) (directions direction))
+    (throw (ex-info "uikit-base: a dropdown's :direction is :down, :up, :start or :end" {:direction direction})))
+  (when-not (contains? #{nil :start :end} align)
+    (throw (ex-info "uikit-base: a dropdown's :align is :start or :end" {:align align})))
+  (when (and (= :end align) (#{:start :end} direction))
+    (throw (ex-info "uikit-base: a dropdown aligns its menu only when it opens down or up" {:direction direction})))
+  (let [entries (remove #(or (= :divider %) (and (vector? %) (= :header (first %)))) items)]
+    (when-not (every? vector? entries)
+      (throw (ex-info "uikit-base: a dropdown's items are [path content attrs?], :divider or [:header content]" {})))
+    (named-items! "dropdown" (concat entries (filter #(and (vector? %) (= :header (first %))) items)))
+    (when-let [bad (first (keep (fn [[_ _ a]] (when (and (some? a) (not (map? a))) [a])) entries))]
+      (throw (ex-info "uikit-base: a dropdown item's attributes are a map" {:attributes (first bad)}))))
+  [:div (with-attrs {:class (str/join " " (cond-> ["ui-dropdown"]
+                                            (and direction (not= :down direction)) (conj (str "ui-dropdown--" (name direction)))
+                                            (= :end align) (conj "ui-dropdown--align-end")))}
+                    attrs [])
    (toggle "a dropdown" id label variant size)
    [:div {:id id :popover "auto" :class "ui-dropdown__menu"}
-    (into [:ul.ui-dropdown__items]
-          (for [[p c] items] [:li (if (some? p) (wb/link p {:class "ui-dropdown__item"} c) c)]))]])
+    (into [:ul.ui-dropdown__items] (map #(dropdown-item current %)) items)]])
 
 (defn popover
   "`(popover opts & body)` → a button, `:label`, that opens `body` beside it in a box — the

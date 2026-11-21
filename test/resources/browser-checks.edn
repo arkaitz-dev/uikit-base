@@ -2,11 +2,11 @@
 ;; tree: the kit's behaviour no JVM test can see. browser_checks_test holds that every check
 ;; passed and that the files below are the bytes they were run against, so a change to any of
 ;; them reds until the checks are run again and this file regenerated.
-{:checked "2026-11-20"
- :files {"kit.css" "57e255c3395cb8b7f71b08ad9d0afebcb774359a3299b7cd57a23065748a8cf4"
+{:checked "2026-11-21"
+ :files {"kit.css" "fe306198576c2eefa4a4bd1a700a03b809887bc7bb6e7e5fed60af35538982c6"
          "ui-utilities.css" "925076562e08793921f22584692bbfc1591c931e64573e34668d94b39f2995f5"
-         "ui.js" "429e8cb222d498f3255aff49c896e5672750fa07b81ba6e22bef7b5b29a3cfeb"
-         "gallery-check.mjs" "77f9b3545c4c6e732690789a64cd90406973422d72e8ea2f9e85dd646226da74"
+         "ui.js" "42fa1be04a61eb954bf85a6a23f057900adf6e350f8dd29a03b8ffaecc698274"
+         "gallery-check.mjs" "be10486b0f666feab1840e65458a5acd6cd4a008cb7a5cd027c49aa3c7df95e1"
          "wb.css" "551519f3b5b3de5eb2cdf9487e111dfd3f1bdf7d3d22337ed82b2fd9ad090595"}
  :runs [
   {:engine "webkit" :version "26.0"
@@ -32,6 +32,10 @@
      "forced: native invoker commands were cancelled, so the script acted" true
      "no CSP violation, no script error" true
      "offcanvas: responsive from md, below it a sheet its button opens; widened while open it stays a sheet until closed, then sits in the page" true
+     "dropdown: up above its button, lined with its start or its end, flipped below at the top, and down lined with its end; its caret points up, down while open; a header, a line and a disabled item that takes no focus" true
+     "dropdown: beside its button at its inline start or end, at its top, flipped to the other side at the edge; its caret before the label pointing there, or after it" true
+     "dropdown: right to left, the inline start is the right and the end the left, its carets turned to match" true
+     "tooltip: Esc hides it; the modal it is in stays, a modal it is not in closes" true
      "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
      "navbar: a link swaps <main> and the current mark moves with it, no reload" true
      "navbar: narrow, the panel hidden until its toggle opens it, under the bar, both as wide as the page; Esc and a press outside close it" true
@@ -89,6 +93,10 @@
      "forced: native invoker commands were cancelled, so the script acted" true
      "no CSP violation, no script error" true
      "offcanvas: responsive from md, below it a sheet its button opens; widened while open it stays a sheet until closed, then sits in the page" true
+     "dropdown: up above its button, lined with its start or its end, flipped below at the top, and down lined with its end; its caret points up, down while open; a header, a line and a disabled item that takes no focus" true
+     "dropdown: beside its button at its inline start or end, at its top, flipped to the other side at the edge; its caret before the label pointing there, or after it" true
+     "dropdown: right to left, the inline start is the right and the end the left, its carets turned to match" true
+     "tooltip: Esc hides it; the modal it is in stays, a modal it is not in closes" true
      "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
      "navbar: a link swaps <main> and the current mark moves with it, no reload" true
      "navbar: narrow, the panel hidden until its toggle opens it, under the bar, both as wide as the page; Esc and a press outside close it" true
@@ -148,6 +156,10 @@
      "forced: native invoker commands were cancelled, so the script acted" true
      "no CSP violation, no script error" true
      "offcanvas: responsive from md, below it a sheet its button opens; widened while open it stays a sheet until closed, then sits in the page" true
+     "dropdown: up above its button, lined with its start or its end, flipped below at the top, and down lined with its end; its caret points up, down while open; a header, a line and a disabled item that takes no focus" true
+     "dropdown: beside its button at its inline start or end, at its top, flipped to the other side at the edge; its caret before the label pointing there, or after it" true
+     "dropdown: right to left, the inline start is the right and the end the left, its carets turned to match" true
+     "tooltip: Esc hides it; the modal it is in stays, a modal it is not in closes" true
      "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
      "navbar: a link swaps <main> and the current mark moves with it, no reload" true
      "navbar: narrow, the panel hidden until its toggle opens it, under the bar, both as wide as the page; Esc and a press outside close it" true
@@ -205,6 +217,10 @@
      "forced: native invoker commands were cancelled, so the script acted" true
      "no CSP violation, no script error" true
      "offcanvas: responsive from md, below it a sheet its button opens; widened while open it stays a sheet until closed, then sits in the page" true
+     "dropdown: up above its button, lined with its start or its end, flipped below at the top, and down lined with its end; its caret points up, down while open; a header, a line and a disabled item that takes no focus" true
+     "dropdown: beside its button at its inline start or end, at its top, flipped to the other side at the edge; its caret before the label pointing there, or after it" true
+     "dropdown: right to left, the inline start is the right and the end the left, its carets turned to match" true
+     "tooltip: Esc hides it; the modal it is in stays, a modal it is not in closes" true
      "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
      "navbar: a link swaps <main> and the current mark moves with it, no reload" true
      "navbar: narrow, the panel hidden until its toggle opens it, under the bar, both as wide as the page; Esc and a press outside close it" true
@@ -262,6 +278,10 @@
      "forced: native invoker commands were cancelled, so the script acted" true
      "no CSP violation, no script error" true
      "offcanvas: responsive from md, below it a sheet its button opens; widened while open it stays a sheet until closed, then sits in the page" true
+     "dropdown: up above its button, lined with its start or its end, flipped below at the top, and down lined with its end; its caret points up, down while open; a header, a line and a disabled item that takes no focus" true
+     "dropdown: beside its button at its inline start or end, at its top, flipped to the other side at the edge; its caret before the label pointing there, or after it" true
+     "dropdown: right to left, the inline start is the right and the end the left, its carets turned to match" true
+     "tooltip: Esc hides it; the modal it is in stays, a modal it is not in closes" true
      "navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open" true
      "navbar: a link swaps <main> and the current mark moves with it, no reload" true
      "navbar: narrow, the panel hidden until its toggle opens it, under the bar, both as wide as the page; Esc and a press outside close it" true

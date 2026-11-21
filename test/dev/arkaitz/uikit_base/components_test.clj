@@ -1227,6 +1227,36 @@
   (is (= ["uikit-base: a dropdown's :id is one word, a letter first, that an element carries as its id" {:id "a b"}]
          (refusal #(ui/dropdown {:id "a b" :label "M" :items [["/a" "A"]]})))))
 
+(deftest a-dropdowns-items-may-be-current-disabled-headed-and-divided
+  (let [menu (fn [opts] (let [h (html (ui/dropdown (merge {:id "m" :label "M"} opts)))] (subs h (str/index-of h "<ul") (str/index-of h "</ul>"))))]
+    (is (= (str "<ul class=\"ui-dropdown__items\"><li class=\"ui-dropdown__header\">Go &lt;to&gt;</li>"
+                "<li><a class=\"ui-dropdown__item\" href=\"/a\" hx-get=\"/a\" " nav-attrs ">A</a></li>"
+                "<li><a aria-current=\"page\" class=\"ui-dropdown__item x\" href=\"/b\" hx-get=\"/b\" " nav-attrs " id=\"b\">B</a></li>"
+                "<li class=\"ui-dropdown__divider\" role=\"separator\"></li>"
+                "<li><a aria-disabled=\"true\" class=\"ui-dropdown__item\" id=\"c\" role=\"link\">C</a></li>")
+           (menu {:current "/b" :items [[:header "Go <to>"] ["/a" "A"] ["/b" "B" {:class "x" :id "b"}] :divider ["/c" "C" {:disabled? true :id "c" :role "menuitem"}]]}))
+        "a header, a link, the current one with its attrs, a line, and a disabled one with no address, its role and state its own")
+    (is (not (str/includes? (menu {:current "/zz" :items [["/a" "A"] ["/b" "B"]]}) "aria-current")) "a current no item has marks none")
+    (is (str/includes? (menu {:items [["/a" "A" {:aria-current "true"}]]}) "<a aria-current=\"true\" class=\"ui-dropdown__item\"") "a section, marked by its attrs"))
+  (let [wrap (fn [opts] (let [h (html (ui/dropdown (merge {:id "m" :label "M" :items [["/a" "A"]]} opts)))] (subs h 0 (str/index-of h "><button"))))]
+    (is (= "<div class=\"ui-dropdown\"" (wrap {}) (wrap {:direction :down :align :start})) "down and at the start, as unless told")
+    (doseq [[o c] [[{:direction :up} "ui-dropdown ui-dropdown--up"] [{:direction :start} "ui-dropdown ui-dropdown--start"]
+                   [{:direction :end} "ui-dropdown ui-dropdown--end"] [{:align :end} "ui-dropdown ui-dropdown--align-end"]
+                   [{:direction :up :align :end :attrs {:class "x"}} "ui-dropdown ui-dropdown--up ui-dropdown--align-end x"]]]
+      (is (= (str "<div class=\"" c "\"") (wrap o)) (pr-str o))))
+  (doseq [d [:left "up" :above true]]
+    (is (= ["uikit-base: a dropdown's :direction is :down, :up, :start or :end" {:direction d}] (refusal #(ui/dropdown {:id "m" :label "M" :items [["/a" "A"]] :direction d}))) (pr-str d)))
+  (doseq [a [:center "end" true]]
+    (is (= ["uikit-base: a dropdown's :align is :start or :end" {:align a}] (refusal #(ui/dropdown {:id "m" :label "M" :items [["/a" "A"]] :align a}))) (pr-str a)))
+  (doseq [d [:start :end]]
+    (is (= ["uikit-base: a dropdown aligns its menu only when it opens down or up" {:direction d}]
+           (refusal #(ui/dropdown {:id "m" :label "M" :items [["/a" "A"]] :direction d :align :end}))) (pr-str d)))
+  (doseq [items [[:line] [["/a" "A"] "B"] [:header]]]
+    (is (= ["uikit-base: a dropdown's items are [path content attrs?], :divider or [:header content]" {}] (refusal #(ui/dropdown {:id "m" :label "M" :items items}))) (pr-str items)))
+  (doseq [items [[[:header " "] ["/a" "A"]] [:divider ["/a" nil]]]]
+    (is (= ["uikit-base: every item of a dropdown has a label" {}] (refusal #(ui/dropdown {:id "m" :label "M" :items items}))) (pr-str items)))
+  (is (= ["uikit-base: a dropdown item's attributes are a map" {:attributes "x"}] (refusal #(ui/dropdown {:id "m" :label "M" :items [["/a" "A" "x"]]})))))
+
 (deftest a-popover-is-a-button-and-the-box-it-opens
   (is (= (str "<div class=\"ui-popover-wrap\" id=\"w\"><button class=\"ui-btn\" popovertarget=\"p\" type=\"button\">Info</button>"
               "<div class=\"ui-popover\" id=\"p\" popover=\"auto\"><p class=\"ui-popover__head\">About &lt;it&gt;</p><p>b</p></div></div>")

@@ -49,25 +49,48 @@ const modes = { native: '', 'older-floor': noCommand + noAnchor, ...(engine === 
 
 const type = { webkit, chromium }[engine];
 if (!type) { console.error('engine: webkit or chromium'); process.exit(2); }
-const browser = await type.launch(process.env.CHROMIUM && engine === 'chromium' ? { executablePath: process.env.CHROMIUM } : {});
+const launch = () => type.launch(process.env.CHROMIUM && engine === 'chromium' ? { executablePath: process.env.CHROMIUM } : {});
 // Headless Chromium hides scrollbars; one launched without that flag lays out a styled 15px one
 // every time, so a page beside a scrollbar is measured there. Headless WebKit lays one out on
 // the gallery's tall page in some runs and not others (measured: 1455 and 1470 for the same
 // page), so it measures none; web-base's own check holds its side of it in WebKit.
 const scrolling = engine === 'chromium'
   ? await type.launch({ ignoreDefaultArgs: ['--hide-scrollbars'], ...(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {}) }) : null;
-const result = { engine, version: browser.version(), modes: {} };
+const result = { engine, modes: {} };
 
+// Each mode in a browser of its own: headless WebKit, given every page of one mode and then of
+// the next in one process, stops loading pages part way through the second (measured: 60 of 60
+// with that mode alone, 20 of 60 after the native one, every page.goto timing out from one
+// check on), which no reader's browser is ever asked to do. Within one mode too: one headless
+// WebKit process loads no page after about sixty, closed or not (measured: the 63rd about:blank
+// never loads, while the server still answers), so the pages each check opens fresh come from a
+// browser of their own, replaced every 40 — a margin under the 62 measured.
 for (const [mode, init] of Object.entries(modes)) {
+  const browser = await launch();
+  result.version = browser.version();
   const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 } });
   await ctx.addInitScript(base + init);
+  let spare = null, spareCtx = null, served = 0;
+  const context = async (b) => { const c = await b.newContext({ viewport: { width: 1024, height: 768 } }); await c.addInitScript(base + init); return c; };
+  // `own` gives the page a context of its own: page.clock is the context's, so a clock paused on
+  // one page freezes every page the context opens after it (measured: their setTimeout never fired).
+  const fresh = async (own = false) => {
+    if (served === 40) { await spare.close(); spare = null; }
+    if (!spare) { spare = await launch(); spareCtx = await context(spare); served = 0; }
+    served++; return (own ? await context(spare) : spareCtx).newPage();
+  };
   const p = await ctx.newPage();
   const errors = []; p.on('pageerror', e => errors.push(String(e)));
   await p.goto(url);
   const r = {};
+  // A hang guard, never a pass criterion: Playwright's evaluate has no deadline of its own, and
+  // one WebKit run stood on a single call for seventeen hours. The stderr line names the check.
   const check = async (name, f, pass) => {
-    try { const seen = await f(); r[name] = { pass: pass(seen), seen }; }
+    const began = Date.now(); let timer;
+    const hang = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('HANG: no answer in 180 s')), 180000); });
+    try { const seen = await Promise.race([f(), hang]); r[name] = { pass: pass(seen), seen }; }
     catch (e) { r[name] = { pass: false, seen: 'ERROR ' + String(e).split('\n')[0] }; }
+    finally { clearTimeout(timer); console.error(mode, Date.now() - began, 'ms', name.slice(0, 60)); }
   };
   const isOpen = id => p.evaluate(id => document.getElementById(id).open, id);
   const popOpen = id => p.evaluate(id => document.getElementById(id).matches(':popover-open'), id);
@@ -145,7 +168,7 @@ for (const [mode, init] of Object.entries(modes)) {
     // the kit's colours, and Blink centred a fill half the track's height.
     // On a page of its own: Playwright's element screenshot injects a <style> in WebKit,
     // whatever its options (measured), which the CSP refuses; the gallery's page stays clean.
-    const q = await ctx.newPage(); await q.goto(url);
+    const q = await fresh(); await q.goto(url);
     const m = q.locator('meter').first();
     await m.scrollIntoViewIfNeeded();
     const want = await q.evaluate(() => Object.fromEntries(['--ui-warning-border', '--ui-surface-alt'].map(v => {
@@ -263,8 +286,8 @@ for (const [mode, init] of Object.entries(modes)) {
   // The navbar, on pages of its own so the gallery's page above stays where its checks left it.
   // fit() runs a frame after a resize, and a headless frame can stall: wait for frames, not for a fixed time.
   const frames = (q) => q.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r)))));
-  const pageAt = async (width, path) => {
-    const q = await ctx.newPage(); await q.setViewportSize({ width, height: 740 });
+  const pageAt = async (width, path, own = false) => {
+    const q = await fresh(own); await q.setViewportSize({ width, height: 740 });
     const errs = []; q.on('pageerror', e => errs.push(String(e)));
     await q.goto(new URL(path, url).href); return [q, errs];
   };
@@ -280,7 +303,9 @@ for (const [mode, init] of Object.entries(modes)) {
   await check('offcanvas: responsive from md, below it a sheet its button opens; widened while open it stays a sheet until closed, then sits in the page', async () => {
     const [q, errs] = await pageAt(600, '/');
     const state = () => q.evaluate(() => { const d = document.getElementById('g-side'), r = d.getBoundingClientRect();
+      const before = d.previousElementSibling.previousElementSibling.getBoundingClientRect();
       return { open: d.open, modal: d.matches(':modal'), display: getComputedStyle(d).display, head: getComputedStyle(d.querySelector('.ui-dialog__head')).display,
+        position: getComputedStyle(d).position, inFlow: Math.round(r.top) >= Math.round(before.bottom),
         left: Math.round(r.left), height: Math.round(r.height), vh: innerHeight }; });
     const closed = await state();
     const button = await q.evaluate(() => getComputedStyle(document.querySelector('button[commandfor=g-side][command=show-modal]')).display);
@@ -290,7 +315,102 @@ for (const [mode, init] of Object.entries(modes)) {
     await q.close(); return { closed, button, opened, widened, after, errs };
   }, s => !s.closed.open && s.closed.display === 'none' && s.button !== 'none'
        && s.opened.modal && s.opened.head !== 'none' && s.opened.left === 0 && s.opened.height === s.opened.vh
-       && s.widened.modal && s.widened.head !== 'none' && !s.after.open && s.after.display === 'block' && s.after.head === 'none' && s.errs.length === 0);
+       && s.widened.modal && s.widened.head !== 'none' && !s.after.open && s.after.display === 'block' && s.after.head === 'none' && s.after.position === 'static' && s.after.inFlow && s.errs.length === 0);
+  // A dropdown's placement, measured on a page of its own with its wrapper pinned where the
+  // check needs it (CSSOM, which the page's CSP allows), so no other check moves with it.
+  const dropAt = async (id, pin, rtl) => {
+    const [q, errs] = await pageAt(1024, '/');
+    const s = await q.evaluate(async ({ id, pin, rtl }) => {
+      if (rtl) document.documentElement.dir = 'rtl';
+      const menu = document.getElementById(id), wrap = menu.parentElement, btn = wrap.firstElementChild;
+      Object.entries({ position: 'fixed', ...pin }).forEach(([k, v]) => wrap.style.setProperty(k, v));
+      // The caret turns by a transition: read it once every running one has finished.
+      const settled = async () => { await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); await Promise.race([Promise.all(document.getAnimations().filter(a => a instanceof CSSTransition).map(a => a.finished)),
+        new Promise(r => setTimeout(r, 2000))]); };
+      const caret = () => getComputedStyle(btn, '::before').rotate;
+      // The caret's offset, [x, y] in px: the side its V is moved to so the V sits centred.
+      const shift = () => { const [x, y = '0'] = getComputedStyle(btn, '::before').translate.split(' '); return [parseFloat(x) || 0, parseFloat(y) || 0]; };
+      await settled(); const closed = caret(), shiftClosed = shift(); btn.click(); await settled();
+      const b = btn.getBoundingClientRect(), m = menu.getBoundingClientRect(), opened = caret(), shiftOpened = shift();
+      const before = getComputedStyle(btn, '::before'), order = before.order;
+      const items = [...menu.querySelectorAll('li')].map(li => ({ cls: li.className, role: li.getAttribute('role'), border: getComputedStyle(li).borderTopWidth }));
+      const off = menu.querySelector('[aria-disabled="true"]'); let offFocus = null;
+      if (off) { off.focus(); offFocus = { href: off.hasAttribute('href'), focused: document.activeElement === off }; }
+      return { open: menu.matches(':popover-open'), closed, opened, shiftClosed, shiftOpened, order, items, offFocus,
+        above: Math.round(b.top - m.bottom), below: Math.round(m.top - b.bottom), toStart: Math.round(b.left - m.right), toEnd: Math.round(m.left - b.right),
+        dTop: Math.round(m.top - b.top), dLeft: Math.round(m.left - b.left), dRight: Math.round(m.right - b.right) };
+    }, { id, pin, rtl });
+    await q.close(); return { ...s, errs };
+  };
+  // The gap is the kit's --ui-spacing-xs, 0.25rem: 4px at the default font size, and the 4
+  // place() writes where anchor positioning is missing.
+  const near = (n) => n === 4;
+  const clean = (s) => Object.values(s).every(x => x.errs.length === 0);
+  const sign = Math.sign;
+  await check('dropdown: up above its button, lined with its start or its end, flipped below at the top, and down lined with its end; its caret points up, down while open; a header, a line and a disabled item that takes no focus', async () => {
+    return { up: await dropAt('g-up', { top: '400px', left: '300px' }), flipped: await dropAt('g-up', { top: '0px', left: '300px' }),
+      upStart: await dropAt('g-up-start', { top: '400px', left: '300px' }), downEnd: await dropAt('g-down-end', { top: '300px', left: '300px' }) };
+  }, s => s.upStart.open && near(s.upStart.above) && s.upStart.dLeft === 0 && s.downEnd.open && near(s.downEnd.below) && s.downEnd.dRight === 0
+       && s.up.open && near(s.up.above) && s.up.dRight === 0 && s.up.closed === '225deg' && s.up.opened === '45deg'
+       && s.up.items[0].cls === 'ui-dropdown__header' && s.up.items.some(i => i.role === 'separator' && i.border === '1px')
+       && s.up.offFocus && !s.up.offFocus.href && !s.up.offFocus.focused
+       && s.flipped.open && near(s.flipped.below) && s.flipped.dRight === 0
+       && sign(s.up.shiftClosed[1]) === 1 && sign(s.up.shiftOpened[1]) === -1 && s.up.shiftClosed[0] === 0 && clean(s));
+  await check('dropdown: beside its button at its inline start or end, at its top, flipped to the other side at the edge; its caret before the label pointing there, or after it', async () => {
+    return { start: await dropAt('g-beside-start', { top: '300px', left: '400px' }), startFlipped: await dropAt('g-beside-start', { top: '300px', left: '0px' }),
+      end: await dropAt('g-beside-end', { top: '300px', left: '300px' }), endFlipped: await dropAt('g-beside-end', { top: '300px', right: '0px' }) };
+  }, s => s.start.open && near(s.start.toStart) && s.start.dTop === 0 && s.start.closed === '135deg' && s.start.opened === '135deg' && s.start.order === '-1'
+       && s.startFlipped.open && near(s.startFlipped.toEnd) && s.startFlipped.dTop === 0
+       && s.end.open && near(s.end.toEnd) && s.end.dTop === 0 && s.end.closed === '-45deg' && s.end.opened === '-45deg' && s.end.order === '1'
+       && s.endFlipped.open && near(s.endFlipped.toStart) && s.endFlipped.dTop === 0
+       && sign(s.start.shiftClosed[0]) === 1 && s.start.shiftClosed[1] === 0 && sign(s.end.shiftClosed[0]) === -1 && s.end.shiftClosed[1] === 0 && clean(s));
+  await check('dropdown: right to left, the inline start is the right and the end the left, its carets turned to match', async () => {
+    return { start: await dropAt('g-beside-start', { top: '300px', left: '400px' }, true), end: await dropAt('g-beside-end', { top: '300px', left: '400px' }, true),
+      up: await dropAt('g-up', { top: '400px', left: '300px' }, true), upStart: await dropAt('g-up-start', { top: '400px', left: '300px' }, true),
+      downEnd: await dropAt('g-down-end', { top: '300px', left: '300px' }, true),
+      startFlipped: await dropAt('g-beside-start', { top: '300px', right: '0px' }, true) };
+  }, s => s.upStart.open && near(s.upStart.above) && s.upStart.dRight === 0 && s.downEnd.open && near(s.downEnd.below) && s.downEnd.dLeft === 0
+       && s.start.open && near(s.start.toEnd) && s.start.dTop === 0 && s.start.closed === '-135deg' && s.start.opened === '-135deg'
+       && s.end.open && near(s.end.toStart) && s.end.closed === '45deg' && s.end.opened === '45deg'
+       && sign(s.start.shiftClosed[0]) === -1 && sign(s.end.shiftClosed[0]) === 1
+       && s.startFlipped.open && near(s.startFlipped.toStart) && s.startFlipped.dTop === 0 && clean(s)
+       && s.up.open && near(s.up.above) && s.up.dLeft === 0 && s.up.closed === '-225deg' && s.up.opened === '-45deg');
+  // Measured: a tooltip outside a modal, still inside its 150 ms hide, took the modal's Esc. The
+  // clock is paused so that hide never fires, and the page records, around ui.js's own listener
+  // (on document, capturing), whether the tip was open, whether it is after, and the decision.
+  // A paused clock stops animation frames too, so the pointer and the focus move raw, never
+  // through a locator's actionability wait.
+  const escAt = async (arrange) => {
+    const [q, errs] = await pageAt(1024, '/', true);
+    try { await q.clock.install(); await q.clock.pauseAt(Date.now() + 1000);
+    await q.evaluate(() => { const tip = () => document.getElementById('g-tip').matches(':popover-open'); window.__tipEsc = [];
+      addEventListener('keydown', e => { if (e.key === 'Escape') window.__tipEsc.push({ at: tip() }); }, true);
+      addEventListener('keydown', e => { if (e.key === 'Escape') Object.assign(window.__tipEsc.at(-1), { after: tip(), prevented: e.defaultPrevented }); }); });
+    await arrange(q);
+    const open = () => q.evaluate(() => ({ end: document.getElementById('g-end').open, dialog: document.getElementById('g-dialog').open }));
+    const before = await open(); await q.keyboard.press('Escape');
+    const once = await open(); await q.keyboard.press('Escape');
+    const twice = await open(), esc = await q.evaluate(() => window.__tipEsc);
+    return { before, once, twice, esc, errs }; } finally { await q.context().close(); }
+  };
+  const centre = (q, sel) => q.evaluate((sel) => { const e = document.querySelector(sel); e.scrollIntoView({ block: 'center' });
+    const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }, sel);
+  const endButton = 'button[commandfor=g-end][command=show-modal]', focusTip = (q, sel) => q.evaluate((sel) => document.querySelector(sel).focus(), sel);
+  const openEnd = async (q) => { const [x, y] = await centre(q, endButton); await q.mouse.click(x, y); };
+  await check('tooltip: Esc hides it; the modal it is in stays, a modal it is not in closes', async () => ({
+    // Hovered, then left for the end sheet's button: its hide is pending when Esc comes.
+    outside: await escAt(async (q) => { const [x, y] = await centre(q, '.ui-tooltip-wrap > :first-child'); await q.mouse.move(x, y); await openEnd(q); }),
+    // Inside the end sheet, shown by the focus.
+    inside: await escAt(async (q) => { await q.evaluate(() => document.querySelector('#g-end .ui-dialog__body').append(document.querySelector('.ui-tooltip-wrap')));
+      await openEnd(q); await focusTip(q, '#g-end .ui-tooltip-wrap > :first-child'); }),
+    // Inside the second of two open modals, later in the document than the first.
+    stacked: await escAt(async (q) => { await q.evaluate(() => document.querySelector('#g-dialog .ui-dialog__body').append(document.querySelector('.ui-tooltip-wrap')));
+      await openEnd(q); await q.evaluate(() => document.getElementById('g-dialog').showModal()); await focusTip(q, '#g-dialog .ui-tooltip-wrap > :first-child'); }),
+  }), s => Object.values(s).every(x => x.errs.length === 0 && x.esc.length === 2 && x.esc[0].at && !x.esc[0].after && !x.esc[1].at)
+       && s.outside.before.end && !s.outside.esc[0].prevented && !s.outside.once.end
+       && s.inside.before.end && s.inside.esc[0].prevented && s.inside.once.end && !s.inside.twice.end
+       && s.stacked.before.end && s.stacked.before.dialog && s.stacked.esc[0].prevented && s.stacked.once.dialog && s.stacked.once.end
+       && !s.stacked.twice.dialog && s.stacked.twice.end);
   await check('navbar: from its breakpoint up, its panel inline in the bar, its toggle gone, no popover open', async () => {
     const [q, errs] = await pageAt(1024, '/'); const s = await navState(q);
     const sameRow = await q.evaluate(() => { const l = document.querySelector('.ui-navbar__link').getBoundingClientRect(), b = document.querySelector('.ui-navbar').getBoundingClientRect(); return l.top >= b.top && l.bottom <= b.bottom; });
@@ -344,7 +464,7 @@ for (const [mode, init] of Object.entries(modes)) {
     await q.close(); return { ...s, errs };
   }, s => !s.open && s.inBar && s.errs.length === 0);
   await check('navbar: on a short screen with many links, the open panel ends at the screen\'s bottom and its last link is reached by scrolling it', async () => {
-    const q = await ctx.newPage(); await q.setViewportSize({ width: 320, height: 256 }); await q.goto(url);
+    const q = await fresh(); await q.setViewportSize({ width: 320, height: 256 }); await q.goto(url);
     await q.evaluate(() => { const ul = document.querySelector('.ui-navbar__items'), li = ul.querySelector('li');
       for (let i = 0; i < 10; i++) { const c = li.cloneNode(true); c.querySelector('a').textContent = 'Extra ' + i; c.querySelector('a').removeAttribute('aria-current'); ul.append(c); } });
     await q.locator('.ui-navbar__toggle').click(); await q.waitForTimeout(150);
@@ -413,7 +533,7 @@ for (const [mode, init] of Object.entries(modes)) {
   await check('navbar: under :aligned its ground and its line reach the window\'s edges and nowhere else, and under :measure they keep to the column', async () => {
     // A page of its own: Playwright's screenshot injects a <style> in WebKit, which the CSP refuses.
     const shot = async (path) => {
-      const q = await ctx.newPage(); await q.setViewportSize({ width: 1470, height: 740 }); await q.goto(new URL(path, url).href);
+      const q = await fresh(); await q.setViewportSize({ width: 1470, height: 740 }); await q.goto(new URL(path, url).href);
       const s = await q.evaluate(() => {
         const probe = (v) => { const d = document.createElement('div'); d.style.setProperty('background-color', `var(${v})`); document.body.append(d);
           const c = getComputedStyle(d).backgroundColor.match(/\d+/g).slice(0, 3).join(','); d.remove(); return c; };
@@ -552,7 +672,7 @@ for (const [mode, init] of Object.entries(modes)) {
         && s.s600.toggle && !s.s600.linkInBar && s.s320.toggle && !s.back.collapsed && !s.back.toggle && s.back.linkInBar && s.wide.linkInBar
         && [s.fits, s.under, s.s600, s.s320, s.back, s.wide].every(x => x.row > 0 && Math.abs(x.h - x.row) <= 0.5) && s.errs.length === 0);
   await check('navbar: with a banner above its header and many links, the open panel starts at the bar and ends within the screen', async () => {
-    const q = await ctx.newPage(); await q.setViewportSize({ width: 320, height: 400 }); await q.goto(url);
+    const q = await fresh(); await q.setViewportSize({ width: 320, height: 400 }); await q.goto(url);
     await q.evaluate(() => { const ban = document.createElement('div'); ban.style.blockSize = '120px'; document.body.prepend(ban);
       const ul = document.querySelector('.ui-navbar__items'), li = ul.querySelector('li');
       for (let i = 0; i < 10; i++) { const c = li.cloneNode(true); c.querySelector('a').removeAttribute('aria-current'); ul.append(c); } });
@@ -615,9 +735,9 @@ for (const [mode, init] of Object.entries(modes)) {
   // made before it loads.
   await check('navbar: its breakpoint follows the reader\'s default font size — below 48em its toggle shows by the query alone, never by fit (Chromium at a 20px default; WebKit has no setting and holds the 16px half only)', async () => {
     const at = async (width, size) => {
-      const q = await ctx.newPage(); await q.setViewportSize({ width, height: 740 });
+      const q = await fresh(); await q.setViewportSize({ width, height: 740 });
       const errs = []; q.on('pageerror', e => errs.push(String(e)));
-      if (size) await (await ctx.newCDPSession(q)).send('Page.setFontSizes', { fontSizes: { standard: size } });
+      if (size) await (await q.context().newCDPSession(q)).send('Page.setFontSizes', { fontSizes: { standard: size } });
       await q.goto(url); await frames(q);
       const s = await q.evaluate(() => {
         const bar = document.querySelector('.ui-navbar'), items = bar.querySelector('.ui-navbar__items'), end = bar.querySelector('.ui-navbar__end');
@@ -696,7 +816,7 @@ for (const [mode, init] of Object.entries(modes)) {
     await q.close(); return { need, inline, ...s, errs };
   }, s => s.need >= 650 && s.inline && s.collapsed && s.focus === 'outside' && s.errs.length === 0);
   await check('navbar: swaps of the page leave one content observer on its bar', async () => {
-    const q = await ctx.newPage(); await q.setViewportSize({ width: 1024, height: 740 });
+    const q = await fresh(); await q.setViewportSize({ width: 1024, height: 740 });
     await q.addInitScript(() => { const observe = MutationObserver.prototype.observe; window.__barObservers = new Set();
       MutationObserver.prototype.observe = function (target, options) { if (target.matches && target.matches('.ui-navbar')) window.__barObservers.add(this); return observe.call(this, target, options); }; });
     await q.goto(url); await frames(q);
@@ -790,7 +910,8 @@ for (const [mode, init] of Object.entries(modes)) {
       && s.errs.length === 0; });
   result.modes[mode] = r;
   await ctx.close();
+  if (spare) await spare.close();
+  await browser.close();
 }
-await browser.close();
 if (scrolling) await scrolling.close();
 console.log(JSON.stringify(result, null, 1));
